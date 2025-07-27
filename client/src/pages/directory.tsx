@@ -23,14 +23,15 @@ interface Supplier {
 
 export default function Directory() {
   const [filters, setFilters] = useState({
-    specialty: "",
-    location: "",
+    specialty: "all",
+    location: "all",
     search: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProvider, setSelectedProvider] = useState<Supplier | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+  const [selectedProviderName, setSelectedProviderName] = useState<string>("");
 
   const { data: suppliers, isLoading, error } = useQuery({
     queryKey: ["/api/suppliers", filters, currentPage],
@@ -39,7 +40,7 @@ export default function Directory() {
         page: currentPage.toString(),
         limit: "12",
         ...Object.fromEntries(
-          Object.entries(filters).filter(([, value]) => value !== "")
+          Object.entries(filters).filter(([, value]) => value !== "" && value !== "all")
         ),
       });
       
@@ -67,8 +68,9 @@ export default function Directory() {
     }
   };
 
-  const handleRequestQuote = (supplierId: string) => {
+  const handleRequestQuote = (supplierId: string, supplierName?: string) => {
     setSelectedProviderId(supplierId);
+    setSelectedProviderName(supplierName || "");
     setShowQuoteModal(true);
   };
 
@@ -136,7 +138,7 @@ export default function Directory() {
                       <SelectValue placeholder="Todas las especialidades" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas las especialidades</SelectItem>
+                      <SelectItem value="all">Todas las especialidades</SelectItem>
                       {specialties.map((specialty) => (
                         <SelectItem key={specialty} value={specialty}>
                           {specialty}
@@ -159,7 +161,7 @@ export default function Directory() {
                       <SelectValue placeholder="Toda RD" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Toda RD</SelectItem>
+                      <SelectItem value="all">Toda RD</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location} value={location}>
                           {location}
@@ -172,7 +174,7 @@ export default function Directory() {
                 <Button 
                   className="w-full"
                   onClick={() => {
-                    setFilters({ specialty: "", location: "", search: "" });
+                    setFilters({ specialty: "all", location: "all", search: "" });
                     setCurrentPage(1);
                   }}
                   variant="outline"
@@ -219,7 +221,7 @@ export default function Directory() {
                       key={supplier.id}
                       provider={supplier}
                       onViewProfile={() => handleViewProfile(supplier.id)}
-                      onRequestQuote={() => handleRequestQuote(supplier.id)}
+                      onRequestQuote={() => handleRequestQuote(supplier.id, supplier.legalName)}
                     />
                   ))}
                 </div>
@@ -260,6 +262,7 @@ export default function Directory() {
         isOpen={showQuoteModal}
         onClose={() => setShowQuoteModal(false)}
         providerId={selectedProviderId}
+        providerName={selectedProviderName}
       />
 
       {/* Provider Profile Modal */}
@@ -268,8 +271,9 @@ export default function Directory() {
         isOpen={!!selectedProvider}
         onClose={() => setSelectedProvider(null)}
         onRequestQuote={(providerId) => {
+          const providerName = selectedProvider?.legalName || "";
           setSelectedProvider(null);
-          handleRequestQuote(providerId);
+          handleRequestQuote(providerId, providerName);
         }}
       />
     </div>

@@ -45,9 +45,26 @@ export function QuoteModal({ isOpen, onClose, providerId, providerName }: QuoteM
     setIsSubmitting(true);
 
     try {
-      // Here you would normally send the quote request to your API
-      // For now, we'll simulate the request
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/quote-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          supplierId: providerId,
+          clientName: formData.name,
+          clientEmail: formData.email,
+          clientPhone: formData.phone,
+          company: formData.company,
+          description: formData.projectDescription,
+          budget: formData.budget,
+          estimatedStartDate: formData.timeline,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit quote request');
+      }
       
       toast({
         title: "Cotización Enviada",
