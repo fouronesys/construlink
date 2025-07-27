@@ -1,0 +1,160 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import Navigation from "@/components/navigation";
+import { loginSchema, type LoginData } from "@shared/schema";
+import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+
+export default function Login() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+
+  const form = useForm<LoginData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginData) => {
+      const response = await apiRequest("POST", "/api/auth/login", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "¡Bienvenido!",
+        description: "Has iniciado sesión exitosamente.",
+      });
+      
+      // Redirect based on user role
+      if (data.user.role === 'supplier') {
+        setLocation('/supplier-dashboard');
+      } else if (data.user.role === 'admin' || data.user.role === 'superadmin') {
+        setLocation('/admin-panel');
+      } else {
+        setLocation('/directory');
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al iniciar sesión",
+        description: error.message || "Credenciales inválidas. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: LoginData) => {
+    loginMutation.mutate(data);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      
+      <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
+              <LogIn className="w-6 h-6 text-white" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-gray-900">
+              Iniciar Sesión
+            </CardTitle>
+            <p className="text-gray-600">
+              Accede a tu cuenta de Proveedores RD
+            </p>
+          </CardHeader>
+          
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="tu@email.com"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contraseña</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            {...field}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? "Iniciando sesión..." : "Iniciar Sesión"}
+                </Button>
+              </form>
+            </Form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                ¿No tienes una cuenta?{" "}
+                <button
+                  onClick={() => setLocation("/register")}
+                  className="font-medium text-primary hover:text-primary/80"
+                >
+                  Registrarse
+                </button>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

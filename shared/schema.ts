@@ -27,14 +27,18 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (mandatory for Replit Auth)
+// User storage table with password authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password").notNull(), // Hashed password
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role", { enum: ["client", "supplier", "admin", "superadmin"] }).default("client"),
+  emailVerified: boolean("email_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  lastLoginAt: timestamp("last_login_at"),
   verifoneCustomerId: varchar("verifone_customer_id"),
   verifoneSubscriptionId: varchar("verifone_subscription_id"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -239,43 +243,23 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
-// Schema types
-export type UpsertUser = typeof users.$inferInsert;
-export type User = typeof users.$inferSelect;
+// Insert schemas for forms
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  emailVerified: true,
+  isActive: true,
+  lastLoginAt: true,
+  verifoneCustomerId: true,
+  verifoneSubscriptionId: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
-export type InsertSupplier = typeof suppliers.$inferInsert;
-export type Supplier = typeof suppliers.$inferSelect;
-
-export type InsertSupplierSpecialty = typeof supplierSpecialties.$inferInsert;
-export type SupplierSpecialty = typeof supplierSpecialties.$inferSelect;
-
-export type InsertSupplierDocument = typeof supplierDocuments.$inferInsert;
-export type SupplierDocument = typeof supplierDocuments.$inferSelect;
-
-export type InsertSubscription = typeof subscriptions.$inferInsert;
-export type Subscription = typeof subscriptions.$inferSelect;
-
-export type InsertPayment = typeof payments.$inferInsert;
-export type Payment = typeof payments.$inferSelect;
-
-export type InsertProduct = typeof products.$inferInsert;
-export type Product = typeof products.$inferSelect;
-
-export type InsertService = typeof services.$inferInsert;
-export type Service = typeof services.$inferSelect;
-
-export type InsertQuoteRequest = typeof quoteRequests.$inferInsert;
-export type QuoteRequest = typeof quoteRequests.$inferSelect;
-
-export type InsertVerification = typeof verifications.$inferInsert;
-export type Verification = typeof verifications.$inferSelect;
-
-export type InsertReview = typeof reviews.$inferInsert;
-export type Review = typeof reviews.$inferSelect;
-
-// Insert schemas
 export const insertSupplierSchema = createInsertSchema(suppliers).omit({
   id: true,
+  userId: true,
+  status: true,
+  approvalDate: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -283,8 +267,6 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
 export const insertQuoteRequestSchema = createInsertSchema(quoteRequests).omit({
   id: true,
   createdAt: true,
-  updatedAt: true,
-  status: true,
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
@@ -293,8 +275,42 @@ export const insertProductSchema = createInsertSchema(products).omit({
   updatedAt: true,
 });
 
-export const insertServiceSchema = createInsertSchema(services).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+// Authentication schemas
+export const registerSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  confirmPassword: z.string(),
+  firstName: z.string().min(1, "Nombre es requerido"),
+  lastName: z.string().min(1, "Apellido es requerido"),
+  role: z.enum(["client", "supplier"]).default("client"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
 });
+
+export const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(1, "Contraseña es requerida"),
+});
+
+// Types
+export type User = typeof users.$inferSelect;
+export type Supplier = typeof suppliers.$inferSelect;
+export type SupplierSpecialty = typeof supplierSpecialties.$inferSelect;
+export type SupplierDocument = typeof supplierDocuments.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type Service = typeof services.$inferSelect;
+export type QuoteRequest = typeof quoteRequests.$inferSelect;
+export type Verification = typeof verifications.$inferSelect;
+export type Review = typeof reviews.$inferSelect;
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type RegisterData = z.infer<typeof registerSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
+
+

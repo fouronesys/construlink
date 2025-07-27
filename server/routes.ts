@@ -1,29 +1,155 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertSupplierSchema, insertQuoteRequestSchema, insertProductSchema, insertServiceSchema } from "@shared/schema";
+import { eq, and, desc, ilike } from "drizzle-orm";
+import { db } from "./db";
+import { 
+  suppliers, 
+  users, 
+  supplierSpecialties, 
+  subscriptions, 
+  payments, 
+  reviews, 
+  verifications,
+  insertSupplierSchema,
+  registerSchema, 
+  loginSchema,
+  type InsertSupplier,
+  type Supplier,
+  type RegisterData,
+  type LoginData
+} from "@shared/schema";
 import { z } from "zod";
+import { isAuthenticated, hasRole, hashPassword, comparePassword } from "./auth";
+import { storage } from "./storage";
 
 const MONTHLY_SUBSCRIPTION_AMOUNT = 1000; // RD$1000
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Authentication routes
+  app.post('/api/auth/register', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const validatedData = registerSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await db.select().from(users).where(eq(users.email, validatedData.email)).limit(1);
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "El usuario ya existe con este email" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(validatedData.password);
+      
+      // Create user
+      const newUser = await db.insert(users).values({
+        email: validatedData.email,
+        password: hashedPassword,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        role: validatedData.role,
+      }).returning();
+
+      res.status(201).json({ 
+        message: "Usuario creado exitosamente",
+        user: { 
+          id: newUser[0].id, 
+          email: newUser[0].email, 
+          firstName: newUser[0].firstName,
+          lastName: newUser[0].lastName,
+          role: newUser[0].role 
+        }
+      });
+    } catch (error) {
+      console.error("Error in register:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      
+      // Find user
+      const user = await db.select().from(users).where(eq(users.email, validatedData.email)).limit(1);
+      if (!user.length) {
+        return res.status(401).json({ message: "Credenciales inválidas" });
+      }
+
+      // Check password
+      const isValidPassword = await comparePassword(validatedData.password, user[0].password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Credenciales inválidas" });
+      }
+
+      // Update last login
+      await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user[0].id));
+
+      // Set session
+      req.session.userId = user[0].id;
+
+      // Get supplier info if user is a supplier
+      let supplier = null;
+      if (user[0].role === 'supplier') {
+        const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, user[0].id)).limit(1);
+        supplier = supplierData.length > 0 ? supplierData[0] : null;
+      }
+
+      res.json({ 
+        message: "Login exitoso",
+        user: { 
+          id: user[0].id, 
+          email: user[0].email, 
+          firstName: user[0].firstName,
+          lastName: user[0].lastName,
+          role: user[0].role,
+          supplier
+        }
+      });
+    } catch (error) {
+      console.error("Error in login:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  app.post('/api/auth/logout', async (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Error al cerrar sesión" });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: "Sesión cerrada exitosamente" });
+    });
+  });
+
+  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      
+      if (!user.length) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
       
       // Get supplier info if user is a supplier
       let supplier = null;
-      if (user?.role === 'supplier') {
-        supplier = await storage.getSupplierByUserId(userId);
+      if (user[0].role === 'supplier') {
+        const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, userId)).limit(1);
+        supplier = supplierData.length > 0 ? supplierData[0] : null;
       }
       
-      res.json({ ...user, supplier });
+      res.json({ 
+        id: user[0].id, 
+        email: user[0].email, 
+        firstName: user[0].firstName,
+        lastName: user[0].lastName,
+        role: user[0].role,
+        supplier
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

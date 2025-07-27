@@ -172,7 +172,7 @@ function RegistrationForm() {
               <p className="text-gray-600 mb-6">
                 Debes iniciar sesión para registrarte como proveedor.
               </p>
-              <Button onClick={() => window.location.href = "/api/login"}>
+              <Button onClick={() => setLocation("/login")}>
                 Iniciar Sesión
               </Button>
             </CardContent>

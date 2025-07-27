@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Directory from "@/pages/directory";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
 import RegisterSupplier from "@/pages/register-supplier";
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import AdminPanel from "@/pages/admin-panel";
@@ -22,6 +24,8 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/directory" component={Directory} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
         <Route path="/register-supplier" component={RegisterSupplier} />
         <Route path="/supplier-dashboard" component={SupplierDashboard} />
         <Route path="/admin-panel" component={AdminPanel} />
@@ -45,6 +49,8 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/directory" component={Directory} />
+          <Route path="/login" component={Login} />
+          <Route path="/register" component={Register} />
           <Route path="/register-supplier" component={RegisterSupplier} />
         </>
       ) : (
