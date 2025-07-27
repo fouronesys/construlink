@@ -186,29 +186,32 @@ function RegistrationForm() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center space-x-4">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-center space-x-2 sm:space-x-4">
             <div className={`flex items-center ${currentStep >= 1 ? 'text-primary' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                 1
               </div>
-              <span className="ml-2 hidden sm:block">Información Básica</span>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Información Básica</span>
+              <span className="ml-1 text-xs sm:hidden">Info</span>
             </div>
-            <div className="w-8 h-px bg-gray-300"></div>
+            <div className="w-4 sm:w-8 h-px bg-gray-300"></div>
             <div className={`flex items-center ${currentStep >= 2 ? 'text-primary' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                 2
               </div>
-              <span className="ml-2 hidden sm:block">Suscripción</span>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Suscripción</span>
+              <span className="ml-1 text-xs sm:hidden">Plan</span>
             </div>
-            <div className="w-8 h-px bg-gray-300"></div>
+            <div className="w-4 sm:w-8 h-px bg-gray-300"></div>
             <div className={`flex items-center ${currentStep >= 3 ? 'text-primary' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                 3
               </div>
-              <span className="ml-2 hidden sm:block">Pago</span>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Confirmación</span>
+              <span className="ml-1 text-xs sm:hidden">Fin</span>
             </div>
           </div>
         </div>
@@ -221,8 +224,8 @@ function RegistrationForm() {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="legalName"
@@ -267,7 +270,7 @@ function RegistrationForm() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="phone"
@@ -398,31 +401,37 @@ function RegistrationForm() {
               </div>
 
               <Button 
-                onClick={() => createSubscriptionMutation.mutate()}
-                disabled={createSubscriptionMutation.isPending}
+                onClick={() => setCurrentStep(3)}
                 className="w-full"
               >
-                {createSubscriptionMutation.isPending ? "Creando suscripción..." : "Proceder al Pago"}
+                Continuar
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 3: Payment */}
+        {/* Step 3: Confirmation */}
         {currentStep === 3 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <CreditCard className="w-5 h-5 mr-2" />
-                Información de Pago
+              <CardTitle className="flex items-center text-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                ¡Registro Completado!
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Elements stripe={stripePromise} options={{ 
-                clientSecret: sessionStorage.getItem('clientSecret') || '' 
-              }}>
-                <PaymentForm />
-              </Elements>
+            <CardContent className="text-center space-y-4">
+              <p className="text-gray-600">
+                Tu solicitud ha sido enviada exitosamente y está siendo revisada por nuestro equipo administrativo.
+              </p>
+              <p className="text-sm text-gray-500">
+                Te notificaremos por email cuando tu cuenta sea aprobada.
+              </p>
+              <Button 
+                onClick={() => setLocation('/dashboard')}
+                className="w-full"
+              >
+                Ir al Dashboard
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -431,79 +440,8 @@ function RegistrationForm() {
   );
 }
 
-function PaymentForm() {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin + '/dashboard',
-      },
-    });
-
-    if (error) {
-      toast({
-        title: "Error en el pago",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "¡Registro completado!",
-        description: "Tu solicitud está siendo revisada por nuestro equipo.",
-      });
-      setLocation('/dashboard');
-    }
-
-    setIsProcessing(false);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border border-gray-300 rounded-md">
-        <CardElement 
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-            },
-          }}
-        />
-      </div>
-      
-      <Button 
-        type="submit" 
-        disabled={!stripe || isProcessing}
-        className="w-full bg-emerald text-emerald-foreground hover:bg-emerald/90"
-      >
-        {isProcessing ? "Procesando..." : "Completar Pago"}
-      </Button>
-    </form>
-  );
-}
 
 export default function RegisterSupplier() {
-  return (
-    <Elements stripe={stripePromise}>
-      <RegistrationForm />
-    </Elements>
-  );
+  return <RegistrationForm />;
 }

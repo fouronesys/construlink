@@ -97,10 +97,10 @@ export default function Directory() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
           {/* Filters Sidebar */}
-          <div className="lg:w-1/4">
+          <div className="w-full lg:w-1/4 order-2 lg:order-1">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -186,19 +186,19 @@ export default function Directory() {
           </div>
 
           {/* Provider Results */}
-          <div className="lg:w-3/4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Proveedores Verificados</h2>
-              <span className="text-gray-600">
+          <div className="w-full lg:w-3/4 order-1 lg:order-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Proveedores Verificados</h2>
+              <span className="text-sm sm:text-base text-gray-600">
                 {suppliers?.length || 0} resultados encontrados
               </span>
             </div>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Card key={i} className="animate-pulse">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 sm:p-6">
                       <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                       <div className="h-3 bg-gray-200 rounded w-1/2 mb-4"></div>
                       <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
@@ -215,7 +215,7 @@ export default function Directory() {
               </Card>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                   {suppliers?.map((supplier: Supplier) => (
                     <ProviderCard
                       key={supplier.id}
@@ -227,10 +227,12 @@ export default function Directory() {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex justify-center mt-8">
-                  <div className="flex space-x-2">
+                <div className="flex justify-center mt-6 sm:mt-8">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     <Button
                       variant="outline"
+                      size="sm"
+                      className="text-xs sm:text-sm"
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
                     >
@@ -238,12 +240,15 @@ export default function Directory() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="bg-primary text-primary-foreground"
+                      size="sm"
+                      className="bg-primary text-primary-foreground text-xs sm:text-sm min-w-[40px]"
                     >
                       {currentPage}
                     </Button>
                     <Button
                       variant="outline"
+                      size="sm"
+                      className="text-xs sm:text-sm"
                       onClick={() => setCurrentPage(prev => prev + 1)}
                       disabled={!suppliers || suppliers.length < 12}
                     >

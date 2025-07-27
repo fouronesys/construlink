@@ -82,27 +82,27 @@ export default function Landing() {
           backgroundBlendMode: "overlay",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
               Proveedores de Construcción{" "}
-              <span className="text-emerald-400">Verificados</span>
+              <span className="text-emerald-400 block sm:inline">Verificados</span>
             </h1>
-            <p className="text-xl text-gray-200 mb-8 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-200 mb-6 sm:mb-8 max-w-2xl lg:max-w-3xl mx-auto px-4">
               La plataforma líder en República Dominicana para conectar con proveedores certificados de materiales y servicios de construcción.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md sm:max-w-none mx-auto px-4">
               <Button 
                 size="lg" 
-                className="bg-emerald text-emerald-foreground hover:bg-emerald/90 text-lg px-8 py-3"
-                onClick={() => setLocation("/register")}
+                className="bg-emerald-500 text-white hover:bg-emerald-600 text-base sm:text-lg px-6 sm:px-8 py-3 w-full sm:w-auto"
+                onClick={() => setLocation("/register-supplier")}
               >
                 Registrarse como Proveedor
               </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="bg-white text-primary hover:bg-gray-100 border-white text-lg px-8 py-3"
+                className="bg-white text-primary hover:bg-gray-100 border-white text-base sm:text-lg px-6 sm:px-8 py-3 w-full sm:w-auto"
                 onClick={() => setLocation("/directory")}
               >
                 Explorar Proveedores
@@ -113,20 +113,20 @@ export default function Landing() {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-white py-16">
+      <section className="bg-white py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">1,247+</div>
-              <div className="text-gray-600">Proveedores Verificados</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
+            <div className="py-4">
+              <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">1,247+</div>
+              <div className="text-sm sm:text-base text-gray-600">Proveedores Verificados</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-emerald mb-2">98%</div>
-              <div className="text-gray-600">Tasa de Satisfacción</div>
+            <div className="py-4">
+              <div className="text-3xl sm:text-4xl font-bold text-emerald-500 mb-2">98%</div>
+              <div className="text-sm sm:text-base text-gray-600">Tasa de Satisfacción</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">15,000+</div>
-              <div className="text-gray-600">Proyectos Completados</div>
+            <div className="py-4">
+              <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">15,000+</div>
+              <div className="text-sm sm:text-base text-gray-600">Proyectos Completados</div>
             </div>
           </div>
         </div>
