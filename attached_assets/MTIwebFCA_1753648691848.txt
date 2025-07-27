@@ -1,0 +1,209 @@
+﻿Plataforma de Proveedores de Construcción Verificados  
+
+ Objetivo General  
+Desarrollar un directorio B2B de proveedores certificados de materiales y servicios de construcción, con un sistema de verificación basado en RNC (DGII), suscripción mensual y aprobación administrativa para garantizar confiabilidad a los clientes finales.  
+
+
+
+ Estructura y Funcionalidades Clave  
+1. Flujo de Registro y Verificación de Proveedores  
+   - Paso 1: Registro Inicial  
+     - Formulario con campos obligatorios:  
+       - Nombre legal de la empresa  
+       - RNC (validación usando esta api: fouronerncvalidator.onrender.com)  
+       - Teléfono corporativo  
+       - Correo electrónico verificado  
+       - Categorías de productos/servicios (máx. 3)  
+
+   - Paso 2: Pago de Suscripción  
+     - Integración con pasarela de pagos (Stripe/PayPal local)  
+     - Pago recurrente de RD$1000/mes  
+     - Periodo de prueba de 7 días (opcional)  
+   - Paso 3: Revisión Administrativa  
+     - Notificación automática a administradores con documentos  
+     - Panel de aprobación con:  
+       - Verificación visual de documentos  
+       - Botones "Aprobar"/"Rechazar" con comentarios  
+     - Email automático al proveedor con estatus  
+
+2. Secciones Públicas  
+   - Directorio de Proveedores Verificados  
+     - Badge "Verificado" junto a nombre  
+     - Filtros por: Especialidad (fontanería, eléctricos, etc.), Ubicación, Rango de precios  
+     - Sistema de reseñas con verificación (solo clientes con comprobantes)  
+   - Perfiles de Proveedores  
+     - Sección "Sobre Nosotros" con certificaciones  
+     - Catálogo de productos/servicios (precios no públicos)  
+     - Botón "Solicitar Cotización" con formulario controlado  
+   - Landing Page Corporativa  
+     - Testimonios de proveedores certificados  
+     - Indicador "Proveedores Activos" (ej: "1,200+ verificados")  
+     - Explicación del proceso de verificación  
+
+3. Back-Office Administrativo  
+   - Panel de Control  
+     - Alertas de documentos próximos a vencer (RNC)  
+     - Gestión masiva de proveedores (suspendidos/inactivos)  
+   - Módulo de Facturación  
+     - Reporte de cobros recurrentes  
+     - Suspensión automática por falta de pago  
+   - Dashboard de Verificación  
+     - Métricas: Tiempo promedio de aprobación, Tasa de rechazo  
+     - Historial de cambios de estatus  
+
+4. Área de Proveedores  
+   - Dashboard Personalizado  
+     - Recordatorios de renovación (RNC + pago)  
+     - Estadísticas de contactos recibidos  
+   - Gestión de Contenido  
+     - Actualización de catálogo (fotos, descripciones)  
+     - Respuesta a solicitudes de cotización  
+   - Estado de Suscripción  
+     - Fecha de próximo cobro  
+     - Descargar comprobantes de pago  
+
+
+ Orden de Implementación  
+1. Fase 1: Módulo de Registro y Pago  
+   - Desarrollo del formulario RNC-compatible  
+   - Integración con API de DGII para validación  
+   - Pasarela de pagos con suscripciones recurrentes  
+
+2. Fase 2: Sistema de Aprobación  
+   - Panel administrativo con cola de documentos  
+   - Sistema de notificaciones por email/webhook  
+
+3. Fase 3: Directorio Público  
+   - Perfiles dinámicos con gestión de contenido  
+   - Mecanismo de solicitud de cotizaciones  
+
+4. Fase 4: Herramientas para Proveedores  
+   - Panel de autogestión con métricas  
+   - Sistema de alertas para renovaciones  
+
+5. Fase 5: Monitoreo y Seguridad  
+   - Auditoría trimestral de documentos  
+   - Protección contra suplantación de identidad  
+
+
+ Resumen de Entregables  
+| Módulo               | Componentes Clave                                                                 |
+| Frontend Público | Landing page, Buscador de proveedores, Perfiles verificados                       |
+| Back-Office      | Panel de aprobación, Gestor documental, Reportes financieros                      |
+| Área Proveedores | Dashboard de métricas, Editor de catálogo, Gestor de suscripción                  |
+| Integraciones    | API DGII, Pasarela de pagos, Sistema de notificaciones                            |
+
+
+ Diagrama de Base de Datos  
+```mermaid
+erDiagram
+  suppliers ||--o{ supplier_docs : "Tiene"
+  suppliers ||--o{ subscriptions : "Contiene"
+  subscriptions ||--o{ payments : "Genera"
+  suppliers ||--o{ products : "Ofrece"
+  suppliers ||--o{ services : "Ofrece"
+  admins ||--o{ verifications : "Realiza"
+  clients ||--o{ quotes_requests : "Envía"
+
+  suppliers {
+    uuid id PK
+    varchar legal_name
+    varchar rnc UNIQUE
+    varchar status "pending|approved|suspended"
+    date approval_date
+  }
+
+  Supplier_docs {
+    Uuid id PK
+    Uuid supplier_id FK
+    Varchar doc_type "RNC|license"
+    Varchar s3_path
+    Date expiry_date
+  }
+
+  Subscriptions {
+    Uuid id PK
+    Uuid supplier_id FK
+    Varchar plan "basic|premium"
+    Date start_date
+    Date end_date
+  }
+
+  Payments {
+    Uuid id PK
+    Uuid subscription_id FK
+    Decimal amount
+    Date payment_date
+    Varchar transaction_id
+  }
+
+  Products {
+    Uuid id PK
+    Uuid supplier_id FK
+    Varchar name
+    Text description
+  }
+
+  Services {
+    Uuid id PK
+    Uuid supplier_id FK
+    Varchar category "electric|plumbing"
+    Decimal hourly_rate
+  }
+
+  Verifications {
+    Uuid id PK
+    Uuid admin_id FK
+    Uuid supplier_id FK
+    Varchar decision "approved|rejected"
+    Text comments
+    Timestamp decision_date
+  }
+
+  Admins {
+    Uuid id PK
+    Varchar email UNIQUE
+    Varchar role "superadmin|approver"
+  }
+
+  Quotes_requests {
+    Uuid id PK
+    Uuid client_id FK
+    Uuid supplier_id FK
+    Text requirements
+    Timestamp sent_date
+  }
+
+  Clients {
+    Uuid id PK
+    Varchar contact_email
+    Varchar company_name
+  }
+```
+
+
+ Reglas de Negocio Críticas  
+1. Verificación Estricta  
+   - Proveedores aparecen públicamente SOLO con:  
+     - RNC válido + Pago activo + Aprobación manual  
+   - Re-verificación semestral de documentos  
+
+2. Modelo de Monetización  
+   - RD$1000/mes por proveedor (cobro recurrente automático)  
+   - Penalización por documentos vencidos: Suspensión inmediata  
+
+3. Interacciones Controladas  
+   - Los clientes solicitan cotizaciones mediante formulario blindado  
+   - Prohibido intercambio de contactos directos hasta aceptación  
+
+4. Escalabilidad  
+   - Diseño multi-regional (primera fase: República Dominicana)  
+   - Plan de expansión: Certificaciones internacionales (ISO)  
+
+Diferenciales Competitivos:  
+- Sistema anti-fraude con validación cruzada RNC/DGII  
+- Alertas proactivas de vencimiento de documentos  
+- Protocolos de cumplimiento para licitaciones públicas  
+- Dashboard predictivo de demanda por zona geográfica  
+
+
