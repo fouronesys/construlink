@@ -312,6 +312,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(payments.paymentDate));
   }
 
+  async updatePayment(id: string, updates: Partial<Payment>): Promise<Payment> {
+    const [updatedPayment] = await db
+      .update(payments)
+      .set(updates)
+      .where(eq(payments.id, id))
+      .returning();
+    return updatedPayment;
+  }
+
   // Product operations
   async createProduct(product: InsertProduct): Promise<Product> {
     const [newProduct] = await db.insert(products).values(product).returning();

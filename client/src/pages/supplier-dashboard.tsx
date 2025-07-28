@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import PlanUsageWidget from "@/components/plan-usage-widget";
+import SubscriptionPlans from "@/components/subscription-plans";
 import {
   BarChart3,
   Eye,
@@ -40,6 +41,28 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+
+interface SubscriptionStatus {
+  hasActiveSubscription: boolean;
+  needsSetup?: boolean;
+  subscription?: any;
+  supplier?: any;
+  message?: string;
+}
+
+interface DashboardData {
+  supplier: any;
+  stats: {
+    totalQuotes: number;
+    totalViews: number;
+    averageRating: number;
+    totalProducts?: number;
+    totalServices?: number;
+    totalSpecialties?: number;
+  };
+  recentQuotes: any[];
+  subscription: any;
+}
 
 const productSchema = z.object({
   name: z.string().min(1, "Nombre es requerido"),
@@ -95,6 +118,13 @@ export default function SupplierDashboard() {
 
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["/api/supplier/dashboard"],
+    enabled: !!user && user.role === 'supplier',
+    retry: false,
+  });
+
+  // Check if supplier has active subscription
+  const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
+    queryKey: ["/api/supplier/subscription-status"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
   });
@@ -206,8 +236,39 @@ export default function SupplierDashboard() {
     return null;
   }
 
+  // If supplier doesn't have active subscription, show plan selection
+  if (subscriptionStatus && !subscriptionStatus.hasActiveSubscription) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              Selecciona tu Plan de Suscripción
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Para acceder a todas las funciones del dashboard de proveedor, 
+              necesitas seleccionar y activar un plan de suscripción.
+            </p>
+          </div>
+          <SubscriptionPlans 
+            onPlanSelect={(plan) => console.log('Plan selected:', plan)}
+            onContinue={() => window.location.reload()}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const supplier = dashboardData?.supplier || user?.supplier;
-  const stats = dashboardData?.stats || { totalQuotes: 0, totalViews: 0, averageRating: 0 };
+  const stats = dashboardData?.stats || { 
+    totalQuotes: 0, 
+    totalViews: 0, 
+    averageRating: 0,
+    totalProducts: 0,
+    totalServices: 0,
+    totalSpecialties: 0
+  };
   const subscription = dashboardData?.subscription;
 
   const getStatusColor = (status: string) => {

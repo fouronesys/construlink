@@ -25,7 +25,49 @@ import { z } from "zod";
 import { isAuthenticated, hasRole, hashPassword, comparePassword } from "./auth";
 import { storage } from "./storage";
 
+// Simulate Verifone payment processing (replace with actual API integration)
+async function simulateVerifonePayment(paymentData: any) {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Simulate payment validation
+  const isValidCard = paymentData.cardNumber.length >= 16;
+  const isValidExpiry = paymentData.expiryDate.match(/^\d{2}\/\d{2}$/);
+  const isValidCvv = paymentData.cvv.length >= 3;
+
+  if (!isValidCard || !isValidExpiry || !isValidCvv) {
+    return {
+      success: false,
+      error: "Invalid payment information"
+    };
+  }
+
+  // Simulate 95% success rate
+  const success = Math.random() > 0.05;
+
+  if (success) {
+    return {
+      success: true,
+      transactionId: `VF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      authCode: `AUTH_${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      message: "Payment processed successfully"
+    };
+  } else {
+    return {
+      success: false,
+      error: "Payment declined by bank"
+    };
+  }
+}
+
 const MONTHLY_SUBSCRIPTION_AMOUNT = 1000; // RD$1000
+
+// Verifone configuration
+const VERIFONE_CONFIG = {
+  MERCHANT_CODE: "255630281234",
+  SECRET_KEY: "wJ6EzkDrNV&AR~*!IC#G",
+  BASE_URL: "https://sandbox.verifone.com.do/api", // Use production URL when ready
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
@@ -545,7 +587,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Supplier dashboard endpoints
+  // Check supplier subscription status
+  app.get('/api/supplier/subscription-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        // User is supplier role but no supplier profile exists - needs to complete setup
+        return res.json({
+          hasActiveSubscription: false,
+          needsSetup: true,
+          message: "Supplier profile needs to be created"
+        });
+      }
+
+      const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
+      const hasActiveSubscription = subscription && subscription.status === 'active';
+
+      res.json({
+        hasActiveSubscription,
+        needsSetup: false,
+        subscription,
+        supplier
+      });
+    } catch (error) {
+      console.error("Error checking subscription status:", error);
+      res.status(500).json({ message: "Failed to check subscription status" });
+    }
+  });
+
+  // Supplier dashboard endpoints - now allows access without active subscription
   app.get('/api/supplier/dashboard', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;
@@ -556,7 +632,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
-        return res.status(404).json({ message: "Supplier not found" });
+        // Return basic info for suppliers without profile
+        return res.json({
+          supplier: null,
+          stats: { totalQuotes: 0, totalViews: 0, averageRating: 0 },
+          recentQuotes: [],
+          subscription: null,
+        });
       }
 
       const stats = await storage.getSupplierStats(supplier.id);
@@ -1227,7 +1309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update supplier status
       const newStatus = action === 'suspend' ? 'suspended' : 'approved';
-      await storage.updateSupplierStatus(id, newStatus, reason);
+      await storage.updateSupplierStatus(id, newStatus);
 
       // Log the action
       console.log(`Admin ${userId} ${action}ed supplier ${id}: ${reason}`);
@@ -1240,6 +1322,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error managing subscription:", error);
       res.status(500).json({ message: "Failed to manage subscription" });
+    }
+  });
+
+  // Verifone payment processing endpoint
+  app.post('/api/process-verifone-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const { subscriptionId, paymentMethod, amount } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Create payment record
+      const paymentData = {
+        subscriptionId,
+        amount: amount.toString(),
+        currency: 'DOP',
+        status: 'pending' as const,
+        verifoneTransactionId: `VF_${Date.now()}_${supplier.id}`,
+      };
+
+      const payment = await storage.createPayment(paymentData);
+
+      // Simulate Verifone payment processing
+      // In production, you would integrate with actual Verifone API
+      const verifoneResponse = await simulateVerifonePayment({
+        merchantCode: VERIFONE_CONFIG.MERCHANT_CODE,
+        amount,
+        currency: 'DOP',
+        cardNumber: paymentMethod.cardNumber.replace(/\s/g, ''),
+        expiryDate: paymentMethod.expiryDate,
+        cvv: paymentMethod.cvv,
+        cardName: paymentMethod.cardName,
+        transactionId: payment.verifoneTransactionId,
+      });
+
+      if (verifoneResponse.success) {
+        // Update payment status
+        await storage.updatePayment(payment.id, {
+          status: 'completed',
+          verifoneTransactionId: verifoneResponse.transactionId,
+        });
+
+        // Update subscription status
+        const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
+        if (subscription) {
+          await storage.updateSubscription(subscription.id, {
+            status: 'active',
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          });
+        }
+
+        res.json({
+          success: true,
+          transactionId: verifoneResponse.transactionId,
+          message: "Payment processed successfully"
+        });
+      } else {
+        // Update payment status to failed
+        await storage.updatePayment(payment.id, {
+          status: 'failed',
+        });
+
+        res.status(400).json({
+          success: false,
+          message: verifoneResponse.error || "Payment failed"
+        });
+      }
+    } catch (error) {
+      console.error("Error processing Verifone payment:", error);
+      res.status(500).json({ message: "Failed to process payment" });
+    }
+  });
+
+  // Create subscription with Verifone
+  app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const { plan } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Check if supplier already has an active subscription
+      const existingSubscription = await storage.getSubscriptionBySupplierId(supplier.id);
+      if (existingSubscription && existingSubscription.status === 'active') {
+        return res.status(400).json({ message: "Supplier already has an active subscription" });
+      }
+
+      // Plan pricing
+      const planPricing = {
+        basic: 1000,
+        professional: 2500,
+        enterprise: 5000
+      };
+
+      const amount = planPricing[plan as keyof typeof planPricing];
+      if (!amount) {
+        return res.status(400).json({ message: "Invalid plan selected" });
+      }
+
+      // Create subscription
+      const subscriptionData = {
+        supplierId: supplier.id,
+        plan: plan as 'basic' | 'professional' | 'enterprise',
+        status: 'trialing' as const,
+        monthlyAmount: amount.toString(),
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
+      };
+
+      const subscription = await storage.createSubscription(subscriptionData);
+
+      res.json({
+        subscriptionId: subscription.id,
+        plan,
+        amount,
+        trialEndDate: subscription.trialEndDate,
+        message: "Subscription created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
     }
   });
 

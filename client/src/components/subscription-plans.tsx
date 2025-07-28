@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Star, Zap, Crown, Shield } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import VerifonePayment from "./verifone-payment";
 
 export interface PlanFeature {
   name: string;
@@ -119,6 +124,52 @@ const plans: SubscriptionPlan[] = [
 
 export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContinue }: SubscriptionPlansProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [selected, setSelected] = useState(selectedPlan);
+  const [showPayment, setShowPayment] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState<any>(null);
+  const { toast } = useToast();
+
+  const createSubscriptionMutation = useMutation({
+    mutationFn: async (plan: string) => {
+      return await apiRequest("POST", "/api/create-subscription", { plan });
+    },
+    onSuccess: (data) => {
+      setSubscriptionData(data);
+      setShowPayment(true);
+    },
+    onError: (error) => {
+      console.error("Error creating subscription:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la suscripción. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePlanSelect = (planId: string) => {
+    setSelected(planId);
+    onPlanSelect(planId);
+  };
+
+  const handleContinue = async () => {
+    if (!selected) return;
+    
+    createSubscriptionMutation.mutate(selected);
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPayment(false);
+    toast({
+      title: "¡Suscripción Activada!",
+      description: "Tu plan ha sido activado exitosamente.",
+    });
+    onContinue();
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPayment(false);
+  };
 
   const getPlanColorClasses = (plan: SubscriptionPlan, isSelected: boolean, isHovered: boolean) => {
     const baseClasses = "transition-all duration-200";
@@ -158,7 +209,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {plans.map((plan) => {
-          const isSelected = selectedPlan === plan.id;
+          const isSelected = selected === plan.id;
           const isHovered = hoveredPlan === plan.id;
           
           return (
@@ -167,7 +218,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
               className={`relative cursor-pointer ${getPlanColorClasses(plan, isSelected, isHovered)}`}
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
-              onClick={() => onPlanSelect(plan.id)}
+              onClick={() => handlePlanSelect(plan.id)}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -237,7 +288,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
                   variant={isSelected ? "default" : "outline"}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onPlanSelect(plan.id);
+                    handlePlanSelect(plan.id);
                   }}
                 >
                   {isSelected ? "Seleccionado" : "Seleccionar Plan"}
@@ -248,17 +299,40 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
         })}
       </div>
 
-      {selectedPlan && (
+      {selected && (
         <div className="text-center pt-6 border-t">
           <Button
             size="lg"
-            onClick={onContinue}
-            className="px-8 py-3"
+            onClick={handleContinue}
+            disabled={createSubscriptionMutation.isPending}
+            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white"
           >
-            Continuar con {plans.find(p => p.id === selectedPlan)?.name}
+            {createSubscriptionMutation.isPending ? "Procesando..." : `Continuar con ${plans.find(p => p.id === selected)?.name}`}
           </Button>
         </div>
       )}
+
+      <Dialog open={showPayment} onOpenChange={setShowPayment}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Procesar Pago - {subscriptionData?.plan}</DialogTitle>
+            <DialogDescription>
+              Completa tu pago para activar tu suscripción.
+              Monto: RD${subscriptionData?.amount?.toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {subscriptionData && (
+            <VerifonePayment
+              subscriptionId={subscriptionData.subscriptionId}
+              amount={subscriptionData.amount}
+              trialEndDate={subscriptionData.trialEndDate}
+              onSuccess={handlePaymentSuccess}
+              onCancel={handlePaymentCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
