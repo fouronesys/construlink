@@ -23,6 +23,7 @@ export default function VerifonePayment({
   onSuccess,
   onCancel
 }: VerifonePaymentProps) {
+  console.log("VerifonePayment props:", { subscriptionId, amount, trialEndDate });
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState({
     cardNumber: '',
@@ -103,7 +104,7 @@ export default function VerifonePayment({
             <CardTitle className="text-lg text-blue-800">Suscripción Mensual</CardTitle>
           </div>
           <CardDescription className="text-blue-700">
-            Se cobrará RD${amount.toLocaleString()} mensualmente a partir de hoy.
+            Se cobrará RD${(amount || 0).toLocaleString()} mensualmente a partir de hoy.
             Puedes cancelar en cualquier momento desde tu panel de control.
           </CardDescription>
         </CardHeader>

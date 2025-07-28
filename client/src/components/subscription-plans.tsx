@@ -138,6 +138,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
       return await apiRequest("POST", "/api/create-subscription", { plan });
     },
     onSuccess: (data) => {
+      console.log("Subscription data received:", data);
       setSubscriptionData(data);
       setShowPayment(true);
     },
