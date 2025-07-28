@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Plan pricing and trial days
       const planPricing: Record<string, number> = {
         basic: 1000,
-        premium: 2500,
+        professional: 2500,
         enterprise: 5000
       };
 
@@ -276,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPeriodStart: currentPeriodStart,
         currentPeriodEnd: currentPeriodEnd,
         status: 'inactive',
-        plan: plan as 'basic' | 'premium' | 'enterprise',
+        plan: plan as 'basic' | 'professional' | 'enterprise',
         monthlyAmount: amount.toString()
       });
 
@@ -288,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         plan,
         description: `Suscripción mensual - Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
         redirectUrl: `${req.protocol}://${req.get('host')}/supplier-dashboard?payment=success`,
-        cancelUrl: `${req.protocol}://${req.get('host')}/register-supplier?payment=cancelled`
+        cancelUrl: `${req.protocol}://${req.get('host')}/register?payment=cancelled`
       };
 
       res.json({

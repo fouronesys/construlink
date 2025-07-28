@@ -40,10 +40,15 @@ Preferred communication style: Simple, everyday language.
 - **Authorization Middleware**: Custom middleware for route protection
 
 ### Supplier Management
-- **Registration Flow**: Multi-step process with RNC validation
+- **Registration Flow**: Unified registration page with role selection (client/supplier)
+- **Subscription Plans**: Three tiers with specific limitations and pricing
+  - Basic Plan (RD$1,000/month): 10 products, 5 quotes/month, 1 specialty
+  - Professional Plan (RD$2,500/month): Unlimited products/quotes, 5 specialties, 20 project photos
+  - Enterprise Plan (RD$5,000/month): Everything unlimited plus API access and advanced analytics
+- **Plan Validation**: Real-time checking of usage against plan limits
 - **Verification System**: Admin approval workflow with document review
 - **Status Management**: Pending, approved, suspended, rejected states
-- **Subscription Integration**: Verifone recurring billing at RD$1000/month
+- **Subscription Integration**: Verifone recurring billing with tiered pricing
 
 ### Payment System
 - **Provider**: Verifone with webhook integration
@@ -59,12 +64,13 @@ Preferred communication style: Simple, everyday language.
 ## Data Flow
 
 ### Supplier Registration
-1. User completes registration form with company details
-2. System validates RNC through external DGII API
-3. Payment setup through Verifone integration
-4. Administrative review queue populated
-5. Admin approval/rejection with email notifications
-6. Approved suppliers appear in public directory
+1. User selects "Supplier" role during unified registration
+2. After login, suppliers are directed to subscription selection
+3. Supplier completes plan selection and payment via Verifone
+4. System creates supplier profile with subscription
+5. Administrative review queue populated for approval
+6. Admin approval/rejection with email notifications
+7. Approved suppliers appear in public directory with plan-based limitations enforced
 
 ### Quote Request Process
 1. Clients browse verified supplier directory

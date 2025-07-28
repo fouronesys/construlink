@@ -161,7 +161,7 @@ export default function Landing() {
   };
 
   const handleSupplierRegister = () => {
-    setLocation('/register-supplier');
+    setLocation('/register');
   };
 
   const renderStars = (rating: number) => {

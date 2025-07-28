@@ -42,6 +42,16 @@ export default function Register() {
         title: "¡Registro exitoso!",
         description: "Tu cuenta ha sido creada. Ya puedes iniciar sesión.",
       });
+      
+      // If registering as supplier, redirect to subscription selection after login
+      const role = form.getValues("role");
+      if (role === "supplier") {
+        toast({
+          title: "Siguiente paso",
+          description: "Inicia sesión para completar tu registro de proveedor y seleccionar tu plan.",
+        });
+      }
+      
       setLocation('/login');
     },
     onError: (error: any) => {
