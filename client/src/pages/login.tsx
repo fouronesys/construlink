@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginData>({
@@ -31,20 +32,26 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/auth/login", data);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast({
         title: "¡Bienvenido!",
         description: "Has iniciado sesión exitosamente.",
       });
       
-      // Redirect based on user role
-      if (data.user.role === 'supplier') {
-        setLocation('/supplier-dashboard');
-      } else if (data.user.role === 'admin' || data.user.role === 'superadmin') {
-        setLocation('/admin-panel');
-      } else {
-        setLocation('/directory');
-      }
+      // Invalidate auth queries to trigger refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
+      // Small delay to ensure auth state is updated
+      setTimeout(() => {
+        // Redirect based on user role
+        if (data.user.role === 'supplier') {
+          setLocation('/supplier-dashboard');
+        } else if (data.user.role === 'admin' || data.user.role === 'superadmin') {
+          setLocation('/admin-panel');
+        } else {
+          setLocation('/directory');
+        }
+      }, 100);
     },
     onError: (error: any) => {
       toast({
