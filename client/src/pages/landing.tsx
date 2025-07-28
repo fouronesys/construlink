@@ -37,7 +37,9 @@ import {
   Target,
   Clock,
   ShoppingCart,
-  Layers
+  Layers,
+  Eye,
+  MessageSquare
 } from "lucide-react";
 
 interface Provider {
@@ -164,6 +166,18 @@ export default function Landing() {
     setLocation('/register');
   };
 
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      setLocation(`/directory?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      setLocation('/directory');
+    }
+  };
+
+  const handleQuickSearch = (category: string) => {
+    setLocation(`/directory?category=${encodeURIComponent(category)}`);
+  };
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -198,131 +212,209 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <Navigation />
       
-      {/* Modern Hero Section */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-blue-400/5"></div>
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200/20 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
-          <div className="absolute top-40 right-10 w-72 h-72 bg-purple-200/20 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200/20 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500"></div>
-        </div>
-
+      {/* Search Hero Section */}
+      <section className="relative bg-gradient-to-br from-blue-600 to-blue-800 text-white py-16">
+        <div className="absolute inset-0 bg-black/10"></div>
         <div className="container mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="animate-on-scroll fade-in-left">
-              <div className="mb-6">
-                <Badge className="bg-blue-100 text-blue-800 px-4 py-2 text-sm font-medium">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Plataforma #1 en República Dominicana
-                </Badge>
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="text-4xl lg:text-6xl font-bold mb-6">
+              Encuentra los Mejores 
+              <span className="block text-blue-200">Productos y Servicios</span>
+              de Construcción
+            </h1>
+            
+            <p className="text-xl text-blue-100 mb-8 leading-relaxed">
+              Conecta con más de 500 proveedores verificados en República Dominicana
+            </p>
+
+            {/* Prominent Search Bar */}
+            <div className="max-w-2xl mx-auto mb-12">
+              <div className="bg-white rounded-2xl p-2 shadow-2xl">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1">
+                    <Input 
+                      placeholder="¿Qué necesitas? (ej: cemento, hierro, plomería...)"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="border-0 text-lg py-4 px-6 text-gray-900 placeholder-gray-500 focus:ring-0"
+                    />
+                  </div>
+                  <Button 
+                    size="lg" 
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold"
+                    onClick={handleSearch}
+                  >
+                    <Search className="w-5 h-5 mr-2" />
+                    Buscar
+                  </Button>
+                </div>
               </div>
               
-              <h1 className="text-5xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 bg-clip-text text-transparent leading-tight">
-                Conectamos
-                <span className="block text-blue-600">Constructores</span>
-                con Proveedores
-              </h1>
-              
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                La plataforma B2B más confiable de República Dominicana para encontrar 
-                proveedores verificados de materiales y servicios de construcción.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 mb-12">
-                <Button 
-                  size="lg" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 group"
-                  onClick={handleSupplierRegister}
-                >
-                  Registrarse como Proveedor
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-2 border-gray-300 hover:border-gray-400 px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
-                  onClick={() => setLocation('/directory')}
-                >
-                  Explorar Directorio
-                  <Search className="ml-2 w-5 h-5" />
-                </Button>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">500+</div>
-                  <div className="text-sm text-gray-600">Proveedores Verificados</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">1,200+</div>
-                  <div className="text-sm text-gray-600">Proyectos Completados</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">98%</div>
-                  <div className="text-sm text-gray-600">Satisfacción</div>
-                </div>
+              {/* Quick search tags */}
+              <div className="flex flex-wrap justify-center gap-2 mt-6">
+                {['Cemento', 'Hierro', 'Plomería', 'Eléctricos', 'Pinturas', 'Herramientas'].map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => handleQuickSearch(tag)}
+                    className="bg-blue-500/20 text-blue-100 px-4 py-2 rounded-full text-sm hover:bg-blue-500/30 transition-colors"
+                  >
+                    {tag}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="animate-on-scroll fade-in-right">
-              <div className="relative">
-                <div className="bg-white rounded-3xl shadow-2xl p-8 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Constructora Elite</h3>
-                          <p className="text-sm text-gray-600">Santo Domingo</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800">Verificado</Badge>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mb-4">
-                      {renderStars(4.9)}
-                      <span className="text-sm text-gray-600">(4.9) 127 reseñas</span>
-                    </div>
-                    
-                    <p className="text-gray-700 mb-4">
-                      Especialistas en construcción residencial y comercial con materiales de primera calidad.
-                    </p>
-                    
-                    <div className="flex gap-2 mb-4">
-                      <Badge variant="secondary">Concreto</Badge>
-                      <Badge variant="secondary">Estructura</Badge>
-                    </div>
-                    
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                      Solicitar Cotización
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Floating elements */}
-                <div className="absolute -top-4 -right-4 w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
-                  <Award className="w-8 h-8 text-yellow-800" />
-                </div>
-                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-green-400 rounded-full flex items-center justify-center animate-pulse">
-                  <CheckCircle className="w-6 h-6 text-green-800" />
-                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">500+</div>
+                <div className="text-sm text-blue-200">Proveedores Verificados</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">2,500+</div>
+                <div className="text-sm text-blue-200">Productos Disponibles</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">1,200+</div>
+                <div className="text-sm text-blue-200">Proyectos Completados</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">98%</div>
+                <div className="text-sm text-blue-200">Satisfacción</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-20 bg-white animate-on-scroll">
+      {/* Featured Products Section */}
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Explora por Categorías
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              Productos y Servicios Destacados
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Descubre los productos más solicitados y servicios de mayor calidad de nuestros proveedores verificados
+            </p>
+          </div>
+
+          {/* Product categories grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-16">
+            {categories.map((category, index) => {
+              const Icon = category.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleQuickSearch(category.name)}
+                  className="group bg-gray-50 hover:bg-blue-50 rounded-2xl p-6 text-center transition-all duration-200 hover:shadow-lg border-2 border-transparent hover:border-blue-100"
+                >
+                  <div className="w-12 h-12 mx-auto mb-3 bg-white rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-1">{category.name}</h3>
+                  <p className="text-xs text-gray-500">{category.count} productos</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Featured Providers */}
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              Proveedores Verificados Destacados
+            </h3>
+            <p className="text-gray-600">
+              Conecta directamente con los mejores proveedores de República Dominicana
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {sampleProviders.map((provider) => (
+              <div key={provider.id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow p-6 border border-gray-100">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-lg text-gray-900 mb-1">
+                      {provider.legalName}
+                    </h4>
+                    <div className="flex items-center text-sm text-gray-600 mb-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
+                      RNC: {provider.rnc}
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600 mb-3">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      {provider.location}
+                    </div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">Verificado</Badge>
+                </div>
+
+                <div className="flex items-center mb-3">
+                  {renderStars(Math.floor(provider.averageRating))}
+                  <span className="text-sm text-gray-600 ml-2">
+                    {provider.averageRating} ({provider.totalReviews} reseñas)
+                  </span>
+                </div>
+
+                <p className="text-gray-700 text-sm mb-4 line-clamp-2">
+                  {provider.description}
+                </p>
+
+                <div className="flex flex-wrap gap-1 mb-4">
+                  {provider.specialties.slice(0, 3).map((specialty, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {specialty}
+                    </Badge>
+                  ))}
+                  {provider.specialties.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{provider.specialties.length - 3} más
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleViewProfile(provider)}
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Ver Perfil
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleRequestQuote(provider.id)}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1" />
+                    Cotizar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Button 
+              size="lg" 
+              onClick={() => setLocation('/directory')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+            >
+              Ver Todos los Proveedores
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Categories */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Busca por Categoría
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Encuentra exactamente lo que necesitas para tu proyecto de construcción

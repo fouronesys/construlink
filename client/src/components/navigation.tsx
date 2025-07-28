@@ -142,62 +142,91 @@ export default function Navigation() {
             })}
           </div>
 
-          {/* User menu or login button */}
+          {/* User menu - Always visible with authentication options inside */}
           <div className="flex items-center space-x-4">
-            {!isAuthenticated ? (
-              <div className="flex items-center space-x-2">
-                <Button 
-                  onClick={() => setLocation("/login")}
-                  variant="outline" 
-                  size="sm"
-                >
-                  Iniciar Sesión
-                </Button>
-                <Button 
-                  onClick={() => setLocation("/register")}
-                  size="sm"
-                >
-                  Registrarse
-                </Button>
-              </div>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  {isAuthenticated ? (
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.profileImageUrl} alt={user?.firstName} />
                       <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <div className="flex items-center justify-start gap-2 p-2">
-                    <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">
-                        {user?.firstName} {user?.lastName}
-                      </p>
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">
-                        {user?.email}
-                      </p>
+                  ) : (
+                    <User className="h-5 w-5" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                {isAuthenticated ? (
+                  <>
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium text-sm">
+                          {user?.firstName && user?.lastName 
+                            ? `${user.firstName} ${user.lastName}`
+                            : user?.email
+                          }
+                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {user?.role}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Perfil</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Configuración</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Cerrar Sesión</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/" className="flex items-center">
+                        <Home className="mr-2 h-4 w-4" />
+                        Inicio
+                      </Link>
+                    </DropdownMenuItem>
+                    {user?.role === 'supplier' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/supplier-dashboard" className="flex items-center">
+                          <Building2 className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin-panel" className="flex items-center">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Cerrar Sesión
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/login" className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        Iniciar Sesión
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/register" className="flex items-center">
+                        <Building2 className="mr-2 h-4 w-4" />
+                        Registrarse
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/directory" className="flex items-center">
+                        <Search className="mr-2 h-4 w-4" />
+                        Explorar Directorio
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Mobile menu button */}
             <div className="md:hidden">
