@@ -20,7 +20,7 @@ function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // Durante desarrollo, mostrar siempre la landing page hasta que la autenticación esté configurada
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     return (
       <Switch>
         <Route path="/" component={Landing} />

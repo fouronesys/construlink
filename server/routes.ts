@@ -381,64 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process Verifone payment (manual payment processing)
-  app.post('/api/process-verifone-payment', isAuthenticated, async (req: any, res) => {
-    try {
-      const { subscriptionId, paymentMethod, amount } = req.body;
-      const userId = req.user.claims.sub;
-      
-      const user = await storage.getUser(userId);
-      const supplier = await storage.getSupplierByUserId(userId);
-      
-      if (!user || !supplier) {
-        return res.status(404).json({ message: "User or supplier not found" });
-      }
 
-      const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
-      if (!subscription) {
-        return res.status(404).json({ message: "Subscription not found" });
-      }
-
-      // Generate transaction ID for Verifone
-      const transactionId = `vf_txn_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-      
-      // In a real implementation, you would call Verifone API here
-      // For now, we'll simulate a successful payment
-      const paymentStatus = 'completed'; // This would come from Verifone API
-      
-      // Create payment record
-      await storage.createPayment({
-        subscriptionId: subscription.id,
-        amount: (amount || MONTHLY_SUBSCRIPTION_AMOUNT).toString(),
-        currency: 'DOP',
-        status: paymentStatus,
-        verifoneTransactionId: transactionId,
-      });
-
-      // Update subscription if payment successful
-      if (paymentStatus === 'completed') {
-        const nextPeriodEnd = new Date();
-        nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
-        
-        await storage.updateSubscription(subscription.id, {
-          status: 'active',
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: nextPeriodEnd,
-        });
-      }
-
-      res.json({
-        transactionId,
-        status: paymentStatus,
-        message: paymentStatus === 'completed' ? 
-          "Payment processed successfully" : 
-          "Payment failed, please try again"
-      });
-    } catch (error) {
-      console.error("Error processing payment:", error);
-      res.status(500).json({ message: "Failed to process payment" });
-    }
-  });
 
   // Get suppliers (public endpoint with filters)
   app.get('/api/suppliers', async (req, res) => {

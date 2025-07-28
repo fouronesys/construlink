@@ -1,28 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import ConnectPgSimple from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { neon } from "@neondatabase/serverless";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Setup session store with PostgreSQL
-const pgSession = ConnectPgSimple(session);
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required");
-}
-
-const pgPool = neon(connectionString);
+// Setup session store with Memory Store (simplified for now)
+const MemStore = MemoryStore(session);
 
 app.use(session({
-  store: new pgSession({
-    pool: pgPool as any,
-    tableName: 'sessions'
+  store: new MemStore({
+    checkPeriod: 86400000 // prune expired entries every 24h
   }),
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
