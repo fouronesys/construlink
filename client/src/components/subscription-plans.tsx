@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Star, Zap, Crown, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import VerifonePayment from "./verifone-payment";
@@ -128,6 +130,8 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
   const [showPayment, setShowPayment] = useState(false);
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const { toast } = useToast();
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   const createSubscriptionMutation = useMutation({
     mutationFn: async (plan: string) => {
@@ -137,8 +141,20 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
       setSubscriptionData(data);
       setShowPayment(true);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error creating subscription:", error);
+      
+      // If it's an authentication error, redirect to login
+      if (error.status === 401 || (error.message && error.message.includes("Unauthorized"))) {
+        toast({
+          title: "Sesión requerida",
+          description: "Debes iniciar sesión para seleccionar un plan.",
+          variant: "destructive",
+        });
+        setLocation("/login?redirect=subscription-selection");
+        return;
+      }
+      
       toast({
         title: "Error",
         description: "No se pudo crear la suscripción. Inténtalo de nuevo.",
@@ -154,6 +170,17 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
 
   const handleContinue = async () => {
     if (!selected) return;
+    
+    // Check authentication before proceeding
+    if (!user) {
+      toast({
+        title: "Sesión requerida",
+        description: "Debes iniciar sesión para continuar con la suscripción.",
+        variant: "destructive",
+      });
+      setLocation("/login?redirect=subscription-selection");
+      return;
+    }
     
     createSubscriptionMutation.mutate(selected);
   };
@@ -196,6 +223,28 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
     if (plan.premium) return "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200";
     return "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200";
   };
+
+  // Show authentication required message if user is not logged in
+  if (!isLoading && !user) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+            Sesión requerida
+          </h3>
+          <p className="text-yellow-700 mb-4">
+            Debes iniciar sesión para seleccionar un plan de suscripción.
+          </p>
+          <Button 
+            onClick={() => setLocation("/login?redirect=subscription-selection")}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+          >
+            Iniciar Sesión
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

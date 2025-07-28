@@ -1399,63 +1399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create subscription with Verifone
-  app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
-    try {
-      const { plan } = req.body;
-      const userId = req.user?.id;
 
-      if (!userId) {
-        return res.status(400).json({ message: "User ID not found" });
-      }
-
-      const supplier = await storage.getSupplierByUserId(userId);
-      if (!supplier) {
-        return res.status(404).json({ message: "Supplier not found" });
-      }
-
-      // Check if supplier already has an active subscription
-      const existingSubscription = await storage.getSubscriptionBySupplierId(supplier.id);
-      if (existingSubscription && existingSubscription.status === 'active') {
-        return res.status(400).json({ message: "Supplier already has an active subscription" });
-      }
-
-      // Plan pricing
-      const planPricing = {
-        basic: 1000,
-        professional: 2500,
-        enterprise: 5000
-      };
-
-      const amount = planPricing[plan as keyof typeof planPricing];
-      if (!amount) {
-        return res.status(400).json({ message: "Invalid plan selected" });
-      }
-
-      // Create subscription
-      const subscriptionData = {
-        supplierId: supplier.id,
-        plan: plan as 'basic' | 'professional' | 'enterprise',
-        status: 'trialing' as const,
-        monthlyAmount: amount.toString(),
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
-      };
-
-      const subscription = await storage.createSubscription(subscriptionData);
-
-      res.json({
-        subscriptionId: subscription.id,
-        plan,
-        amount,
-        trialEndDate: subscription.trialEndDate,
-        message: "Subscription created successfully"
-      });
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ message: "Failed to create subscription" });
-    }
-  });
 
   // Create HTTP server
   const server = createServer(app);
