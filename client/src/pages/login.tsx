@@ -43,13 +43,21 @@ export default function Login() {
       
       // Small delay to ensure auth state is updated
       setTimeout(() => {
-        // Redirect based on user role
-        if (data.user.role === 'supplier') {
-          setLocation('/supplier-dashboard');
-        } else if (data.user.role === 'admin' || data.user.role === 'superadmin') {
-          setLocation('/admin-panel');
+        // Check for redirect parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectParam = urlParams.get('redirect');
+        
+        if (redirectParam === 'subscription-selection' && data.user.role === 'supplier') {
+          setLocation('/subscription-selection');
         } else {
-          setLocation('/directory');
+          // Default redirect based on user role
+          if (data.user.role === 'supplier') {
+            setLocation('/supplier-dashboard');
+          } else if (data.user.role === 'admin' || data.user.role === 'superadmin') {
+            setLocation('/admin-panel');
+          } else {
+            setLocation('/directory');
+          }
         }
       }, 100);
     },

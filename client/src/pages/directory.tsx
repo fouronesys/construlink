@@ -230,7 +230,7 @@ export default function Directory() {
                 <Button 
                   className="w-full"
                   onClick={() => {
-                    setFilters({ specialty: "all", location: "all", search: "" });
+                    setFilters({ specialty: "all", location: "all", search: "", rating: "all" });
                     setCurrentPage(1);
                   }}
                   variant="outline"

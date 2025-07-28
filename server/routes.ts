@@ -50,6 +50,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: validatedData.role,
       }).returning();
 
+      // If user is a supplier, also create supplier profile
+      if (validatedData.role === 'supplier' && validatedData.rnc && validatedData.legalName) {
+        await db.insert(suppliers).values({
+          userId: newUser[0].id,
+          legalName: validatedData.legalName,
+          rnc: validatedData.rnc,
+          phone: validatedData.phone || '',
+          email: validatedData.email,
+          location: validatedData.location || '',
+          status: 'pending',
+        });
+      }
+
       res.status(201).json({ 
         message: "Usuario creado exitosamente",
         user: { 

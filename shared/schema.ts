@@ -349,9 +349,22 @@ export const registerSchema = z.object({
   firstName: z.string().min(1, "Nombre es requerido"),
   lastName: z.string().min(1, "Apellido es requerido"),
   role: z.enum(["client", "supplier"]).default("client"),
+  // Supplier-specific fields (conditional)
+  rnc: z.string().optional(),
+  legalName: z.string().optional(),
+  phone: z.string().optional(),
+  location: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden",
   path: ["confirmPassword"],
+}).refine((data) => {
+  if (data.role === "supplier") {
+    return data.rnc && data.legalName && data.phone && data.location;
+  }
+  return true;
+}, {
+  message: "Todos los campos de empresa son requeridos para proveedores",
+  path: ["role"],
 });
 
 export const loginSchema = z.object({

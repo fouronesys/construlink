@@ -12,13 +12,19 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Navigation from "@/components/navigation";
 import { registerSchema, type RegisterData } from "@shared/schema";
-import { Eye, EyeOff, UserPlus, LogIn } from "lucide-react";
+import { Eye, EyeOff, UserPlus, LogIn, Building, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [rncValidation, setRncValidation] = useState<{
+    isValidating: boolean;
+    isValid: boolean | null;
+    companyName?: string;
+    error?: string;
+  }>({ isValidating: false, isValid: null });
 
   const form = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
@@ -29,6 +35,46 @@ export default function Register() {
       firstName: "",
       lastName: "",
       role: "client",
+      rnc: "",
+      legalName: "",
+      phone: "",
+      location: "",
+    },
+  });
+
+  const validateRncMutation = useMutation({
+    mutationFn: async (rnc: string) => {
+      const response = await fetch(`https://fouronerncvalidator.onrender.com/validate/${rnc}`);
+      if (!response.ok) {
+        throw new Error('Error validating RNC');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.valid) {
+        setRncValidation({
+          isValidating: false,
+          isValid: true,
+          companyName: data.companyName || data.name,
+        });
+        // Auto-fill company name if available
+        if (data.companyName || data.name) {
+          form.setValue('legalName', data.companyName || data.name);
+        }
+      } else {
+        setRncValidation({
+          isValidating: false,
+          isValid: false,
+          error: 'RNC no válido o no encontrado',
+        });
+      }
+    },
+    onError: () => {
+      setRncValidation({
+        isValidating: false,
+        isValid: false,
+        error: 'Error al validar RNC. Inténtalo de nuevo.',
+      });
     },
   });
 
@@ -38,21 +84,22 @@ export default function Register() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "¡Registro exitoso!",
-        description: "Tu cuenta ha sido creada. Ya puedes iniciar sesión.",
-      });
-      
-      // If registering as supplier, redirect to subscription selection after login
       const role = form.getValues("role");
+      
       if (role === "supplier") {
         toast({
-          title: "Siguiente paso",
-          description: "Inicia sesión para completar tu registro de proveedor y seleccionar tu plan.",
+          title: "¡Registro exitoso!",
+          description: "Ahora selecciona tu plan de suscripción.",
         });
+        // Redirect to login first, then to subscription selection
+        setLocation('/login?redirect=subscription-selection');
+      } else {
+        toast({
+          title: "¡Registro exitoso!",
+          description: "Tu cuenta ha sido creada. Ya puedes iniciar sesión.",
+        });
+        setLocation('/login');
       }
-      
-      setLocation('/login');
     },
     onError: (error: any) => {
       toast({
@@ -62,6 +109,15 @@ export default function Register() {
       });
     },
   });
+
+  const validateRnc = (rnc: string) => {
+    if (rnc.length >= 9) {
+      setRncValidation({ isValidating: true, isValid: null });
+      validateRncMutation.mutate(rnc);
+    } else {
+      setRncValidation({ isValidating: false, isValid: null });
+    }
+  };
 
   const onSubmit = (data: RegisterData) => {
     registerMutation.mutate(data);
@@ -117,6 +173,116 @@ export default function Register() {
                     )}
                   />
                 </div>
+
+                {/* Supplier-specific fields */}
+                {form.watch("role") === "supplier" && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <Building className="h-4 w-4" />
+                      <span className="font-medium">Información de Empresa</span>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="rnc"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>RNC (Registro Nacional de Contribuyentes)</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                {...field} 
+                                placeholder="Ej: 131789610"
+                                onChange={(e) => {
+                                  const rnc = e.target.value.replace(/\D/g, '');
+                                  field.onChange(rnc);
+                                  validateRnc(rnc);
+                                }}
+                              />
+                              {rncValidation.isValidating && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                  <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                                </div>
+                              )}
+                              {rncValidation.isValid === true && (
+                                <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600" />
+                              )}
+                              {rncValidation.isValid === false && (
+                                <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-600" />
+                              )}
+                            </div>
+                          </FormControl>
+                          {rncValidation.error && (
+                            <p className="text-sm text-red-600">{rncValidation.error}</p>
+                          )}
+                          {rncValidation.isValid === true && (
+                            <p className="text-sm text-green-600">RNC válido</p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="legalName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Razón Social</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Nombre legal de la empresa" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Teléfono de Empresa</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Ej: (809) 123-4567" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="location"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ubicación</FormLabel>
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona tu provincia" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Santo Domingo">Santo Domingo</SelectItem>
+                                <SelectItem value="Santiago">Santiago</SelectItem>
+                                <SelectItem value="La Vega">La Vega</SelectItem>
+                                <SelectItem value="San Cristóbal">San Cristóbal</SelectItem>
+                                <SelectItem value="Puerto Plata">Puerto Plata</SelectItem>
+                                <SelectItem value="San Pedro de Macorís">San Pedro de Macorís</SelectItem>
+                                <SelectItem value="La Romana">La Romana</SelectItem>
+                                <SelectItem value="Barahona">Barahona</SelectItem>
+                                <SelectItem value="Moca">Moca</SelectItem>
+                                <SelectItem value="Bani">Bani</SelectItem>
+                                <SelectItem value="Otra">Otra</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}
