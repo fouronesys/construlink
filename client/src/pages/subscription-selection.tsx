@@ -139,19 +139,19 @@ export default function SubscriptionSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
             Selecciona tu Plan de Suscripción
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-2">
             Elige el plan que mejor se adapte a tu negocio. Todos los planes incluyen acceso completo 
             al directorio de proveedores verificados.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {subscriptionPlans.map((plan) => (
             <Card 
               key={plan.id} 
@@ -166,30 +166,30 @@ export default function SubscriptionSelection() {
                 </div>
               )}
               
-              <CardHeader className="text-center pb-4">
-                <div className="flex justify-center mb-4">
-                  {plan.id === 'basic' && <Users className="w-12 h-12 text-blue-600" />}
-                  {plan.id === 'professional' && <Shield className="w-12 h-12 text-emerald-600" />}
-                  {plan.id === 'enterprise' && <Zap className="w-12 h-12 text-purple-600" />}
+              <CardHeader className="text-center pb-3 sm:pb-4 px-4 sm:px-6">
+                <div className="flex justify-center mb-3 sm:mb-4">
+                  {plan.id === 'basic' && <Users className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600" />}
+                  {plan.id === 'professional' && <Shield className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-emerald-600" />}
+                  {plan.id === 'enterprise' && <Zap className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-purple-600" />}
                 </div>
-                <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                <p className="text-gray-600 mt-2">{plan.description}</p>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">
+                <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold">{plan.name}</CardTitle>
+                <p className="text-gray-600 mt-2 text-sm sm:text-base">{plan.description}</p>
+                <div className="mt-3 sm:mt-4">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-bold">
                     RD${plan.price.toLocaleString()}
                   </span>
-                  <span className="text-gray-600">/{plan.period}</span>
+                  <span className="text-gray-600 text-sm sm:text-base">/{plan.period}</span>
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Incluye:</h4>
-                  <ul className="space-y-2">
+                  <h4 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Incluye:</h4>
+                  <ul className="space-y-1.5 sm:space-y-2">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-start">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 mr-2 flex-shrink-0" />
-                        <span className="text-sm text-gray-700">{feature}</span>
+                        <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 mt-0.5 mr-2 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm text-gray-700">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -197,12 +197,12 @@ export default function SubscriptionSelection() {
 
                 {plan.limitations.length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Limitaciones:</h4>
-                    <ul className="space-y-2">
+                    <h4 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Limitaciones:</h4>
+                    <ul className="space-y-1.5 sm:space-y-2">
                       {plan.limitations.map((limitation, index) => (
                         <li key={index} className="flex items-start">
-                          <span className="w-4 h-4 text-gray-400 mt-0.5 mr-2 flex-shrink-0">×</span>
-                          <span className="text-sm text-gray-600">{limitation}</span>
+                          <span className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mt-0.5 mr-2 flex-shrink-0">×</span>
+                          <span className="text-xs sm:text-sm text-gray-600">{limitation}</span>
                         </li>
                       ))}
                     </ul>
@@ -210,7 +210,7 @@ export default function SubscriptionSelection() {
                 )}
 
                 <Button
-                  className="w-full"
+                  className="w-full text-sm sm:text-base"
                   size="lg"
                   onClick={() => handlePlanSelection(plan.id)}
                   disabled={loading}
@@ -223,15 +223,15 @@ export default function SubscriptionSelection() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <div className="bg-white rounded-lg p-8 shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+        <div className="mt-8 sm:mt-12 text-center">
+          <div className="bg-white rounded-lg p-4 sm:p-6 lg:p-8 shadow-sm">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
               ¿Necesitas ayuda para elegir?
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">
               Nuestro equipo puede ayudarte a seleccionar el plan perfecto para tu negocio.
             </p>
-            <Button variant="outline">
+            <Button variant="outline" className="text-sm sm:text-base">
               Contactar Soporte
             </Button>
           </div>

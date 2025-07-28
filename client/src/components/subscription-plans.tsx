@@ -135,10 +135,10 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
 
   const createSubscriptionMutation = useMutation({
     mutationFn: async (plan: string) => {
-      return await apiRequest("POST", "/api/create-subscription", { plan });
+      const response = await apiRequest("POST", "/api/create-subscription", { plan });
+      return await response.json();
     },
     onSuccess: (data) => {
-      console.log("Subscription data received:", data);
       setSubscriptionData(data);
       setShowPayment(true);
     },
@@ -257,7 +257,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {plans.map((plan) => {
           const isSelected = selected === plan.id;
           const isHovered = hoveredPlan === plan.id;
@@ -363,10 +363,10 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
       )}
 
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Procesar Pago - {subscriptionData?.plan}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Procesar Pago - {subscriptionData?.plan}</DialogTitle>
+            <DialogDescription className="text-sm sm:text-base">
               Completa tu pago para activar tu suscripción.
               Monto: RD${subscriptionData?.amount?.toLocaleString()}
             </DialogDescription>

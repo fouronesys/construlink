@@ -23,7 +23,6 @@ export default function VerifonePayment({
   onSuccess,
   onCancel
 }: VerifonePaymentProps) {
-  console.log("VerifonePayment props:", { subscriptionId, amount, trialEndDate });
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState({
     cardNumber: '',
@@ -95,15 +94,15 @@ export default function VerifonePayment({
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="w-full space-y-4 sm:space-y-6">
       {/* Payment Information */}
       <Card className="border-blue-200 bg-blue-50">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 px-4 sm:px-6">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-blue-600" />
-            <CardTitle className="text-lg text-blue-800">Suscripción Mensual</CardTitle>
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <CardTitle className="text-base sm:text-lg text-blue-800">Suscripción Mensual</CardTitle>
           </div>
-          <CardDescription className="text-blue-700">
+          <CardDescription className="text-blue-700 text-sm sm:text-base">
             Se cobrará RD${(amount || 0).toLocaleString()} mensualmente a partir de hoy.
             Puedes cancelar en cualquier momento desde tu panel de control.
           </CardDescription>
@@ -112,56 +111,60 @@ export default function VerifonePayment({
 
       {/* Payment Form */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 sm:px-6">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-blue-600" />
-            <CardTitle>Información de Pago</CardTitle>
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <CardTitle className="text-base sm:text-lg">Información de Pago</CardTitle>
           </div>
-          <CardDescription>
+          <CardDescription className="text-sm sm:text-base">
             Configurar método de pago para la suscripción mensual
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="cardName">Nombre en la Tarjeta</Label>
+        <CardContent className="space-y-4 px-4 sm:px-6">
+          <div className="space-y-2">
+            <Label htmlFor="cardName" className="text-sm font-medium">Nombre en la Tarjeta</Label>
             <Input
               id="cardName"
               placeholder="Juan Pérez"
               value={paymentMethod.cardName}
               onChange={(e) => handleInputChange('cardName', e.target.value)}
+              className="text-sm sm:text-base"
             />
           </div>
           
-          <div>
-            <Label htmlFor="cardNumber">Número de Tarjeta</Label>
+          <div className="space-y-2">
+            <Label htmlFor="cardNumber" className="text-sm font-medium">Número de Tarjeta</Label>
             <Input
               id="cardNumber"
               placeholder="1234 5678 9012 3456"
               value={paymentMethod.cardNumber}
               onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
               maxLength={19}
+              className="text-sm sm:text-base"
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="expiryDate">Fecha de Vencimiento</Label>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="expiryDate" className="text-sm font-medium">Fecha de Vencimiento</Label>
               <Input
                 id="expiryDate"
                 placeholder="MM/AA"
                 value={paymentMethod.expiryDate}
                 onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
                 maxLength={5}
+                className="text-sm sm:text-base"
               />
             </div>
-            <div>
-              <Label htmlFor="cvv">CVV</Label>
+            <div className="space-y-2">
+              <Label htmlFor="cvv" className="text-sm font-medium">CVV</Label>
               <Input
                 id="cvv"
                 placeholder="123"
                 value={paymentMethod.cvv}
                 onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, ''))}
                 maxLength={4}
+                className="text-sm sm:text-base"
               />
             </div>
           </div>
@@ -170,20 +173,20 @@ export default function VerifonePayment({
 
       {/* Security Information */}
       <Card className="border-gray-200 bg-gray-50">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Shield className="w-4 h-4" />
+        <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+            <Shield className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
             <span>Tus datos están protegidos con encriptación SSL de 256 bits</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
         <Button
           onClick={() => onCancel?.()}
           variant="outline"
-          className="flex-1"
+          className="w-full sm:flex-1 text-sm sm:text-base"
           disabled={paymentMutation.isPending}
         >
           Cancelar
@@ -191,16 +194,16 @@ export default function VerifonePayment({
         <Button
           onClick={() => paymentMutation.mutate()}
           disabled={!isFormValid() || paymentMutation.isPending}
-          className="flex-1"
+          className="w-full sm:flex-1 text-sm sm:text-base"
         >
           {paymentMutation.isPending ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
               Procesando...
             </>
           ) : (
             <>
-              <CreditCard className="mr-2 h-4 w-4" />
+              <CreditCard className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Activar Suscripción
             </>
           )}

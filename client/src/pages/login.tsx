@@ -78,21 +78,21 @@ export default function Login() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
         <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
-              <LogIn className="w-6 h-6 text-white" />
+          <CardHeader className="text-center px-4 sm:px-6">
+            <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-full flex items-center justify-center mb-3 sm:mb-4">
+              <LogIn className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
               Iniciar Sesión
             </CardTitle>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm sm:text-base">
               Accede a tu cuenta de Proveedores RD
             </p>
           </CardHeader>
           
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -100,11 +100,12 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormLabel className="text-sm sm:text-base">Correo Electrónico</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="tu@email.com"
+                          className="text-sm sm:text-base"
                           {...field}
                         />
                       </FormControl>
@@ -118,12 +119,13 @@ export default function Login() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contraseña</FormLabel>
+                      <FormLabel className="text-sm sm:text-base">Contraseña</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
+                            className="text-sm sm:text-base pr-10"
                             {...field}
                           />
                           <Button
@@ -134,9 +136,9 @@ export default function Login() {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-gray-400" />
+                              <EyeOff className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                             ) : (
-                              <Eye className="h-4 w-4 text-gray-400" />
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                             )}
                           </Button>
                         </div>
@@ -148,7 +150,7 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full text-sm sm:text-base"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? "Iniciando sesión..." : "Iniciar Sesión"}
@@ -157,7 +159,7 @@ export default function Login() {
             </Form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600">
                 ¿No tienes una cuenta?{" "}
                 <button
                   onClick={() => setLocation("/register")}
