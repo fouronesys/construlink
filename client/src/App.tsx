@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import Directory from "@/pages/directory";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import Pricing from "@/pages/pricing";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import AdminPanel from "@/pages/admin-panel";
@@ -37,15 +38,16 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/directory" component={Directory} />
+          <Route path="/pricing" component={Pricing} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
-
           <Route path="/terms" component={Terms} />
         </>
       ) : (
         <>
           <Route path="/" component={Home} />
           <Route path="/directory" component={Directory} />
+          <Route path="/pricing" component={Pricing} />
           <Route path="/payment" component={Payment} />
           <Route path="/subscription-selection" component={SubscriptionSelection} />
           {user?.role === 'supplier' && (

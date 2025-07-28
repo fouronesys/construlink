@@ -176,10 +176,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { rnc } = req.body;
       
-      // Call the DGII validation API
-      const response = await fetch(`https://fouronerncvalidator.onrender.com/validate/${rnc}`);
+      if (!rnc) {
+        return res.status(400).json({ message: "RNC is required" });
+      }
+
+      const token = process.env.RNC_API_TOKEN;
+      if (!token) {
+        return res.status(500).json({ message: "RNC API token not configured" });
+      }
+
+      // Call external RNC validation service
+      const response = await fetch('https://fouronerncvalidator.onrender.com/api/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rnc }),
+      });
+
       const data = await response.json();
       
+      if (!response.ok) {
+        return res.status(400).json({ message: data.message || "RNC validation failed" });
+      }
+
       res.json(data);
     } catch (error) {
       console.error("Error validating RNC:", error);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/navigation";
 import { ProviderCard } from "@/components/provider-card";
@@ -84,6 +84,20 @@ export default function Directory() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [selectedProviderName, setSelectedProviderName] = useState<string>("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Parse URL parameters for search and category
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    const categoryParam = urlParams.get('category');
+    
+    if (searchParam) {
+      setFilters(prev => ({ ...prev, search: searchParam }));
+    }
+    if (categoryParam) {
+      setFilters(prev => ({ ...prev, specialty: categoryParam }));
+    }
+  }, []);
 
   const { data: suppliersData, isLoading, error } = useQuery({
     queryKey: ["/api/suppliers", filters, currentPage],
