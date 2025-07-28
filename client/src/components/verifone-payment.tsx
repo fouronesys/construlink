@@ -186,23 +186,7 @@ export default function VerifonePayment({
         </CardContent>
       </Card>
 
-      {/* Test Cards Information */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-3 sm:pt-4 lg:pt-6 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-blue-700">
-              <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="font-medium">Tarjetas de Prueba:</span>
-            </div>
-            <div className="text-xs text-blue-600 space-y-1">
-              <div><strong>Éxito:</strong> 4111 1111 1111 1111</div>
-              <div><strong>Declinada:</strong> 4000 0000 0000 0002</div>
-              <div><strong>Sin fondos:</strong> 4000 0000 0000 0119</div>
-              <div className="text-blue-500">Fecha: cualquier fecha futura, CVV: 123</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Security Information */}
       <Card className="border-gray-200 bg-gray-50">

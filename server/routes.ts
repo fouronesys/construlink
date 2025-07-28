@@ -412,8 +412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Simulate Verifone API call with more realistic validation
-      const paymentResult = await simulateVerifonePayment(paymentMethod, amount);
+      // Process payment with real Verifone API
+      const paymentResult = await processVerifonePayment(paymentMethod, amount, subscriptionId);
       
       if (paymentResult.success) {
         // Update subscription status
@@ -492,58 +492,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { valid: true, message: 'Valid card' };
   }
 
-  // Simulate Verifone payment processing
-  async function simulateVerifonePayment(paymentMethod: any, amount: number): Promise<{ success: true; transactionId: string } | { success: false; error: string; message: string }> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  // Process real Verifone payment
+  async function processVerifonePayment(paymentMethod: any, amount: number, subscriptionId: string): Promise<{ success: true; transactionId: string } | { success: false; error: string; message: string }> {
+    const axios = require('axios');
     
-    const cardNumber = paymentMethod.cardNumber.replace(/\s/g, '');
+    const VERIFONE_MERCHANT_ID = process.env.VERIFONE_MERCHANT_ID;
+    const VERIFONE_SECRET_KEY = process.env.VERIFONE_SECRET_KEY;
+    const VERIFONE_API_URL = process.env.VERIFONE_API_URL || 'https://sandbox.2checkout.com';
     
-    // Test cards that should pass (Visa/MC test numbers)
-    const testSuccessCards = ['4111111111111111', '5555555555554444', '4242424242424242'];
-    
-    // Test cards that should fail for different reasons
-    const testFailures: { [key: string]: { error: string, message: string } } = {
-      '4000000000000002': { error: 'DECLINED', message: 'Tarjeta declinada por el banco' },
-      '4000000000000119': { error: 'INSUFFICIENT_FUNDS', message: 'Fondos insuficientes' },
-      '4000000000000127': { error: 'EXPIRED_CARD', message: 'Tarjeta expirada' },
-      '4000000000000069': { error: 'INVALID_CVC', message: 'Código CVV incorrecto' },
-    };
-
-    // Check for specific test failure cards
-    if (testFailures[cardNumber]) {
+    if (!VERIFONE_MERCHANT_ID || !VERIFONE_SECRET_KEY) {
+      console.error('Verifone credentials not configured');
       return {
         success: false,
-        ...testFailures[cardNumber]
+        error: 'CONFIG_ERROR',
+        message: 'Configuración de pagos no disponible. Contacta al administrador.'
       };
     }
 
-    // Check for known success test cards
-    if (testSuccessCards.includes(cardNumber)) {
-      return {
-        success: true,
-        transactionId: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+    try {
+      // Prepare payment data for Verifone/2checkout API
+      const [month, year] = paymentMethod.expiryDate.split('/');
+      
+      const paymentData = {
+        Currency: 'DOP',
+        Language: 'es',
+        Country: 'DO',
+        CustomerIP: '127.0.0.1',
+        ExternalReference: subscriptionId,
+        Source: 'fourone_suppliers_platform',
+        BillingDetails: {
+          FirstName: paymentMethod.cardName.split(' ')[0] || 'Nombre',
+          LastName: paymentMethod.cardName.split(' ').slice(1).join(' ') || 'Apellido',
+          CountryCode: 'DO',
+          Email: 'billing@example.com',
+          Phone: '8001234567',
+          City: 'Santo Domingo',
+          State: 'Distrito Nacional',
+          Address: 'Calle Principal #123',
+          Zip: '10101'
+        },
+        PaymentDetails: {
+          Type: 'CC',
+          Currency: 'DOP',
+          CustomerIP: '127.0.0.1',
+          PaymentMethod: {
+            CardNumber: paymentMethod.cardNumber.replace(/\s/g, ''),
+            CardType: getCardType(paymentMethod.cardNumber),
+            ExpirationMonth: month,
+            ExpirationYear: `20${year}`,
+            CCID: paymentMethod.cvv,
+            HolderName: paymentMethod.cardName
+          }
+        },
+        Items: [{
+          Name: 'Suscripción Mensual',
+          Description: 'Suscripción mensual plataforma proveedores',
+          Quantity: 1,
+          IsDynamic: true,
+          Tangible: false,
+          ProductId: 'subscription_monthly',
+          Price: {
+            Amount: amount,
+            Type: 'CUSTOM'
+          }
+        }],
+        PaymentMethod: 'CreditCard'
       };
-    }
 
-    // Random failure for unknown cards (simulate real-world scenarios)
-    if (Math.random() < 0.3) { // 30% failure rate for random cards
-      const failures = [
-        { error: 'DECLINED', message: 'Tarjeta declinada por el banco' },
-        { error: 'INSUFFICIENT_FUNDS', message: 'Fondos insuficientes' },
-        { error: 'NETWORK_ERROR', message: 'Error de red. Inténtalo de nuevo.' },
-      ];
+      // Make API call to Verifone
+      const response = await axios.post(`${VERIFONE_API_URL}/rest/6.0/orders/`, paymentData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Avangate-Authentication': Buffer.from(`${VERIFONE_MERCHANT_ID}:${VERIFONE_SECRET_KEY}`).toString('base64')
+        },
+        timeout: 30000
+      });
+
+      if (response.data && response.data.RefNo) {
+        return {
+          success: true,
+          transactionId: response.data.RefNo
+        };
+      } else {
+        return {
+          success: false,
+          error: 'PAYMENT_FAILED',
+          message: 'No se pudo procesar el pago. Verifica los datos de tu tarjeta.'
+        };
+      }
+
+    } catch (error: any) {
+      console.error('Verifone API Error:', error.response?.data || error.message);
+      
+      if (error.response?.data?.error_code) {
+        const errorCode = error.response.data.error_code;
+        const errorMap: { [key: string]: string } = {
+          'CARD_DECLINED': 'Tarjeta declinada por el banco',
+          'INSUFFICIENT_FUNDS': 'Fondos insuficientes',
+          'INVALID_CARD': 'Número de tarjeta inválido',
+          'EXPIRED_CARD': 'Tarjeta expirada',
+          'INVALID_CVV': 'Código CVV incorrecto',
+          'PROCESSING_ERROR': 'Error procesando el pago'
+        };
+        
+        return {
+          success: false,
+          error: errorCode,
+          message: errorMap[errorCode] || 'Error procesando el pago. Inténtalo de nuevo.'
+        };
+      }
+      
       return {
         success: false,
-        ...failures[Math.floor(Math.random() * failures.length)]
+        error: 'NETWORK_ERROR',
+        message: 'Error de conexión. Verifica tu internet e inténtalo de nuevo.'
       };
     }
+  }
 
-    // Success case
-    return {
-      success: true,
-      transactionId: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-    };
+  // Helper function to detect card type
+  function getCardType(cardNumber: string): string {
+    const number = cardNumber.replace(/\s/g, '');
+    if (number.startsWith('4')) return 'VISA';
+    if (number.startsWith('5') || number.startsWith('2')) return 'MASTERCARD';
+    if (number.startsWith('3')) return 'AMEX';
+    return 'VISA'; // Default
   }
 
   // Verifone payment webhook
