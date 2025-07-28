@@ -95,21 +95,19 @@ export default function VerifonePayment({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Trial Information */}
-      {trialEndDate && (
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-green-600" />
-              <CardTitle className="text-lg text-green-800">Período de Prueba Gratuito</CardTitle>
-            </div>
-            <CardDescription className="text-green-700">
-              Tu período de prueba de 7 días termina el {trialEndDate.toLocaleDateString('es-DO')}. 
-              Después comenzará la facturación mensual de RD${amount.toLocaleString()}.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
+      {/* Payment Information */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-blue-600" />
+            <CardTitle className="text-lg text-blue-800">Suscripción Mensual</CardTitle>
+          </div>
+          <CardDescription className="text-blue-700">
+            Se cobrará RD${amount.toLocaleString()} mensualmente a partir de hoy.
+            Puedes cancelar en cualquier momento desde tu panel de control.
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       {/* Payment Form */}
       <Card>

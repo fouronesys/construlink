@@ -1,455 +1,596 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import Navigation from "@/components/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import {
-  Building,
-  Clock,
-  DollarSign,
-  CheckCircle,
-  Users,
-  AlertTriangle,
-  Check,
-  X,
-  BarChart3,
+import { useAuth } from "@/hooks/useAuth";
+import Navigation from "@/components/navigation";
+import { 
+  Shield, 
+  Users, 
+  Building, 
+  TrendingUp, 
+  Eye, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Filter,
+  Search,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
   FileText,
-  Settings,
+  Activity
 } from "lucide-react";
 
+interface Supplier {
+  id: string;
+  legalName: string;
+  rnc: string;
+  phone: string;
+  location: string;
+  description: string;
+  website?: string;
+  specialties: string[];
+  status: 'pending' | 'approved' | 'suspended' | 'rejected';
+  createdAt: string;
+  approvalDate?: string;
+  rejectionReason?: string;
+  user?: {
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+  subscription?: {
+    plan: string;
+    status: string;
+    monthlyAmount: string;
+  };
+}
+
+interface AdminStats {
+  totalSuppliers: number;
+  pendingApprovals: number;
+  activeSuppliers: number;
+  monthlyRevenue: number;
+  totalUsers: number;
+}
+
 export default function AdminPanel() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
-  const [approvalComments, setApprovalComments] = useState("");
-
-  // Redirect if not authenticated or not an admin
-  useEffect(() => {
-    if (!authLoading && (!user || !['admin', 'superadmin'].includes(user.role || ''))) {
-      toast({
-        title: "Acceso denegado",
-        description: "Debes ser administrador para acceder a esta página.",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 500);
-    }
-  }, [user, authLoading, toast]);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
 
   // Fetch admin stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["/api/admin/stats"],
-    enabled: !!user && ['admin', 'superadmin'].includes(user.role || ''),
-    retry: false,
+  const { data: stats } = useQuery<AdminStats>({
+    queryKey: ['/api/admin/stats'],
+    enabled: isAuthenticated && (user?.role === 'admin' || user?.role === 'superadmin'),
   });
 
-  // Fetch pending approvals
-  const { data: pendingSuppliers, isLoading: approvalsLoading } = useQuery({
-    queryKey: ["/api/admin/approvals"],
-    enabled: !!user && ['admin', 'superadmin'].includes(user.role || ''),
-    retry: false,
-  });
-
-  const updateSupplierStatusMutation = useMutation({
-    mutationFn: async ({ id, status, comments }: { id: string; status: string; comments: string }) => {
-      const response = await apiRequest("PATCH", `/api/admin/suppliers/${id}/status`, { status, comments });
+  // Fetch suppliers with filters
+  const { data: suppliers = [], isLoading, refetch } = useQuery<Supplier[]>({
+    queryKey: ['/api/admin/suppliers', statusFilter, searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (searchQuery) params.set('search', searchQuery);
+      
+      const response = await apiRequest("GET", `/api/admin/suppliers?${params}`);
       return response.json();
     },
-    onSuccess: (_, variables) => {
-      toast({
-        title: "Estado actualizado",
-        description: `Proveedor ${variables.status === 'approved' ? 'aprobado' : 'rechazado'} exitosamente.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/approvals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
-      setSelectedSupplier(null);
-      setApprovalComments("");
+    enabled: isAuthenticated && (user?.role === 'admin' || user?.role === 'superadmin'),
+  });
+
+  // Approve supplier mutation
+  const approveSupplierMutation = useMutation({
+    mutationFn: async (supplierId: string) => {
+      const response = await apiRequest("POST", `/api/admin/suppliers/${supplierId}/approve`);
+      return response.json();
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Tu sesión ha expirado. Iniciando sesión nuevamente...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      
+    onSuccess: () => {
+      toast({
+        title: "Proveedor Aprobado",
+        description: "El proveedor ha sido aprobado exitosamente.",
+      });
+      refetch();
+      setSelectedSupplier(null);
+    },
+    onError: () => {
       toast({
         title: "Error",
-        description: "Error al actualizar estado del proveedor.",
+        description: "Error al aprobar el proveedor.",
         variant: "destructive",
       });
     },
   });
 
-  if (authLoading || statsLoading) {
+  // Reject supplier mutation
+  const rejectSupplierMutation = useMutation({
+    mutationFn: async ({ supplierId, reason }: { supplierId: string; reason: string }) => {
+      const response = await apiRequest("POST", `/api/admin/suppliers/${supplierId}/reject`, {
+        reason,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Proveedor Rechazado",
+        description: "El proveedor ha sido rechazado.",
+      });
+      refetch();
+      setSelectedSupplier(null);
+      setRejectionReason("");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Error al rechazar el proveedor.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Suspend supplier mutation
+  const suspendSupplierMutation = useMutation({
+    mutationFn: async (supplierId: string) => {
+      const response = await apiRequest("POST", `/api/admin/suppliers/${supplierId}/suspend`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Proveedor Suspendido",
+        description: "El proveedor ha sido suspendido.",
+      });
+      refetch();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Error al suspender el proveedor.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: "yellow", text: "Pendiente", icon: Clock },
+      approved: { color: "green", text: "Aprobado", icon: CheckCircle },
+      rejected: { color: "red", text: "Rechazado", icon: XCircle },
+      suspended: { color: "orange", text: "Suspendido", icon: Shield },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig];
+    if (!config) return null;
+
+    const IconComponent = config.icon;
+
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      <Badge variant={config.color === "green" ? "default" : "secondary"} className={`
+        ${config.color === "yellow" ? "bg-yellow-100 text-yellow-800 border-yellow-200" : ""}
+        ${config.color === "green" ? "bg-green-100 text-green-800 border-green-200" : ""}
+        ${config.color === "red" ? "bg-red-100 text-red-800 border-red-200" : ""}
+        ${config.color === "orange" ? "bg-orange-100 text-orange-800 border-orange-200" : ""}
+      `}>
+        <IconComponent className="w-3 h-3 mr-1" />
+        {config.text}
+      </Badge>
+    );
+  };
+
+  const getPlanBadge = (plan: string) => {
+    const planConfig = {
+      basic: { color: "bg-blue-100 text-blue-800 border-blue-200", text: "Básico" },
+      premium: { color: "bg-emerald-100 text-emerald-800 border-emerald-200", text: "Premium" },
+      enterprise: { color: "bg-purple-100 text-purple-800 border-purple-200", text: "Empresarial" },
+    };
+
+    const config = planConfig[plan as keyof typeof planConfig];
+    if (!config) return null;
+
+    return (
+      <Badge variant="secondary" className={config.color}>
+        {config.text}
+      </Badge>
+    );
+  };
+
+  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'superadmin')) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Shield className="w-16 h-16 mx-auto text-red-500 mb-4" />
+              <h2 className="text-2xl font-bold mb-4">Acceso Denegado</h2>
+              <p className="text-gray-600">
+                No tienes permisos para acceder al panel administrativo.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
-  if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
-    return null;
-  }
-
-  const handleApproval = (supplier: any, status: 'approved' | 'rejected') => {
-    setSelectedSupplier({ ...supplier, pendingStatus: status });
-  };
-
-  const confirmApproval = () => {
-    if (selectedSupplier) {
-      updateSupplierStatusMutation.mutate({
-        id: selectedSupplier.id,
-        status: selectedSupplier.pendingStatus,
-        comments: approvalComments,
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Panel de Administración</h1>
-              <p className="text-gray-600 mt-1">Gestiona proveedores y supervisa la plataforma</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              {pendingSuppliers && pendingSuppliers.length > 0 && (
-                <Badge className="bg-red-100 text-red-800">
-                  {pendingSuppliers.length} Pendientes de Aprobación
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <Navigation />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="approvals">Aprobaciones</TabsTrigger>
-            <TabsTrigger value="providers">Proveedores</TabsTrigger>
-            <TabsTrigger value="reports">Reportes</TabsTrigger>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Panel de Administración</h1>
+          <p className="text-gray-600">Gestionar proveedores y supervisar la plataforma</p>
+        </div>
+
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Building className="w-8 h-8 text-blue-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Proveedores</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalSuppliers}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Clock className="w-8 h-8 text-yellow-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Pendientes</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pendingApprovals}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Activos</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.activeSuppliers}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Users className="w-8 h-8 text-purple-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <TrendingUp className="w-8 h-8 text-emerald-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Ingresos Mes</p>
+                    <p className="text-2xl font-bold text-gray-900">RD${stats.monthlyRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <Tabs defaultValue="suppliers" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="suppliers">Proveedores</TabsTrigger>
+            <TabsTrigger value="analytics">Análisis</TabsTrigger>
+            <TabsTrigger value="settings">Configuración</TabsTrigger>
           </TabsList>
 
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Proveedores Activos</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.totalSuppliers || 0}</p>
-                    </div>
-                    <div className="text-emerald">
-                      <Building className="w-8 h-8" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Pendientes Aprobación</p>
-                      <p className="text-2xl font-bold text-red-600">{stats?.pendingApprovals || 0}</p>
-                    </div>
-                    <div className="text-red-600">
-                      <Clock className="w-8 h-8" />
+          <TabsContent value="suppliers" className="space-y-6">
+            {/* Filters */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Buscar por nombre, RNC o email..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Suscripciones Activas</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats?.activeSubscriptions || 0}</p>
-                    </div>
-                    <div className="text-primary">
-                      <CheckCircle className="w-8 h-8" />
-                    </div>
+                  <div className="sm:w-48">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <Filter className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="pending">Pendientes</SelectItem>
+                        <SelectItem value="approved">Aprobados</SelectItem>
+                        <SelectItem value="rejected">Rechazados</SelectItem>
+                        <SelectItem value="suspended">Suspendidos</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Ingresos Mensuales</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        RD${((stats?.monthlyRevenue || 0) / 100).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-emerald">
-                      <DollarSign className="w-8 h-8" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Acciones Rápidas</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => setActiveTab("approvals")}
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Revisar Aprobaciones Pendientes ({stats?.pendingApprovals || 0})
-                  </Button>
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => setActiveTab("providers")}
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Gestionar Proveedores
-                  </Button>
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => setActiveTab("reports")}
-                  >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Ver Reportes
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actividad Reciente</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="text-center py-8">
-                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No hay actividad reciente</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Approvals Tab */}
-          <TabsContent value="approvals" className="space-y-6">
+            {/* Suppliers Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Proveedores Pendientes de Aprobación</CardTitle>
+                <CardTitle>Lista de Proveedores</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {approvalsLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-                    </div>
-                  ) : !pendingSuppliers || pendingSuppliers.length === 0 ? (
-                    <div className="text-center py-8">
-                      <CheckCircle className="w-12 h-12 text-emerald mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No hay aprobaciones pendientes</h3>
-                      <p className="text-gray-600">Todos los proveedores han sido revisados.</p>
-                    </div>
-                  ) : (
-                    pendingSuppliers.map((supplier: any) => (
-                      <div key={supplier.id} className="border border-gray-200 rounded-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-900">{supplier.legalName}</h4>
-                            <p className="text-sm text-gray-600">RNC: {supplier.rnc}</p>
-                            <p className="text-sm text-gray-600">Email: {supplier.email}</p>
-                            <p className="text-sm text-gray-600">
-                              Registrado: {new Date(supplier.createdAt).toLocaleDateString('es-DO')}
-                            </p>
-                          </div>
-                          <Badge className="bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </Badge>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Especialidades:</p>
-                          <div className="flex gap-2 flex-wrap">
-                            {supplier.specialties?.map((specialty: string) => (
-                              <Badge key={specialty} variant="secondary">
-                                {specialty}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Contacto</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha Registro</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {suppliers.map((supplier) => (
+                        <TableRow key={supplier.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{supplier.legalName}</div>
+                              <div className="text-sm text-gray-500">RNC: {supplier.rnc}</div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {supplier.specialties.slice(0, 2).map((specialty) => (
+                                  <Badge key={specialty} variant="outline" className="text-xs">
+                                    {specialty}
+                                  </Badge>
+                                ))}
+                                {supplier.specialties.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{supplier.specialties.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <div className="flex items-center">
+                                <Mail className="w-3 h-3 mr-1" />
+                                {supplier.user?.email}
+                              </div>
+                              <div className="flex items-center mt-1">
+                                <Phone className="w-3 h-3 mr-1" />
+                                {supplier.phone}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {supplier.subscription ? (
+                              <div>
+                                {getPlanBadge(supplier.subscription.plan)}
+                                <div className="text-xs text-gray-500 mt-1">
+                                  RD${parseInt(supplier.subscription.monthlyAmount).toLocaleString()}/mes
+                                </div>
+                              </div>
+                            ) : (
+                              <Badge variant="secondary">Sin plan</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(supplier.status)}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {new Date(supplier.createdAt).toLocaleDateString('es-DO')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedSupplier(supplier)}
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                  <DialogHeader>
+                                    <DialogTitle>Detalles del Proveedor</DialogTitle>
+                                  </DialogHeader>
+                                  {selectedSupplier && (
+                                    <div className="space-y-6">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-600">Nombre Legal</label>
+                                          <p className="text-sm">{selectedSupplier.legalName}</p>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-600">RNC</label>
+                                          <p className="text-sm">{selectedSupplier.rnc}</p>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-600">Email</label>
+                                          <p className="text-sm">{selectedSupplier.user?.email}</p>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-600">Teléfono</label>
+                                          <p className="text-sm">{selectedSupplier.phone}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                          <label className="text-sm font-medium text-gray-600">Ubicación</label>
+                                          <p className="text-sm">{selectedSupplier.location}</p>
+                                        </div>
+                                        {selectedSupplier.website && (
+                                          <div className="col-span-2">
+                                            <label className="text-sm font-medium text-gray-600">Sitio Web</label>
+                                            <p className="text-sm">{selectedSupplier.website}</p>
+                                          </div>
+                                        )}
+                                      </div>
 
-                        <div className="mb-4">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Ubicación:</p>
-                          <p className="text-sm text-gray-600">{supplier.location}</p>
-                        </div>
+                                      <div>
+                                        <label className="text-sm font-medium text-gray-600">Especialidades</label>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                          {selectedSupplier.specialties.map((specialty) => (
+                                            <Badge key={specialty} variant="secondary">
+                                              {specialty}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
 
-                        {supplier.description && (
-                          <div className="mb-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2">Descripción:</p>
-                            <p className="text-sm text-gray-600">{supplier.description}</p>
-                          </div>
-                        )}
+                                      {selectedSupplier.description && (
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-600">Descripción</label>
+                                          <p className="text-sm mt-1">{selectedSupplier.description}</p>
+                                        </div>
+                                      )}
 
-                        <div className="mb-4">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Estado RNC:</p>
-                          <Badge className="bg-emerald-100 text-emerald-800">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Validado con DGII
-                          </Badge>
-                        </div>
+                                      <div className="flex items-center justify-between pt-4 border-t">
+                                        <div>
+                                          <p className="text-sm font-medium">Estado actual:</p>
+                                          {getStatusBadge(selectedSupplier.status)}
+                                        </div>
+                                        
+                                        {selectedSupplier.status === 'pending' && (
+                                          <div className="flex gap-2">
+                                            <Button
+                                              onClick={() => approveSupplierMutation.mutate(selectedSupplier.id)}
+                                              disabled={approveSupplierMutation.isPending}
+                                              className="bg-green-600 hover:bg-green-700"
+                                            >
+                                              <CheckCircle className="w-4 h-4 mr-2" />
+                                              Aprobar
+                                            </Button>
+                                            <Dialog>
+                                              <DialogTrigger asChild>
+                                                <Button variant="destructive">
+                                                  <XCircle className="w-4 h-4 mr-2" />
+                                                  Rechazar
+                                                </Button>
+                                              </DialogTrigger>
+                                              <DialogContent>
+                                                <DialogHeader>
+                                                  <DialogTitle>Rechazar Proveedor</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4">
+                                                  <div>
+                                                    <label className="text-sm font-medium">Motivo del rechazo</label>
+                                                    <Textarea
+                                                      value={rejectionReason}
+                                                      onChange={(e) => setRejectionReason(e.target.value)}
+                                                      placeholder="Explica el motivo del rechazo..."
+                                                    />
+                                                  </div>
+                                                  <div className="flex gap-2">
+                                                    <Button
+                                                      onClick={() => rejectSupplierMutation.mutate({
+                                                        supplierId: selectedSupplier.id,
+                                                        reason: rejectionReason
+                                                      })}
+                                                      disabled={!rejectionReason || rejectSupplierMutation.isPending}
+                                                      variant="destructive"
+                                                    >
+                                                      Confirmar Rechazo
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              </DialogContent>
+                                            </Dialog>
+                                          </div>
+                                        )}
 
-                        <div className="flex justify-end space-x-3">
-                          <Button
-                            variant="outline"
-                            className="border-red-300 text-red-700 hover:bg-red-50"
-                            onClick={() => handleApproval(supplier, 'rejected')}
-                            disabled={updateSupplierStatusMutation.isPending}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Rechazar
-                          </Button>
-                          <Button
-                            className="bg-emerald text-emerald-foreground hover:bg-emerald/90"
-                            onClick={() => handleApproval(supplier, 'approved')}
-                            disabled={updateSupplierStatusMutation.isPending}
-                          >
-                            <Check className="w-4 h-4 mr-2" />
-                            Aprobar
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                                        {selectedSupplier.status === 'approved' && (
+                                          <Button
+                                            onClick={() => suspendSupplierMutation.mutate(selectedSupplier.id)}
+                                            disabled={suspendSupplierMutation.isPending}
+                                            variant="destructive"
+                                          >
+                                            <Shield className="w-4 h-4 mr-2" />
+                                            Suspender
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center py-12">
+                  <Activity className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Análisis en Desarrollo</h3>
+                  <p className="text-gray-600">
+                    Esta sección estará disponible próximamente con métricas detalladas.
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Providers Tab */}
-          <TabsContent value="providers" className="space-y-6">
+          <TabsContent value="settings">
             <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Proveedores</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Gestión de Proveedores</h3>
-                  <p className="text-gray-600">Esta funcionalidad estará disponible próximamente.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Reports Tab */}
-          <TabsContent value="reports" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Reportes y Análisis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Reportes y Análisis</h3>
-                  <p className="text-gray-600">Los reportes detallados estarán disponibles próximamente.</p>
+              <CardContent className="p-6">
+                <div className="text-center py-12">
+                  <Shield className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Configuración del Sistema</h3>
+                  <p className="text-gray-600">
+                    Configuraciones administrativas estarán disponibles próximamente.
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Approval Confirmation Dialog */}
-      <Dialog open={!!selectedSupplier} onOpenChange={() => setSelectedSupplier(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedSupplier?.pendingStatus === 'approved' ? 'Aprobar Proveedor' : 'Rechazar Proveedor'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-2">
-                {selectedSupplier?.pendingStatus === 'approved' 
-                  ? `¿Estás seguro que deseas aprobar a ${selectedSupplier?.legalName}?`
-                  : `¿Estás seguro que deseas rechazar a ${selectedSupplier?.legalName}?`
-                }
-              </p>
-              <div className="bg-gray-50 p-3 rounded text-sm">
-                <p><strong>RNC:</strong> {selectedSupplier?.rnc}</p>
-                <p><strong>Email:</strong> {selectedSupplier?.email}</p>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Comentarios {selectedSupplier?.pendingStatus === 'rejected' ? '(requerido)' : '(opcional)'}
-              </label>
-              <Textarea
-                value={approvalComments}
-                onChange={(e) => setApprovalComments(e.target.value)}
-                placeholder={
-                  selectedSupplier?.pendingStatus === 'approved' 
-                    ? "Comentarios adicionales sobre la aprobación..."
-                    : "Explica el motivo del rechazo..."
-                }
-                rows={3}
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setSelectedSupplier(null)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={confirmApproval}
-                disabled={updateSupplierStatusMutation.isPending || (selectedSupplier?.pendingStatus === 'rejected' && !approvalComments.trim())}
-                className={selectedSupplier?.pendingStatus === 'approved' 
-                  ? "bg-emerald text-emerald-foreground hover:bg-emerald/90" 
-                  : "bg-red-600 hover:bg-red-700"
-                }
-              >
-                {updateSupplierStatusMutation.isPending ? "Procesando..." : 
-                 selectedSupplier?.pendingStatus === 'approved' ? "Aprobar" : "Rechazar"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

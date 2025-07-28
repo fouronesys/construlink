@@ -136,7 +136,12 @@ export class DatabaseStorage implements IStorage {
     } else {
       const [user] = await db
         .insert(users)
-        .values(userData)
+        .values({
+          ...userData,
+          password: userData.password || 'oauth_user',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
         .returning();
       return user;
     }
@@ -146,11 +151,6 @@ export class DatabaseStorage implements IStorage {
   async createSupplier(supplier: InsertSupplier & { userId: string }): Promise<Supplier> {
     const [newSupplier] = await db.insert(suppliers).values(supplier).returning();
     return newSupplier;
-  }
-
-  async getSupplierByUserId(userId: string): Promise<Supplier | undefined> {
-    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.userId, userId));
-    return supplier;
   }
 
   async getSupplier(id: string): Promise<Supplier | undefined> {

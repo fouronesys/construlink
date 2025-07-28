@@ -253,32 +253,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         enterprise: 5000
       };
 
-      const trialDays: Record<string, number> = {
-        basic: 7,
-        premium: 14,
-        enterprise: 30
-      };
-
       const amount = planPricing[plan] || 1000;
-      const trialDaysCount = trialDays[plan] || 7;
 
       // Generate unique Verifone subscription ID
       const verifoneSubscriptionId = `vf_sub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
-      // Create subscription record with trial period
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + trialDaysCount);
-      
-      const currentPeriodEnd = new Date(trialEndDate);
+      // Create subscription record
+      const currentPeriodStart = new Date();
+      const currentPeriodEnd = new Date();
       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1); // Monthly subscription
 
       await storage.createSubscription({
         supplierId: supplier.id,
         verifoneSubscriptionId: verifoneSubscriptionId,
-        currentPeriodStart: new Date(),
+        currentPeriodStart: currentPeriodStart,
         currentPeriodEnd: currentPeriodEnd,
-        trialEndDate: trialEndDate,
-        status: 'trialing',
+        status: 'inactive',
         plan: plan as 'basic' | 'premium' | 'enterprise',
         monthlyAmount: amount.toString()
       });
@@ -290,7 +280,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: 'DOP',
         plan,
         description: `Suscripción mensual - Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
-        trialDays: trialDaysCount,
         redirectUrl: `${req.protocol}://${req.get('host')}/supplier-dashboard?payment=success`,
         cancelUrl: `${req.protocol}://${req.get('host')}/register-supplier?payment=cancelled`
       };
@@ -298,10 +287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         subscriptionId: verifoneSubscriptionId,
         paymentSession: paymentSession,
-        trialEndDate: trialEndDate,
         amount,
         plan,
-        message: `Subscription created with ${trialDaysCount}-day free trial`
+        message: "Subscription created successfully"
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
@@ -323,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update subscription status
         const subscription = await storage.getSubscriptionByVerifoneId(subscriptionId);
         if (subscription) {
-          await storage.updateSubscriptionStatus(subscription.id, 'active');
+          await storage.updateSubscription(subscription.id, { status: 'active' });
         }
         
         res.json({

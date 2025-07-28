@@ -497,7 +497,7 @@ function RegistrationForm() {
               <VerifonePayment
                 subscriptionId={subscriptionData.subscriptionId}
                 amount={subscriptionData.amount || 1000}
-                trialEndDate={subscriptionData.trialEndDate ? new Date(subscriptionData.trialEndDate) : undefined}
+
                 onSuccess={() => setCurrentStep(5)}
                 onCancel={() => setCurrentStep(3)}
               />

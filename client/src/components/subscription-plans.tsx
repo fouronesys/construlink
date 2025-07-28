@@ -21,7 +21,7 @@ export interface SubscriptionPlan {
   features: PlanFeature[];
   icon: React.ReactNode;
   color: string;
-  trialDays?: number;
+
 }
 
 interface SubscriptionPlansProps {
@@ -39,7 +39,7 @@ const plans: SubscriptionPlan[] = [
     description: "Perfecto para proveedores que están comenzando",
     icon: <Shield className="w-6 h-6" />,
     color: "blue",
-    trialDays: 7,
+
     features: [
       { name: "Perfil de empresa verificado", included: true },
       { name: "Listado en directorio público", included: true },
@@ -63,7 +63,7 @@ const plans: SubscriptionPlan[] = [
     popular: true,
     icon: <Star className="w-6 h-6" />,
     color: "emerald",
-    trialDays: 14,
+
     features: [
       { name: "Todo del Plan Básico", included: true },
       { name: "Cotizaciones ilimitadas", included: true },
@@ -86,7 +86,7 @@ const plans: SubscriptionPlan[] = [
     premium: true,
     icon: <Crown className="w-6 h-6" />,
     color: "purple",
-    trialDays: 30,
+
     features: [
       { name: "Todo del Plan Premium", included: true },
       { name: "Múltiples ubicaciones", included: true },
@@ -197,11 +197,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
                   </div>
                   <p className="text-sm text-gray-600">por {plan.period}</p>
                   
-                  {plan.trialDays && (
-                    <Badge variant="outline" className="mt-2">
-                      {plan.trialDays} días gratis
-                    </Badge>
-                  )}
+
                 </div>
               </CardHeader>
 
