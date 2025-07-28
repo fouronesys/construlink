@@ -353,6 +353,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(services.createdAt));
   }
 
+  async getSupplierDocuments(supplierId: string): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.supplierId, supplierId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async createVerification(verification: InsertVerification): Promise<Verification> {
+    const [newVerification] = await db.insert(verifications).values(verification).returning();
+    return newVerification;
+  }
+
   async updateService(id: string, updates: Partial<Service>): Promise<Service> {
     const [updatedService] = await db
       .update(services)
@@ -528,7 +541,7 @@ export class DatabaseStorage implements IStorage {
       professional: {
         plan: 'professional',
         maxProducts: -1, // unlimited
-        maxQuotes: -1, // unlimited
+        maxQuotes: -1,   // unlimited
         maxSpecialties: 5,
         maxProjectPhotos: 20,
         hasPriority: true,
@@ -538,7 +551,7 @@ export class DatabaseStorage implements IStorage {
       enterprise: {
         plan: 'enterprise',
         maxProducts: -1, // unlimited
-        maxQuotes: -1, // unlimited
+        maxQuotes: -1,   // unlimited
         maxSpecialties: -1, // unlimited
         maxProjectPhotos: -1, // unlimited
         hasPriority: true,
@@ -556,30 +569,30 @@ export class DatabaseStorage implements IStorage {
     activeSubscriptions: number;
     monthlyRevenue: number;
   }> {
-    const [suppliersResult] = await db
+    const [totalSuppliersResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(suppliers);
 
-    const [pendingResult] = await db
+    const [pendingApprovalsResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(suppliers)
-      .where(eq(suppliers.status, "pending"));
+      .where(eq(suppliers.status, 'pending'));
 
-    const [subscriptionsResult] = await db
+    const [activeSubscriptionsResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(subscriptions)
-      .where(eq(subscriptions.status, "active"));
+      .where(eq(subscriptions.status, 'active'));
 
-    const [revenueResult] = await db
-      .select({ total: sql<number>`sum(amount)` })
-      .from(payments)
-      .where(eq(payments.status, "completed"));
+    const [monthlyRevenueResult] = await db
+      .select({ total: sql<number>`sum(cast(monthly_amount as decimal))` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'active'));
 
     return {
-      totalSuppliers: suppliersResult?.count || 0,
-      pendingApprovals: pendingResult?.count || 0,
-      activeSubscriptions: subscriptionsResult?.count || 0,
-      monthlyRevenue: revenueResult?.total || 0,
+      totalSuppliers: totalSuppliersResult?.count || 0,
+      pendingApprovals: pendingApprovalsResult?.count || 0,
+      activeSubscriptions: activeSubscriptionsResult?.count || 0,
+      monthlyRevenue: monthlyRevenueResult?.total || 0,
     };
   }
 }

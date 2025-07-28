@@ -612,6 +612,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin dashboard data
+  app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const stats = await storage.getAdminStats();
+      const pendingSuppliers = await storage.getSuppliers({ status: 'pending', limit: 10 });
+      
+      res.json({
+        stats,
+        pendingSuppliers: pendingSuppliers.length,
+        recentActivity: [], // This would come from an activity log system
+      });
+    } catch (error) {
+      console.error("Error fetching admin dashboard:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard data" });
+    }
+  });
+
   // Admin suppliers list with filtering
   app.get('/api/admin/suppliers', isAuthenticated, async (req: any, res) => {
     try {
@@ -623,448 +646,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { status, search, limit = 50, offset = 0 } = req.query;
       const suppliers = await storage.getSuppliers({
-        status,
-        search,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
+        status: status as string,
+        search: search as string,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
       });
 
-      // Add user info and specialties to each supplier
+      // Get additional data for each supplier
       const suppliersWithDetails = await Promise.all(
         suppliers.map(async (supplier) => {
-          const user = await storage.getUser(supplier.userId);
           const specialties = await storage.getSupplierSpecialties(supplier.id);
           const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
+          const stats = await storage.getSupplierStats(supplier.id);
           
           return {
             ...supplier,
-            user,
             specialties: specialties.map(s => s.specialty),
             subscription,
+            stats,
           };
         })
       );
 
       res.json(suppliersWithDetails);
     } catch (error) {
-      console.error("Error fetching suppliers:", error);
+      console.error("Error fetching admin suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
     }
   });
 
-  // Approve supplier
-  app.patch('/api/admin/suppliers/:id/approve', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      
-      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const { id } = req.params;
-      const supplier = await storage.updateSupplierStatus(id, 'approved');
-      res.json(supplier);
-    } catch (error) {
-      console.error("Error approving supplier:", error);
-      res.status(500).json({ message: "Failed to approve supplier" });
-    }
-  });
-
-  // Reject supplier
-  app.patch('/api/admin/suppliers/:id/reject', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      
-      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const { id } = req.params;
-      const { reason } = req.body;
-      
-      const supplier = await storage.updateSupplierStatus(id, 'rejected');
-      // TODO: Store rejection reason and send email notification
-      
-      res.json(supplier);
-    } catch (error) {
-      console.error("Error rejecting supplier:", error);
-      res.status(500).json({ message: "Failed to reject supplier" });
-    }
-  });
-
-  // Suspend supplier
-  app.patch('/api/admin/suppliers/:id/suspend', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      
-      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const { id } = req.params;
-      const supplier = await storage.updateSupplierStatus(id, 'suspended');
-      res.json(supplier);
-    } catch (error) {
-      console.error("Error suspending supplier:", error);
-      res.status(500).json({ message: "Failed to suspend supplier" });
-    }
-  });
-
-  // Delete/Edit product routes for suppliers
-  app.patch('/api/supplier/products/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(400).json({ message: "User ID not found" });
-      }
-
-      const { id } = req.params;
-      const updates = req.body;
-      
-      // Verify the product belongs to this supplier
-      const supplier = await storage.getSupplierByUserId(userId);
-      if (!supplier) {
-        return res.status(404).json({ message: "Supplier not found" });
-      }
-
-      const product = await storage.updateProduct(id, updates);
-      res.json(product);
-    } catch (error) {
-      console.error("Error updating product:", error);
-      res.status(500).json({ message: "Failed to update product" });
-    }
-  });
-
-  app.delete('/api/supplier/products/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(400).json({ message: "User ID not found" });
-      }
-
-      const { id } = req.params;
-      
-      // Verify the product belongs to this supplier
-      const supplier = await storage.getSupplierByUserId(userId);
-      if (!supplier) {
-        return res.status(404).json({ message: "Supplier not found" });
-      }
-
-      await storage.deleteProduct(id);
-      res.json({ message: "Product deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      res.status(500).json({ message: "Failed to delete product" });
-    }
-  });
-
-  // Create subscription
-  app.post('/api/subscriptions/create', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(400).json({ message: "User ID not found" });
-      }
-
-      const { planId, planName, monthlyAmount } = req.body;
-
-      // Check if user is a supplier
-      const supplier = await storage.getSupplierByUserId(userId);
-      if (!supplier) {
-        return res.status(404).json({ message: "Supplier not found" });
-      }
-
-      // Create subscription record
-      const subscription = await storage.createSubscription({
-        supplierId: supplier.id,
-        plan: planId,
-        monthlyAmount: monthlyAmount.toString(),
-        status: 'trialing',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
-      });
-
-      res.json({ subscriptionId: subscription.id });
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ message: "Failed to create subscription" });
-    }
-  });
-
-  // Get subscription details
-  app.get('/api/subscriptions/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const subscription = await storage.getSubscription(id);
-      
-      if (!subscription) {
-        return res.status(404).json({ message: "Subscription not found" });
-      }
-
-      res.json(subscription);
-    } catch (error) {
-      console.error("Error fetching subscription:", error);
-      res.status(500).json({ message: "Failed to fetch subscription" });
-    }
-  });
-
-  // Get supplier plan limits
-  app.get('/api/suppliers/plan-limits/:supplierId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { supplierId } = req.params;
-      const limits = await storage.getSupplierPlanLimits(supplierId);
-      res.json(limits);
-    } catch (error) {
-      console.error("Error fetching plan limits:", error);
-      res.status(500).json({ message: "Failed to fetch plan limits" });
-    }
-  });
-
-  // Update plan usage (for tracking limits)
-  app.post('/api/plan-usage/update', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(400).json({ message: "User ID not found" });
-      }
-
-      const { supplierId, type, increment = 1 } = req.body;
-      const month = new Date().toISOString().slice(0, 7); // YYYY-MM
-
-      // Get or create plan usage for current month
-      let usage = await storage.getPlanUsage(supplierId, month);
-      if (!usage) {
-        usage = await storage.createPlanUsage({
-          supplierId,
-          month,
-          productsCount: "0",
-          quotesReceived: "0",
-          specialtiesCount: "0",
-          projectPhotos: "0"
-        });
-      }
-
-      // Update the specific counter
-      const updates: Partial<typeof usage> = {};
-      switch (type) {
-        case 'products':
-          updates.productsCount = (parseInt(usage.productsCount || "0") + increment).toString();
-          break;
-        case 'quotes':
-          updates.quotesReceived = (parseInt(usage.quotesReceived || "0") + increment).toString();
-          break;
-        case 'specialties':
-          updates.specialtiesCount = (parseInt(usage.specialtiesCount || "0") + increment).toString();
-          break;
-        case 'photos':
-          updates.projectPhotos = (parseInt(usage.projectPhotos || "0") + increment).toString();
-          break;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        usage = await storage.updatePlanUsage(supplierId, month, updates);
-      }
-
-      res.json(usage);
-    } catch (error) {
-      console.error("Error updating plan usage:", error);
-      res.status(500).json({ message: "Failed to update plan usage" });
-    }
-  });
-
-  // Check plan limits before actions
-  app.post('/api/plan-limits/check', isAuthenticated, async (req: any, res) => {
-    try {
-      const { supplierId, type } = req.body;
-      const month = new Date().toISOString().slice(0, 7);
-
-      const limits = await storage.getSupplierPlanLimits(supplierId);
-      const usage = await storage.getPlanUsage(supplierId, month);
-
-      let canPerformAction = true;
-      let message = "";
-
-      if (usage) {
-        switch (type) {
-          case 'product':
-            if (limits.maxProducts !== -1 && parseInt(usage.productsCount || "0") >= limits.maxProducts) {
-              canPerformAction = false;
-              message = `Has alcanzado el límite de ${limits.maxProducts} productos para tu plan ${limits.plan}`;
-            }
-            break;
-          case 'quote':
-            if (limits.maxQuotes !== -1 && parseInt(usage.quotesReceived || "0") >= limits.maxQuotes) {
-              canPerformAction = false;
-              message = `Has alcanzado el límite de ${limits.maxQuotes} cotizaciones por mes para tu plan ${limits.plan}`;
-            }
-            break;
-          case 'specialty':
-            if (limits.maxSpecialties !== -1 && parseInt(usage.specialtiesCount || "0") >= limits.maxSpecialties) {
-              canPerformAction = false;
-              message = `Has alcanzado el límite de ${limits.maxSpecialties} especialidades para tu plan ${limits.plan}`;
-            }
-            break;
-          case 'photo':
-            if (limits.maxProjectPhotos !== -1 && parseInt(usage.projectPhotos || "0") >= limits.maxProjectPhotos) {
-              canPerformAction = false;
-              message = `Has alcanzado el límite de ${limits.maxProjectPhotos} fotos de proyectos para tu plan ${limits.plan}`;
-            }
-            break;
-        }
-      }
-
-      res.json({ 
-        canPerformAction, 
-        message, 
-        limits, 
-        currentUsage: usage 
-      });
-    } catch (error) {
-      console.error("Error checking plan limits:", error);
-      res.status(500).json({ message: "Failed to check plan limits" });
-    }
-  });
-
-  // Get plan usage for specific month
-  app.get('/api/plan-usage/:supplierId/:month', isAuthenticated, async (req: any, res) => {
-    try {
-      const { supplierId, month } = req.params;
-      const usage = await storage.getPlanUsage(supplierId, month);
-      
-      if (!usage) {
-        return res.status(404).json({ message: "Usage data not found" });
-      }
-      
-      res.json(usage);
-    } catch (error) {
-      console.error("Error fetching plan usage:", error);
-      res.status(500).json({ message: "Failed to fetch plan usage" });
-    }
-  });
-
-  // Process Verifone payment
-  app.post('/api/payments/process-verifone', isAuthenticated, async (req: any, res) => {
-    try {
-      const { subscriptionId, planId, amount, paymentMethod } = req.body;
-
-      // Validate required Verifone credentials
-      if (!process.env.VERIFONE_MERCHANT_CODE || !process.env.VERIFONE_SECRET_KEY) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Verifone credentials not configured" 
-        });
-      }
-
-      // Here we would integrate with actual Verifone API
-      // For now, simulate successful payment processing
-      const paymentData = {
-        merchantCode: process.env.VERIFONE_MERCHANT_CODE,
-        amount: amount,
-        currency: 'DOP',
-        cardNumber: paymentMethod.cardNumber,
-        expiryDate: paymentMethod.expiryDate,
-        cvv: paymentMethod.cvv,
-        cardholderName: paymentMethod.cardholderName
-      };
-
-      // Simulate Verifone API call
-      const verifoneResponse = await processVerifonePayment(paymentData);
-
-      if (verifoneResponse.success) {
-        // Update subscription status to active
-        await storage.updateSubscriptionStatus(subscriptionId, 'active');
-
-        // Update supplier status to approved if pending
-        const subscription = await storage.getSubscription(subscriptionId);
-        if (subscription) {
-          const supplier = await storage.getSupplier(subscription.supplierId);
-          if (supplier && supplier.status === 'pending') {
-            await storage.updateSupplierStatus(subscription.supplierId, 'approved');
-          }
-        }
-
-        res.json({ 
-          success: true, 
-          transactionId: verifoneResponse.transactionId,
-          message: "Payment processed successfully" 
-        });
-      } else {
-        res.json({ 
-          success: false, 
-          message: verifoneResponse.error || "Payment failed" 
-        });
-      }
-    } catch (error) {
-      console.error("Error processing Verifone payment:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Payment processing error" 
-      });
-    }
-  });
-
-  // Verifone payment simulation function
-  async function processVerifonePayment(paymentData: any) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Basic validation
-    if (!paymentData.cardNumber || !paymentData.expiryDate || !paymentData.cvv) {
-      return {
-        success: false,
-        error: "Invalid payment data"
-      };
-    }
-
-    // Simulate success (90% success rate)
-    const success = Math.random() > 0.1;
-    
-    if (success) {
-      return {
-        success: true,
-        transactionId: `VF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      };
-    } else {
-      return {
-        success: false,
-        error: "Payment declined by bank"
-      };
-    }
-  }
-
-  // Get pending approvals
-  app.get('/api/admin/approvals', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user; // User is already attached by isAuthenticated middleware
-      
-      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const pendingSuppliers = await storage.getSuppliers({ status: 'pending' });
-      
-      const suppliersWithDetails = await Promise.all(
-        pendingSuppliers.map(async (supplier) => {
-          const specialties = await storage.getSupplierSpecialties(supplier.id);
-          return {
-            ...supplier,
-            specialties: specialties.map(s => s.specialty),
-          };
-        })
-      );
-
-      res.json(suppliersWithDetails);
-    } catch (error) {
-      console.error("Error fetching pending approvals:", error);
-      res.status(500).json({ message: "Failed to fetch pending approvals" });
-    }
-  });
-
-  // Approve/reject supplier
+  // Admin approve/reject supplier
   app.patch('/api/admin/suppliers/:id/status', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = req.user;
       
       if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
         return res.status(403).json({ message: "Insufficient permissions" });
@@ -1073,17 +687,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status, comments } = req.body;
 
+      // Update supplier status
       const updatedSupplier = await storage.updateSupplierStatus(id, status);
-      
+
       // Create verification record
       await storage.createVerification({
         supplierId: id,
         adminId: user.id,
         decision: status === 'approved' ? 'approved' : 'rejected',
-        comments,
+        comments: comments || null,
       });
 
-      // TODO: Send email notification to supplier
+      // TODO: Send email notification to supplier about status change
 
       res.json(updatedSupplier);
     } catch (error) {
@@ -1092,6 +707,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  // Admin get pending suppliers
+  app.get('/api/admin/suppliers/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const pendingSuppliers = await storage.getSuppliers({
+        status: 'pending',
+        limit: 100,
+      });
+
+      // Get additional data for pending suppliers
+      const suppliersWithDetails = await Promise.all(
+        pendingSuppliers.map(async (supplier) => {
+          const specialties = await storage.getSupplierSpecialties(supplier.id);
+          const documents = await storage.getSupplierDocuments(supplier.id);
+          
+          return {
+            ...supplier,
+            specialties: specialties.map(s => s.specialty),
+            documents,
+          };
+        })
+      );
+
+      res.json(suppliersWithDetails);
+    } catch (error) {
+      console.error("Error fetching pending suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch pending suppliers" });
+    }
+  });
+
+  // Create review for supplier
+  app.post('/api/suppliers/:id/reviews', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const reviewData = {
+        ...req.body,
+        supplierId: id,
+      };
+
+      const review = await storage.createReview(reviewData);
+      res.json(review);
+    } catch (error) {
+      console.error("Error creating review:", error);
+      res.status(500).json({ message: "Failed to create review" });
+    }
+  });
+
+  // Get supplier plan limits
+  app.get('/api/supplier/plan-limits', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const planLimits = await storage.getSupplierPlanLimits(supplier.id);
+      res.json(planLimits);
+    } catch (error) {
+      console.error("Error fetching plan limits:", error);
+      res.status(500).json({ message: "Failed to fetch plan limits" });
+    }
+  });
+
+  // Update supplier profile
+  app.patch('/api/supplier/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Update supplier data (this would need to be implemented in storage)
+      // For now, we'll return the current supplier data
+      res.json(supplier);
+    } catch (error) {
+      console.error("Error updating supplier profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Get supplier services
+  app.get('/api/supplier/services', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const services = await storage.getServicesBySupplierId(supplier.id);
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching supplier services:", error);
+      res.status(500).json({ message: "Failed to fetch services" });
+    }
+  });
+
+  // Create service
+  app.post('/api/supplier/services', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const serviceData = {
+        ...req.body,
+        supplierId: supplier.id,
+      };
+
+      const service = await storage.createService(serviceData);
+      res.json(service);
+    } catch (error) {
+      console.error("Error creating service:", error);
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  // Create HTTP server
+  const server = createServer(app);
+
+  return server;
 }
