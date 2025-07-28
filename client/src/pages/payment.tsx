@@ -1,148 +1,101 @@
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import VerifonePayment from "@/components/verifone-payment";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle, Building2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 export default function Payment() {
-  const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = (path: string) => { window.location.href = path; };
+  const [location] = useLocation();
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      toast({
-        title: "Acceso Denegado",
-        description: "Debes iniciar sesión para acceder a esta página",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
+    // Parse query parameters
+    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const subscriptionId = urlParams.get('subscriptionId');
+    const planId = urlParams.get('planId');
+
+    if (!subscriptionId || !planId) {
+      navigate('/subscription-selection');
       return;
     }
 
-    // Get subscription data from localStorage or query parameters
-    const savedData = localStorage.getItem('pendingSubscription');
-    if (savedData) {
-      setSubscriptionData(JSON.parse(savedData));
+    // Fetch subscription data
+    fetchSubscriptionData(subscriptionId);
+  }, [location]);
+
+  const fetchSubscriptionData = async (subscriptionId: string) => {
+    try {
+      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionData(data);
+      } else {
+        navigate('/subscription-selection');
+      }
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      navigate('/subscription-selection');
+    } finally {
       setLoading(false);
-    } else {
-      // If no subscription data, redirect to supplier registration
-      setLocation('/register-supplier');
     }
-  }, [user, isLoading, setLocation, toast]);
+  };
 
   const handlePaymentSuccess = () => {
-    localStorage.removeItem('pendingSubscription');
-    toast({
-      title: "¡Bienvenido!",
-      description: "Tu suscripción ha sido activada. Ya puedes acceder a tu dashboard.",
-    });
-    setLocation('/supplier-dashboard');
+    navigate('/supplier-dashboard');
   };
 
-  const handlePaymentCancel = () => {
-    setLocation('/register-supplier');
+  const handlePaymentError = (error: string) => {
+    console.error("Payment error:", error);
   };
 
-  if (isLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-          <p className="text-muted-foreground">Cargando información de pago...</p>
-        </div>
-      </div>
-    );
+  if (!user || user.role !== 'supplier') {
+    navigate('/');
+    return null;
   }
 
-  if (!subscriptionData) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <Building2 className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <CardTitle>No hay información de suscripción</CardTitle>
-            <CardDescription>
-              No se encontró información de suscripción pendiente
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <button
-              onClick={() => setLocation('/register-supplier')}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Volver al Registro
-            </button>
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="ml-2">Cargando información de pago...</span>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  if (!subscriptionData) {
+    navigate('/subscription-selection');
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Finalizar Registro
-            </h1>
-          </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Tu solicitud como proveedor ha sido enviada exitosamente. 
-            Configura tu método de pago para activar tu suscripción.
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Completar Suscripción
+          </h1>
+          <p className="text-gray-600">
+            Configura tu método de pago para activar tu suscripción
           </p>
         </div>
 
-        {/* Subscription Summary */}
-        <div className="max-w-2xl mx-auto mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
-                Plan Proveedor Verificado
-              </CardTitle>
-              <CardDescription>
-                Acceso completo a la plataforma con todas las funcionalidades
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Período de prueba:</span>
-                  <span className="font-medium text-green-600">7 días gratuitos</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Después del período de prueba:</span>
-                  <span className="font-medium">RD$1,000 / mes</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Beneficios incluidos:</span>
-                  <span className="font-medium text-right">
-                    Perfil verificado, recepción de cotizaciones,<br />
-                    dashboard completo, soporte prioritario
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Payment Component */}
         <VerifonePayment
-          subscriptionId={subscriptionData.subscriptionId}
-          amount={1000}
-          trialEndDate={new Date(subscriptionData.trialEndDate)}
+          subscriptionId={subscriptionData.id}
+          planId={subscriptionData.planId}
+          amount={subscriptionData.monthlyAmount}
           onSuccess={handlePaymentSuccess}
-          onCancel={handlePaymentCancel}
+          onError={handlePaymentError}
         />
       </div>
     </div>

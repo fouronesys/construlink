@@ -89,9 +89,12 @@ function RegistrationForm() {
     onSuccess: () => {
       toast({
         title: "Registro exitoso",
-        description: "Tu solicitud ha sido enviada para revisión administrativa.",
+        description: "Ahora selecciona tu plan de suscripción para completar el registro.",
       });
-      setCurrentStep(2);
+      
+      setTimeout(() => {
+        window.location.href = '/subscription-selection';
+      }, 2000);
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

@@ -745,6 +745,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create subscription
+  app.post('/api/subscriptions/create', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const { planId, planName, monthlyAmount } = req.body;
+
+      // Check if user is a supplier
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Create subscription record
+      const subscription = await storage.createSubscription({
+        supplierId: supplier.id,
+        planId,
+        planName,
+        monthlyAmount,
+        status: 'pending',
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days trial
+      });
+
+      res.json({ subscriptionId: subscription.id });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Get subscription details
+  app.get('/api/subscriptions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const subscription = await storage.getSubscription(id);
+      
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // Process Verifone payment
+  app.post('/api/payments/process-verifone', isAuthenticated, async (req: any, res) => {
+    try {
+      const { subscriptionId, planId, amount, paymentMethod } = req.body;
+
+      // Validate required Verifone credentials
+      if (!process.env.VERIFONE_MERCHANT_CODE || !process.env.VERIFONE_SECRET_KEY) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Verifone credentials not configured" 
+        });
+      }
+
+      // Here we would integrate with actual Verifone API
+      // For now, simulate successful payment processing
+      const paymentData = {
+        merchantCode: process.env.VERIFONE_MERCHANT_CODE,
+        amount: amount,
+        currency: 'DOP',
+        cardNumber: paymentMethod.cardNumber,
+        expiryDate: paymentMethod.expiryDate,
+        cvv: paymentMethod.cvv,
+        cardholderName: paymentMethod.cardholderName
+      };
+
+      // Simulate Verifone API call
+      const verifoneResponse = await processVerifonePayment(paymentData);
+
+      if (verifoneResponse.success) {
+        // Update subscription status to active
+        await storage.updateSubscriptionStatus(subscriptionId, 'active');
+
+        // Update supplier status to approved if pending
+        const subscription = await storage.getSubscription(subscriptionId);
+        if (subscription) {
+          const supplier = await storage.getSupplier(subscription.supplierId);
+          if (supplier && supplier.status === 'pending') {
+            await storage.updateSupplierStatus(subscription.supplierId, 'approved');
+          }
+        }
+
+        res.json({ 
+          success: true, 
+          transactionId: verifoneResponse.transactionId,
+          message: "Payment processed successfully" 
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          message: verifoneResponse.error || "Payment failed" 
+        });
+      }
+    } catch (error) {
+      console.error("Error processing Verifone payment:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Payment processing error" 
+      });
+    }
+  });
+
+  // Verifone payment simulation function
+  async function processVerifonePayment(paymentData: any) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Basic validation
+    if (!paymentData.cardNumber || !paymentData.expiryDate || !paymentData.cvv) {
+      return {
+        success: false,
+        error: "Invalid payment data"
+      };
+    }
+
+    // Simulate success (90% success rate)
+    const success = Math.random() > 0.1;
+    
+    if (success) {
+      return {
+        success: true,
+        transactionId: `VF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      };
+    } else {
+      return {
+        success: false,
+        error: "Payment declined by bank"
+      };
+    }
+  }
+
   // Get pending approvals
   app.get('/api/admin/approvals', isAuthenticated, async (req: any, res) => {
     try {

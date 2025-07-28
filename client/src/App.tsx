@@ -13,6 +13,7 @@ import RegisterSupplier from "@/pages/register-supplier";
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import AdminPanel from "@/pages/admin-panel";
 import Payment from "@/pages/payment";
+import SubscriptionSelection from "@/pages/subscription-selection";
 import Terms from "@/pages/terms";
 import NotFound from "@/pages/not-found";
 
@@ -46,6 +47,7 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/directory" component={Directory} />
           <Route path="/payment" component={Payment} />
+          <Route path="/subscription-selection" component={SubscriptionSelection} />
           {user?.role === 'supplier' && (
             <Route path="/supplier-dashboard" component={SupplierDashboard} />
           )}

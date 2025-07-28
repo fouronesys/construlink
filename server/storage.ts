@@ -399,6 +399,46 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(reviews.createdAt));
   }
 
+  // Subscription operations
+  async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
+    const [newSubscription] = await db.insert(subscriptions).values(subscription).returning();
+    return newSubscription;
+  }
+
+  async getSubscription(id: string): Promise<Subscription | null> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, id))
+      .limit(1);
+    return subscription || null;
+  }
+
+  async getSubscriptionBySupplierId(supplierId: string): Promise<Subscription | null> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.supplierId, supplierId))
+      .limit(1);
+    return subscription || null;
+  }
+
+  async updateSubscriptionStatus(id: string, status: "pending" | "active" | "cancelled" | "suspended"): Promise<Subscription> {
+    const [updatedSubscription] = await db
+      .update(subscriptions)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return updatedSubscription;
+  }
+
+  async getActiveSubscriptions(): Promise<Subscription[]> {
+    return await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'active'));
+  }
+
   // Analytics
   async getSupplierStats(supplierId: string): Promise<{
     totalQuotes: number;

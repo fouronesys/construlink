@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, CreditCard, Shield, Calendar } from "lucide-react";
+import { Loader2, CreditCard, Shield, CheckCircle } from "lucide-react";
 
 interface VerifonePaymentProps {
   subscriptionId: string;
