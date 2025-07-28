@@ -18,7 +18,8 @@ import {
   type InsertSupplier,
   type Supplier,
   type RegisterData,
-  type LoginData
+  type LoginData,
+  type PlanUsage
 } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, hasRole, hashPassword, comparePassword } from "./auth";
@@ -109,6 +110,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user[0].role === 'supplier') {
         const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, user[0].id)).limit(1);
         supplier = supplierData.length > 0 ? supplierData[0] : null;
+        
+        // Check if supplier has an active subscription
+        if (supplier) {
+          const activeSubscription = await db.select().from(subscriptions)
+            .where(and(
+              eq(subscriptions.supplierId, supplier.id),
+              eq(subscriptions.status, 'active')
+            )).limit(1);
+          
+          if (activeSubscription.length === 0) {
+            return res.status(403).json({ 
+              message: "Tu suscripción no está activa. Por favor, actualiza tu plan para acceder.",
+              requiresSubscription: true,
+              supplier
+            });
+          }
+        }
       }
 
       res.json({ 
@@ -490,7 +508,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/quote-requests', async (req, res) => {
     try {
       const quoteRequestData = insertQuoteRequestSchema.parse(req.body);
+      
+      // Check if supplier exists and their plan limits
+      const supplier = await storage.getSupplier(quoteRequestData.supplierId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Check plan limits for quotes received
+      const planLimits = await storage.getSupplierPlanLimits(supplier.id);
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const usage = await storage.getPlanUsage(supplier.id, currentMonth);
+      const currentQuotes = parseInt(usage?.quotesReceived || "0");
+
+      if (planLimits.maxQuotes !== -1 && currentQuotes >= planLimits.maxQuotes) {
+        return res.status(403).json({ 
+          message: `El proveedor ha alcanzado su límite de cotizaciones mensuales (${planLimits.maxQuotes}). La cotización no puede ser enviada.`,
+          planLimit: true,
+          supplierPlan: planLimits.plan
+        });
+      }
+
       const quoteRequest = await storage.createQuoteRequest(quoteRequestData);
+      
+      // Update quote usage counter
+      await storage.updatePlanUsage(supplier.id, currentMonth, {
+        quotesReceived: String(currentQuotes + 1)
+      });
       
       // TODO: Send email notification to supplier
       
@@ -603,12 +647,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Supplier not found" });
       }
 
+      // Check plan limits
+      const planLimits = await storage.getSupplierPlanLimits(supplier.id);
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const usage = await storage.getPlanUsage(supplier.id, currentMonth);
+      const currentProducts = parseInt(usage?.productsCount || "0");
+
+      if (planLimits.maxProducts !== -1 && currentProducts >= planLimits.maxProducts) {
+        return res.status(403).json({ 
+          message: `Has alcanzado el límite de productos para tu plan (${planLimits.maxProducts}). Actualiza tu plan para agregar más productos.`,
+          planLimit: true,
+          currentUsage: currentProducts,
+          maxAllowed: planLimits.maxProducts
+        });
+      }
+
       const productData = insertProductSchema.parse({
         ...req.body,
         supplierId: supplier.id,
       });
 
       const product = await storage.createProduct(productData);
+      
+      // Update usage counter
+      await storage.updatePlanUsage(supplier.id, currentMonth, {
+        productsCount: String(currentProducts + 1)
+      });
+
       res.json(product);
     } catch (error) {
       console.error("Error creating product:", error);
@@ -719,12 +784,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         comments: comments || null,
       });
 
+      // If suspending, also suspend subscription
+      if (status === 'suspended') {
+        const subscription = await storage.getSubscriptionBySupplierId(id);
+        if (subscription) {
+          await storage.updateSubscription(subscription.id, { status: 'inactive' });
+        }
+      }
+
       // TODO: Send email notification to supplier about status change
 
       res.json(updatedSupplier);
     } catch (error) {
       console.error("Error updating supplier status:", error);
       res.status(500).json({ message: "Failed to update supplier status" });
+    }
+  });
+
+  // Admin suspend/reactivate supplier subscription
+  app.patch('/api/admin/suppliers/:id/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { action, reason } = req.body; // action: 'suspend' | 'reactivate'
+
+      const subscription = await storage.getSubscriptionBySupplierId(id);
+      
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      const newStatus = action === 'suspend' ? 'inactive' : 'active';
+      const updatedSubscription = await storage.updateSubscription(subscription.id, { 
+        status: newStatus 
+      });
+
+      // Also update supplier status if needed
+      if (action === 'suspend') {
+        await storage.updateSupplierStatus(id, 'suspended');
+      } else if (action === 'reactivate') {
+        await storage.updateSupplierStatus(id, 'approved');
+      }
+
+      // Create verification record for the action
+      await storage.createVerification({
+        supplierId: id,
+        adminId: user.id,
+        decision: action === 'reactivate' ? 'approved' : 'rejected',
+        comments: reason || `Subscription ${action}d by admin`,
+      });
+
+      res.json({ 
+        subscription: updatedSubscription,
+        message: `Subscription ${action}d successfully`
+      });
+    } catch (error) {
+      console.error("Error updating subscription status:", error);
+      res.status(500).json({ message: "Failed to update subscription status" });
+    }
+  });
+
+  // Admin get subscription details
+  app.get('/api/admin/suppliers/:id/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const subscription = await storage.getSubscriptionBySupplierId(id);
+      
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      const payments = await storage.getPaymentsBySubscriptionId(subscription.id);
+      
+      res.json({
+        subscription,
+        payments,
+        paymentHistory: payments.slice(0, 10) // Last 10 payments
+      });
+    } catch (error) {
+      console.error("Error fetching subscription details:", error);
+      res.status(500).json({ message: "Failed to fetch subscription details" });
     }
   });
 
@@ -802,6 +952,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get supplier plan limits by ID (for admin and general use)
+  app.get('/api/suppliers/plan-limits/:supplierId', async (req, res) => {
+    try {
+      const { supplierId } = req.params;
+      const planLimits = await storage.getSupplierPlanLimits(supplierId);
+      res.json(planLimits);
+    } catch (error) {
+      console.error("Error fetching plan limits:", error);
+      res.status(500).json({ message: "Failed to fetch plan limits" });
+    }
+  });
+
+  // Get plan usage for a supplier
+  app.get('/api/plan-usage/:supplierId/:month', async (req, res) => {
+    try {
+      const { supplierId, month } = req.params;
+      const planUsage = await storage.getPlanUsage(supplierId, month);
+      
+      if (!planUsage) {
+        // Create initial usage record if it doesn't exist
+        const newUsage = await storage.createPlanUsage({
+          supplierId,
+          month,
+          productsCount: "0",
+          quotesReceived: "0",
+          specialtiesCount: "0",
+          projectPhotos: "0"
+        });
+        return res.json(newUsage);
+      }
+      
+      res.json(planUsage);
+    } catch (error) {
+      console.error("Error fetching plan usage:", error);
+      res.status(500).json({ message: "Failed to fetch plan usage" });
+    }
+  });
+
+  // Update plan usage
+  app.post('/api/plan-usage/update', isAuthenticated, async (req: any, res) => {
+    try {
+      const { supplierId, type, increment = 1 } = req.body;
+      const month = new Date().toISOString().slice(0, 7); // YYYY-MM format
+      
+      // Get or create usage record
+      let usage = await storage.getPlanUsage(supplierId, month);
+      if (!usage) {
+        usage = await storage.createPlanUsage({
+          supplierId,
+          month,
+          productsCount: "0",
+          quotesReceived: "0",
+          specialtiesCount: "0",
+          projectPhotos: "0"
+        });
+      }
+      
+      // Update specific usage type
+      const updates: Partial<PlanUsage> = {};
+      switch (type) {
+        case 'products':
+          updates.productsCount = String(parseInt(usage.productsCount || "0") + increment);
+          break;
+        case 'quotes':
+          updates.quotesReceived = String(parseInt(usage.quotesReceived || "0") + increment);
+          break;
+        case 'specialties':
+          updates.specialtiesCount = String(parseInt(usage.specialtiesCount || "0") + increment);
+          break;
+        case 'photos':
+          updates.projectPhotos = String(parseInt(usage.projectPhotos || "0") + increment);
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid usage type" });
+      }
+      
+      const updatedUsage = await storage.updatePlanUsage(supplierId, month, updates);
+      res.json(updatedUsage);
+    } catch (error) {
+      console.error("Error updating plan usage:", error);
+      res.status(500).json({ message: "Failed to update plan usage" });
+    }
+  });
+
   // Update supplier profile
   app.patch('/api/supplier/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -861,6 +1095,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Supplier not found" });
       }
 
+      // Check plan limits for services
+      const services = await storage.getServicesBySupplierId(supplier.id);
+      const planLimits = await storage.getSupplierPlanLimits(supplier.id);
+      
+      // For basic plan, limit services similar to products
+      if (planLimits.plan === 'basic' && services.length >= 10) {
+        return res.status(403).json({ 
+          message: "Has alcanzado el límite de servicios para tu plan. Actualiza tu plan para agregar más servicios.",
+          planLimit: true,
+          currentUsage: services.length,
+          maxAllowed: 10
+        });
+      }
+
       const serviceData = {
         ...req.body,
         supplierId: supplier.id,
@@ -871,6 +1119,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating service:", error);
       res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  // Add supplier specialty with plan limits
+  app.post('/api/supplier/specialties', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Check plan limits for specialties
+      const planLimits = await storage.getSupplierPlanLimits(supplier.id);
+      const currentSpecialties = await storage.getSupplierSpecialties(supplier.id);
+      
+      if (planLimits.maxSpecialties !== -1 && currentSpecialties.length >= planLimits.maxSpecialties) {
+        return res.status(403).json({ 
+          message: `Has alcanzado el límite de especialidades para tu plan (${planLimits.maxSpecialties}). Actualiza tu plan para agregar más especialidades.`,
+          planLimit: true,
+          currentUsage: currentSpecialties.length,
+          maxAllowed: planLimits.maxSpecialties
+        });
+      }
+
+      const specialtyData = {
+        supplierId: supplier.id,
+        specialty: req.body.specialty,
+      };
+
+      const specialty = await storage.addSupplierSpecialty(specialtyData);
+      
+      // Update usage counter
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      await storage.updatePlanUsage(supplier.id, currentMonth, {
+        specialtiesCount: String(currentSpecialties.length + 1)
+      });
+
+      res.json(specialty);
+    } catch (error) {
+      console.error("Error creating specialty:", error);
+      res.status(500).json({ message: "Failed to create specialty" });
+    }
+  });
+
+  // Get supplier plan usage for current month
+  app.get('/api/supplier/plan-usage', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const usage = await storage.getPlanUsage(supplier.id, currentMonth);
+      
+      // Return usage or default values if no usage record exists
+      const defaultUsage = {
+        id: `temp-${supplier.id}`,
+        supplierId: supplier.id,
+        month: currentMonth,
+        productsCount: "0",
+        quotesReceived: "0",
+        specialtiesCount: "0",
+        projectPhotos: "0",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      res.json(usage || defaultUsage);
+    } catch (error) {
+      console.error("Error fetching plan usage:", error);
+      res.status(500).json({ message: "Failed to fetch plan usage" });
+    }
+  });
+
+  // Admin route to manage supplier subscription status
+  app.patch('/api/admin/suppliers/:id/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { action, reason } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId || !['admin', 'superadmin'].includes(req.user?.role)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      if (!['suspend', 'reactivate'].includes(action)) {
+        return res.status(400).json({ message: "Invalid action" });
+      }
+
+      const supplier = await storage.getSupplier(id);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Update supplier status
+      const newStatus = action === 'suspend' ? 'suspended' : 'approved';
+      await storage.updateSupplierStatus(id, newStatus, reason);
+
+      // Log the action
+      console.log(`Admin ${userId} ${action}ed supplier ${id}: ${reason}`);
+
+      res.json({ 
+        success: true, 
+        message: `Supplier ${action}ed successfully`,
+        newStatus 
+      });
+    } catch (error) {
+      console.error("Error managing subscription:", error);
+      res.status(500).json({ message: "Failed to manage subscription" });
     }
   });
 

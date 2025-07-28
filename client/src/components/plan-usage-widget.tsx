@@ -1,235 +1,204 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { usePlanRestrictions } from "@/hooks/usePlanLimits";
-import { Package, MessageSquare, Tag, Camera, TrendingUp } from "lucide-react";
-import PlanUpgradeDialog from "./plan-upgrade-dialog";
-import { useState } from "react";
+import { Crown, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+
+interface PlanLimits {
+  plan: string;
+  maxProducts: number;
+  maxQuotes: number;
+  maxSpecialties: number;
+  maxProjectPhotos: number;
+  hasApiAccess: boolean;
+}
+
+interface PlanUsage {
+  id: string;
+  supplierId: string;
+  month: string;
+  productsCount: string;
+  quotesReceived: string;
+  specialtiesCount: string;
+  projectPhotos: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface PlanUsageWidgetProps {
   supplierId: string;
-  compact?: boolean;
 }
 
-export default function PlanUsageWidget({ supplierId, compact = false }: PlanUsageWidgetProps) {
-  const { limits, getCurrentUsage, getLimit, getLimitMessage, canPerformAction, isLoading } = usePlanRestrictions(supplierId);
-  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-  const [selectedLimitType, setSelectedLimitType] = useState("");
+export default function PlanUsageWidget({ supplierId }: PlanUsageWidgetProps) {
+  const { data: planLimits } = useQuery<PlanLimits>({
+    queryKey: ["/api/supplier/plan-limits"],
+    retry: false,
+  });
 
-  if (isLoading || !limits) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Uso del Plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-2 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const { data: planUsage } = useQuery<PlanUsage>({
+    queryKey: ["/api/supplier/plan-usage"],
+    retry: false,
+  });
+
+  if (!planLimits || !planUsage) {
+    return null;
   }
 
-  const usageItems = [
-    {
-      type: "products",
-      icon: <Package className="w-4 h-4" />,
-      label: "Productos",
-      current: getCurrentUsage("products"),
-      limit: getLimit("products"),
-      color: "blue"
-    },
-    {
-      type: "quotes",
-      icon: <MessageSquare className="w-4 h-4" />,
-      label: "Cotizaciones",
-      current: getCurrentUsage("quotes"),
-      limit: getLimit("quotes"),
-      color: "green"
-    },
-    {
-      type: "specialties",
-      icon: <Tag className="w-4 h-4" />,
-      label: "Especialidades",
-      current: getCurrentUsage("specialties"),
-      limit: getLimit("specialties"),
-      color: "purple"
-    },
-    {
-      type: "photos",
-      icon: <Camera className="w-4 h-4" />,
-      label: "Fotos de Proyectos",
-      current: getCurrentUsage("photos"),
-      limit: getLimit("photos"),
-      color: "orange"
-    },
-  ];
-
-  const handleUpgradeClick = (type: string) => {
-    setSelectedLimitType(type);
-    setUpgradeDialogOpen(true);
-  };
-
-  const getProgressValue = (current: number, limit: number): number => {
-    if (limit === -1) return 0; // unlimited
-    return Math.min((current / limit) * 100, 100);
-  };
-
-  const getProgressColor = (current: number, limit: number): string => {
-    if (limit === -1) return "bg-green-500"; // unlimited
-    const percentage = (current / limit) * 100;
+  const getProgressColor = (current: number, max: number) => {
+    const percentage = (current / max) * 100;
     if (percentage >= 90) return "bg-red-500";
     if (percentage >= 75) return "bg-yellow-500";
     return "bg-blue-500";
   };
 
-  if (compact) {
-    return (
-      <>
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Plan Actual</CardTitle>
-              <Badge variant="outline" className="capitalize">
-                {limits.plan}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {usageItems.slice(0, 2).map((item) => (
-              <div key={item.type} className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  {item.icon}
-                  <span>{item.label}</span>
-                </div>
-                <span className={`font-medium ${!canPerformAction(item.type) ? 'text-red-600' : 'text-gray-600'}`}>
-                  {item.limit === -1 ? "∞" : `${item.current}/${item.limit}`}
-                </span>
-              </div>
-            ))}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full mt-2"
-              onClick={() => handleUpgradeClick("general")}
-            >
-              <TrendingUp className="w-3 h-3 mr-1" />
-              Ver Detalles
-            </Button>
-          </CardContent>
-        </Card>
-
-        <PlanUpgradeDialog
-          open={upgradeDialogOpen}
-          onOpenChange={setUpgradeDialogOpen}
-          currentPlan={limits.plan}
-          limitType={selectedLimitType}
-          limitMessage="Mejora tu plan para acceder a más funcionalidades"
-        />
-      </>
-    );
-  }
+  const getProgressPercentage = (current: number, max: number) => {
+    if (max === -1) return 0; // Unlimited
+    return Math.min(100, (current / max) * 100);
+  };
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Uso del Plan</CardTitle>
-            <Badge variant="secondary" className="capitalize text-sm">
-              Plan {limits.plan}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {usageItems.map((item) => (
-            <div key={item.type} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {item.icon}
-                  <span className="font-medium text-sm">{item.label}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
-                    {item.limit === -1 ? "Ilimitado" : `${item.current}/${item.limit}`}
-                  </span>
-                  {!canPerformAction(item.type) && item.limit !== -1 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleUpgradeClick(item.type)}
-                      className="text-xs px-2 py-1 h-6"
-                    >
-                      Actualizar
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {item.limit !== -1 && (
-                <div className="space-y-1">
-                  <Progress 
-                    value={getProgressValue(item.current, item.limit)} 
-                    className="h-2"
+    <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Crown className="w-5 h-5 text-blue-600" />
+          Plan {planLimits.plan.charAt(0).toUpperCase() + planLimits.plan.slice(1)} - Uso del Mes
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Products Usage */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-600">Productos</p>
+            <div className="space-y-1">
+              <p className="text-lg font-bold">
+                {planUsage.productsCount || 0}
+                {planLimits.maxProducts !== -1 ? ` / ${planLimits.maxProducts}` : ' / ∞'}
+              </p>
+              {planLimits.maxProducts !== -1 && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getProgressColor(
+                      parseInt(planUsage.productsCount || "0"), 
+                      planLimits.maxProducts
+                    )}`}
+                    style={{ 
+                      width: `${getProgressPercentage(
+                        parseInt(planUsage.productsCount || "0"), 
+                        planLimits.maxProducts
+                      )}%` 
+                    }}
                   />
-                  <p className="text-xs text-gray-500">
-                    {getLimitMessage(item.type)}
-                  </p>
                 </div>
               )}
             </div>
-          ))}
-
-          <div className="pt-4 border-t">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Prioridad en búsquedas:</span>
-                <Badge variant={limits.hasPriority ? "default" : "secondary"} className="ml-2 text-xs">
-                  {limits.hasPriority ? "Sí" : "No"}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-gray-600">Analytics:</span>
-                <Badge variant={limits.hasAnalytics ? "default" : "secondary"} className="ml-2 text-xs">
-                  {limits.hasAnalytics ? "Sí" : "No"}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-gray-600">API Access:</span>
-                <Badge variant={limits.hasApiAccess ? "default" : "secondary"} className="ml-2 text-xs">
-                  {limits.hasApiAccess ? "Sí" : "No"}
-                </Badge>
-              </div>
+          </div>
+          
+          {/* Quotes Usage */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-600">Cotizaciones</p>
+            <div className="space-y-1">
+              <p className="text-lg font-bold">
+                {planUsage.quotesReceived || 0}
+                {planLimits.maxQuotes !== -1 ? ` / ${planLimits.maxQuotes}` : ' / ∞'}
+              </p>
+              {planLimits.maxQuotes !== -1 && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getProgressColor(
+                      parseInt(planUsage.quotesReceived || "0"), 
+                      planLimits.maxQuotes
+                    )}`}
+                    style={{ 
+                      width: `${getProgressPercentage(
+                        parseInt(planUsage.quotesReceived || "0"), 
+                        planLimits.maxQuotes
+                      )}%` 
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          {limits.plan === 'basic' && (
-            <div className="pt-4">
-              <Button 
-                className="w-full" 
-                onClick={() => handleUpgradeClick("general")}
-              >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Actualizar Plan
-              </Button>
+          {/* Specialties Usage */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-600">Especialidades</p>
+            <div className="space-y-1">
+              <p className="text-lg font-bold">
+                {planUsage.specialtiesCount || 0}
+                {planLimits.maxSpecialties !== -1 ? ` / ${planLimits.maxSpecialties}` : ' / ∞'}
+              </p>
+              {planLimits.maxSpecialties !== -1 && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getProgressColor(
+                      parseInt(planUsage.specialtiesCount || "0"), 
+                      planLimits.maxSpecialties
+                    )}`}
+                    style={{ 
+                      width: `${getProgressPercentage(
+                        parseInt(planUsage.specialtiesCount || "0"), 
+                        planLimits.maxSpecialties
+                      )}%` 
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Project Photos Usage */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-600">Fotos de Proyectos</p>
+            <div className="space-y-1">
+              <p className="text-lg font-bold">
+                {planUsage.projectPhotos || 0}
+                {planLimits.maxProjectPhotos !== -1 ? ` / ${planLimits.maxProjectPhotos}` : ' / ∞'}
+              </p>
+              {planLimits.maxProjectPhotos !== -1 && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getProgressColor(
+                      parseInt(planUsage.projectPhotos || "0"), 
+                      planLimits.maxProjectPhotos
+                    )}`}
+                    style={{ 
+                      width: `${getProgressPercentage(
+                        parseInt(planUsage.projectPhotos || "0"), 
+                        planLimits.maxProjectPhotos
+                      )}%` 
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Plan-specific messages */}
+        <div className="mt-4">
+          {planLimits.plan === 'basic' && (
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <p className="text-sm text-blue-800 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                <strong>Plan Básico:</strong> Actualiza a Professional o Enterprise para obtener límites más altos y acceso a la API.
+              </p>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <PlanUpgradeDialog
-        open={upgradeDialogOpen}
-        onOpenChange={setUpgradeDialogOpen}
-        currentPlan={limits.plan}
-        limitType={selectedLimitType}
-        limitMessage={selectedLimitType === "general" 
-          ? "Mejora tu plan para acceder a más funcionalidades y hacer crecer tu negocio"
-          : getLimitMessage(selectedLimitType)
-        }
-      />
-    </>
+          {planLimits.plan === 'professional' && (
+            <div className="p-3 bg-green-100 rounded-lg">
+              <p className="text-sm text-green-800">
+                <strong>Plan Professional:</strong> Tienes acceso a productos y cotizaciones ilimitadas. Considera Enterprise para acceso a la API.
+              </p>
+            </div>
+          )}
+          {planLimits.plan === 'enterprise' && (
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <p className="text-sm text-purple-800">
+                <strong>Plan Enterprise:</strong> Tienes acceso completo a todas las funciones, incluyendo la API para integraciones.
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

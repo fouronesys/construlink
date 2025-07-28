@@ -109,7 +109,7 @@ export default function SubscriptionSelection() {
       if (!plan) return;
 
       // Create subscription with selected plan
-      const response = await apiRequest("POST", "/api/subscriptions/create", {
+      const response = await apiRequest("POST", "/api/create-subscription", {
         planId: plan.id,
         planName: plan.name,
         monthlyAmount: plan.price

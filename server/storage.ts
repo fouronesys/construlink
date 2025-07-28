@@ -353,19 +353,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(services.createdAt));
   }
 
-  async getSupplierDocuments(supplierId: string): Promise<Document[]> {
-    return await db
-      .select()
-      .from(documents)
-      .where(eq(documents.supplierId, supplierId))
-      .orderBy(desc(documents.createdAt));
-  }
-
-  async createVerification(verification: InsertVerification): Promise<Verification> {
-    const [newVerification] = await db.insert(verifications).values(verification).returning();
-    return newVerification;
-  }
-
   async updateService(id: string, updates: Partial<Service>): Promise<Service> {
     const [updatedService] = await db
       .update(services)

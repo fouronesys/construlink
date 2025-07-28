@@ -111,6 +111,19 @@ export default function SupplierDashboard() {
     retry: false,
   });
 
+  // Plan limits and usage data
+  const { data: planLimits } = useQuery({
+    queryKey: ["/api/supplier/plan-limits"],
+    enabled: !!user && user.role === 'supplier',
+    retry: false,
+  });
+
+  const { data: planUsage } = useQuery({
+    queryKey: ["/api/supplier/plan-usage"],
+    enabled: !!user && user.role === 'supplier',
+    retry: false,
+  });
+
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -134,6 +147,10 @@ export default function SupplierDashboard() {
   const createProductMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
       const response = await apiRequest("POST", "/api/supplier/products", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create product");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -142,13 +159,14 @@ export default function SupplierDashboard() {
         description: "El producto ha sido agregado exitosamente.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/dashboard"] });
       setShowAddProductModal(false);
       productForm.reset();
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Error al crear producto. Inténtalo de nuevo.",
+        description: error.message.includes("límite") ? error.message : "Error al crear producto. Inténtalo de nuevo.",
         variant: "destructive",
       });
     },

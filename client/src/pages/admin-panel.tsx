@@ -140,10 +140,46 @@ export default function AdminPanel() {
     },
   });
 
+  // Subscription management mutation
+  const manageSubscriptionMutation = useMutation({
+    mutationFn: async ({ id, action, reason }: { id: string; action: 'suspend' | 'reactivate'; reason?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/suppliers/${id}/subscription`, {
+        action,
+        reason
+      });
+      if (!response.ok) throw new Error("Failed to update subscription status");
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
+      toast({
+        title: "Éxito",
+        description: `Suscripción ${variables.action === 'suspend' ? 'suspendida' : 'reactivada'} correctamente`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la suscripción",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApprovalAction = (supplier: Supplier, action: 'approve' | 'reject') => {
     setSelectedSupplier(supplier);
     setApprovalAction(action);
     setShowApprovalModal(true);
+  };
+
+  const handleSubscriptionAction = (supplier: Supplier, action: 'suspend' | 'reactivate') => {
+    const reason = `Subscription ${action}d by admin for supplier: ${supplier.legalName}`;
+    manageSubscriptionMutation.mutate({
+      id: supplier.id,
+      action,
+      reason
+    });
   };
 
   const confirmApproval = () => {
@@ -460,9 +496,33 @@ export default function AdminPanel() {
                           {new Date(supplier.createdAt).toLocaleDateString('es-DO')}
                         </TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm">
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" title="Ver detalles">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {supplier.status === 'approved' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleSubscriptionAction(supplier, 'suspend')}
+                                className="text-red-600 hover:text-red-700"
+                                title="Suspender suscripción"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {supplier.status === 'suspended' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleSubscriptionAction(supplier, 'reactivate')}
+                                className="text-green-600 hover:text-green-700"
+                                title="Reactivar suscripción"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
