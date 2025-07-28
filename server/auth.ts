@@ -22,7 +22,7 @@ export const hasRole = (roles: string[]) => {
     try {
       const user = await db.select().from(users).where(eq(users.id, req.session.userId!)).limit(1);
       
-      if (!user.length || !roles.includes(user[0].role)) {
+      if (!user.length || !roles.includes(user[0].role || '')) {
         return res.status(403).json({ message: "Forbidden" });
       }
 

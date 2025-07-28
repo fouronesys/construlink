@@ -275,6 +275,42 @@ export const insertProductSchema = createInsertSchema(products).omit({
   updatedAt: true,
 });
 
+export const insertSupplierSpecialtySchema = createInsertSchema(supplierSpecialties).omit({
+  id: true,
+});
+
+export const insertSupplierDocumentSchema = createInsertSchema(supplierDocuments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  paymentDate: true,
+});
+
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVerificationSchema = createInsertSchema(verifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -307,9 +343,17 @@ export type Verification = typeof verifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = InsertUser & { id?: string };
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type InsertSupplierSpecialty = z.infer<typeof insertSupplierSpecialtySchema>;
+export type InsertSupplierDocument = z.infer<typeof insertSupplierDocumentSchema>;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertService = z.infer<typeof insertServiceSchema>;
+export type InsertVerification = z.infer<typeof insertVerificationSchema>;
+export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 

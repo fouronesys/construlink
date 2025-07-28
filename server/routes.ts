@@ -11,6 +11,8 @@ import {
   reviews, 
   verifications,
   insertSupplierSchema,
+  insertQuoteRequestSchema,
+  insertProductSchema,
   registerSchema, 
   loginSchema,
   type InsertSupplier,
@@ -216,8 +218,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: user.firstName,
         lastName: user.lastName,
         profileImageUrl: user.profileImageUrl,
-        verifoneCustomerId: user.verifoneCustomerId,
-        verifoneSubscriptionId: user.verifoneSubscriptionId,
       });
 
       res.json(supplier);
@@ -265,8 +265,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update user with Verifone subscription ID
       await storage.upsertUser({
-        ...user,
-        verifoneSubscriptionId: verifoneSubscriptionId,
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        profileImageUrl: user.profileImageUrl,
       });
 
       // Generate payment session for Verifone
