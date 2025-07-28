@@ -470,7 +470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier dashboard endpoints
   app.get('/api/supplier/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -496,7 +500,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier quotes
   app.get('/api/supplier/quotes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -528,7 +536,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier products
   app.get('/api/supplier/products', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -546,7 +558,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create product
   app.post('/api/supplier/products', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -580,6 +596,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching admin stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Admin suppliers list with filtering
+  app.get('/api/admin/suppliers', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, search, limit = 50, offset = 0 } = req.query;
+      const suppliers = await storage.getSuppliers({
+        status,
+        search,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+      });
+
+      // Add user info and specialties to each supplier
+      const suppliersWithDetails = await Promise.all(
+        suppliers.map(async (supplier) => {
+          const user = await storage.getUser(supplier.userId);
+          const specialties = await storage.getSupplierSpecialties(supplier.id);
+          const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
+          
+          return {
+            ...supplier,
+            user,
+            specialties: specialties.map(s => s.specialty),
+            subscription,
+          };
+        })
+      );
+
+      res.json(suppliersWithDetails);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
+  // Approve supplier
+  app.patch('/api/admin/suppliers/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const supplier = await storage.updateSupplierStatus(id, 'approved');
+      res.json(supplier);
+    } catch (error) {
+      console.error("Error approving supplier:", error);
+      res.status(500).json({ message: "Failed to approve supplier" });
+    }
+  });
+
+  // Reject supplier
+  app.patch('/api/admin/suppliers/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      const supplier = await storage.updateSupplierStatus(id, 'rejected');
+      // TODO: Store rejection reason and send email notification
+      
+      res.json(supplier);
+    } catch (error) {
+      console.error("Error rejecting supplier:", error);
+      res.status(500).json({ message: "Failed to reject supplier" });
+    }
+  });
+
+  // Suspend supplier
+  app.patch('/api/admin/suppliers/:id/suspend', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const supplier = await storage.updateSupplierStatus(id, 'suspended');
+      res.json(supplier);
+    } catch (error) {
+      console.error("Error suspending supplier:", error);
+      res.status(500).json({ message: "Failed to suspend supplier" });
+    }
+  });
+
+  // Delete/Edit product routes for suppliers
+  app.patch('/api/supplier/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Verify the product belongs to this supplier
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const product = await storage.updateProduct(id, updates);
+      res.json(product);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete('/api/supplier/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Verify the product belongs to this supplier
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      await storage.deleteProduct(id);
+      res.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      res.status(500).json({ message: "Failed to delete product" });
     }
   });
 

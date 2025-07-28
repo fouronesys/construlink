@@ -165,7 +165,7 @@ export default function SupplierDashboard() {
   }
 
   const supplier = dashboardData?.supplier;
-  const stats = dashboardData?.stats || {};
+  const stats = dashboardData?.stats || { totalQuotes: 0, totalViews: 0, averageRating: 0, totalReviews: 0 };
   const recentQuotes = dashboardData?.recentQuotes || [];
   const subscription = dashboardData?.subscription;
 
@@ -305,10 +305,10 @@ export default function SupplierDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentQuotes.length === 0 ? (
+                    {recentQuotes && recentQuotes.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">No hay cotizaciones recientes</p>
                     ) : (
-                      recentQuotes.map((quote: any) => (
+                      recentQuotes && recentQuotes.map((quote: any) => (
                         <div key={quote.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                           <div>
                             <p className="font-medium text-gray-900">{quote.projectType}</p>

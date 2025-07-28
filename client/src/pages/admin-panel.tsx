@@ -97,7 +97,7 @@ export default function AdminPanel() {
   // Approve supplier mutation
   const approveSupplierMutation = useMutation({
     mutationFn: async (supplierId: string) => {
-      const response = await apiRequest("POST", `/api/admin/suppliers/${supplierId}/approve`);
+      const response = await apiRequest("PATCH", `/api/admin/suppliers/${supplierId}/approve`);
       return response.json();
     },
     onSuccess: () => {
@@ -120,7 +120,7 @@ export default function AdminPanel() {
   // Reject supplier mutation
   const rejectSupplierMutation = useMutation({
     mutationFn: async ({ supplierId, reason }: { supplierId: string; reason: string }) => {
-      const response = await apiRequest("POST", `/api/admin/suppliers/${supplierId}/reject`, {
+      const response = await apiRequest("PATCH", `/api/admin/suppliers/${supplierId}/reject`, {
         reason,
       });
       return response.json();

@@ -5,11 +5,25 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 
 // Middleware to check if user is authenticated
-export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (req.session && req.session.userId) {
-    return next();
+export const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    // Fetch user data and attach to request
+    const [user] = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+    
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    (req as any).user = user;
+    return next();
+  } catch (error) {
+    console.error("Error fetching user for authentication:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
 
 // Middleware to check if user has specific role
