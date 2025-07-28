@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/navigation";
 import { ProviderCard } from "@/components/provider-card";
@@ -8,7 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Filter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Search, 
+  Filter, 
+  MapPin, 
+  Star, 
+  Phone, 
+  Mail, 
+  Globe, 
+  Building, 
+  Users,
+  Package,
+  CheckCircle,
+  Award,
+  TrendingUp,
+} from "lucide-react";
 
 interface Supplier {
   id: string;
@@ -19,21 +35,57 @@ interface Supplier {
   specialties: string[];
   averageRating: number;
   totalReviews: number;
+  phone: string;
+  email: string;
+  website?: string;
+  profileImageUrl?: string;
+  subscription?: {
+    plan: string;
+    status: string;
+  };
+  productCount?: number;
+  createdAt: string;
 }
+
+const specialties = [
+  "Construcción General",
+  "Materiales de Construcción",
+  "Herramientas y Equipos", 
+  "Eléctricos y Iluminación",
+  "Plomería y Sanitarios",
+  "Pinturas y Acabados",
+  "Ferretería",
+  "Seguridad y Protección",
+];
+
+const locations = [
+  "Santo Domingo",
+  "Santiago", 
+  "La Vega",
+  "San Pedro de Macorís",
+  "La Romana",
+  "Puerto Plata",
+  "San Francisco de Macorís",
+  "Moca",
+  "Higüey",
+  "Baní",
+];
 
 export default function Directory() {
   const [filters, setFilters] = useState({
     specialty: "all",
     location: "all",
     search: "",
+    rating: "all",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProvider, setSelectedProvider] = useState<Supplier | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [selectedProviderName, setSelectedProviderName] = useState<string>("");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const { data: suppliers, isLoading, error } = useQuery({
+  const { data: suppliersData, isLoading, error } = useQuery({
     queryKey: ["/api/suppliers", filters, currentPage],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -51,6 +103,10 @@ export default function Directory() {
       return response.json();
     },
   });
+
+  const suppliers = suppliersData?.suppliers || [];
+  const totalPages = suppliersData?.totalPages || 1;
+  const totalResults = suppliersData?.total || 0;
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));

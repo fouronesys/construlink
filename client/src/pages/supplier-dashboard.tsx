@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import PlanUsageWidget from "@/components/plan-usage-widget";
 import {
   BarChart3,
   Eye,
@@ -32,15 +34,40 @@ import {
   Mail,
   MapPin,
   Globe,
+  Settings,
+  Package,
+  MessageSquare,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 
 const productSchema = z.object({
   name: z.string().min(1, "Nombre es requerido"),
   description: z.string().optional(),
-  category: z.string().optional(),
+  category: z.string().min(1, "Categoría es requerida"),
+});
+
+const profileSchema = z.object({
+  legalName: z.string().min(1, "Nombre legal es requerido"),
+  phone: z.string().min(1, "Teléfono es requerido"),
+  location: z.string().min(1, "Ubicación es requerida"),
+  description: z.string().optional(),
+  website: z.string().url().optional().or(z.literal("")),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
+type ProfileFormData = z.infer<typeof profileSchema>;
+
+const categories = [
+  "Construcción General",
+  "Materiales de Construcción", 
+  "Herramientas y Equipos",
+  "Eléctricos y Iluminación",
+  "Plomería y Sanitarios",
+  "Pinturas y Acabados",
+  "Ferretería",
+  "Seguridad y Protección",
+];
 
 export default function SupplierDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -48,8 +75,8 @@ export default function SupplierDashboard() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("overview");
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Show access denied if user is definitely not a supplier (but allow loading states)
   if (!authLoading && user && user.role !== 'supplier') {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -66,22 +93,19 @@ export default function SupplierDashboard() {
     );
   }
 
-  // Fetch dashboard data
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["/api/supplier/dashboard"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
   });
 
-  // Fetch products
-  const { data: products } = useQuery({
+  const { data: products = [] } = useQuery({
     queryKey: ["/api/supplier/products"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
   });
 
-  // Fetch quotes
-  const { data: quotes } = useQuery({
+  const { data: quotes = [] } = useQuery({
     queryKey: ["/api/supplier/quotes"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
@@ -93,6 +117,17 @@ export default function SupplierDashboard() {
       name: "",
       description: "",
       category: "",
+    },
+  });
+
+  const profileForm = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      legalName: "",
+      phone: "",
+      location: "",
+      description: "",
+      website: "",
     },
   });
 
@@ -110,19 +145,7 @@ export default function SupplierDashboard() {
       setShowAddProductModal(false);
       productForm.reset();
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Tu sesión ha expirado. Iniciando sesión nuevamente...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      
+    onError: () => {
       toast({
         title: "Error",
         description: "Error al crear producto. Inténtalo de nuevo.",
@@ -131,22 +154,23 @@ export default function SupplierDashboard() {
     },
   });
 
-  const updateQuoteStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await apiRequest("PATCH", `/api/quote-requests/${id}/status`, { status });
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: ProfileFormData) => {
+      const response = await apiRequest("PATCH", "/api/supplier/profile", data);
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Estado actualizado",
-        description: "El estado de la cotización ha sido actualizado.",
+        title: "Perfil actualizado",
+        description: "Tu perfil ha sido actualizado exitosamente.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/supplier/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/dashboard"] });
+      setShowProfileModal(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: "Error al actualizar estado.",
+        description: "Error al actualizar perfil.",
         variant: "destructive",
       });
     },
@@ -164,9 +188,8 @@ export default function SupplierDashboard() {
     return null;
   }
 
-  const supplier = dashboardData?.supplier;
-  const stats = dashboardData?.stats || { totalQuotes: 0, totalViews: 0, averageRating: 0, totalReviews: 0 };
-  const recentQuotes = dashboardData?.recentQuotes || [];
+  const supplier = dashboardData?.supplier || user?.supplier;
+  const stats = dashboardData?.stats || { totalQuotes: 0, totalViews: 0, averageRating: 0 };
   const subscription = dashboardData?.subscription;
 
   const getStatusColor = (status: string) => {
@@ -182,28 +205,17 @@ export default function SupplierDashboard() {
     }
   };
 
-  const getQuoteStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'responded':
-        return 'bg-emerald-100 text-emerald-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
+
       {/* Header */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Panel de Proveedor</h1>
-              <p className="text-gray-600 mt-1">{supplier?.legalName}</p>
+              <p className="text-gray-600 mt-1">{supplier?.legalName || "Cargando..."}</p>
             </div>
             <div className="flex items-center space-x-4">
               {supplier?.status && (
@@ -214,11 +226,6 @@ export default function SupplierDashboard() {
                    supplier.status === 'pending' ? 'Pendiente' : 'Suspendido'}
                 </Badge>
               )}
-              {subscription && (
-                <div className="text-sm text-gray-600">
-                  Próximo pago: {new Date(subscription.currentPeriodEnd).toLocaleDateString('es-DO')}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -226,18 +233,22 @@ export default function SupplierDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Resumen</TabsTrigger>
-            <TabsTrigger value="catalog">Catálogo</TabsTrigger>
+            <TabsTrigger value="products">Productos</TabsTrigger>
             <TabsTrigger value="quotes">Cotizaciones</TabsTrigger>
-            <TabsTrigger value="subscription">Suscripción</TabsTrigger>
             <TabsTrigger value="profile">Perfil</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Plan Usage Widget */}
+            {user?.supplier?.id && (
+              <PlanUsageWidget supplierId={user.supplier.id} />
+            )}
+
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
@@ -245,9 +256,7 @@ export default function SupplierDashboard() {
                       <p className="text-sm font-medium text-gray-600">Cotizaciones Recibidas</p>
                       <p className="text-2xl font-bold text-gray-900">{stats.totalQuotes || 0}</p>
                     </div>
-                    <div className="text-primary">
-                      <FileText className="w-8 h-8" />
-                    </div>
+                    <FileText className="w-8 h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
@@ -256,12 +265,10 @@ export default function SupplierDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Perfil Visto</p>
+                      <p className="text-sm font-medium text-gray-600">Vistas del Perfil</p>
                       <p className="text-2xl font-bold text-gray-900">{stats.totalViews || 0}</p>
                     </div>
-                    <div className="text-emerald">
-                      <Eye className="w-8 h-8" />
-                    </div>
+                    <Eye className="w-8 h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
@@ -270,337 +277,203 @@ export default function SupplierDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Calificación</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.averageRating?.toFixed(1) || '0.0'}</p>
+                      <p className="text-sm font-medium text-gray-600">Calificación Promedio</p>
+                      <div className="flex items-center">
+                        <p className="text-2xl font-bold text-gray-900">{stats.averageRating || 0}</p>
+                        <Star className="w-5 h-5 text-yellow-400 ml-1" />
+                      </div>
                     </div>
-                    <div className="text-yellow-500">
-                      <Star className="w-8 h-8" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Estado Suscripción</p>
-                      <p className="text-lg font-bold text-emerald">
-                        {subscription?.status === 'active' ? 'Activa' : 'Inactiva'}
-                      </p>
-                    </div>
-                    <div className="text-emerald">
-                      <CheckCircle className="w-8 h-8" />
-                    </div>
+                    <BarChart3 className="w-8 h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cotizaciones Recientes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentQuotes && recentQuotes.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">No hay cotizaciones recientes</p>
-                    ) : (
-                      recentQuotes && recentQuotes.map((quote: any) => (
-                        <div key={quote.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">{quote.projectType}</p>
-                            <p className="text-sm text-gray-600">{quote.clientName}</p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(quote.createdAt).toLocaleDateString('es-DO')}
-                            </p>
-                          </div>
-                          <Badge className={getQuoteStatusColor(quote.status)}>
-                            {quote.status === 'pending' ? 'Pendiente' : 
-                             quote.status === 'responded' ? 'Respondida' : 'Cerrada'}
-                          </Badge>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Alertas Importantes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {supplier?.status === 'pending' && (
-                      <div className="flex items-start p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <AlertCircle className="text-yellow-600 mt-1 mr-3 w-5 h-5" />
-                        <div>
-                          <p className="font-medium text-yellow-900">Verificación pendiente</p>
-                          <p className="text-sm text-yellow-700">
-                            Tu perfil está siendo revisado por nuestro equipo administrativo.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {subscription?.status === 'active' && (
-                      <div className="flex items-start p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <CheckCircle className="text-green-600 mt-1 mr-3 w-5 h-5" />
-                        <div>
-                          <p className="font-medium text-green-900">Suscripción activa</p>
-                          <p className="text-sm text-green-700">
-                            Tu suscripción está al día y tu perfil es visible en el directorio.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Catalog Tab */}
-          <TabsContent value="catalog" className="space-y-6">
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Gestión de Catálogo</CardTitle>
-                  <Dialog open={showAddProductModal} onOpenChange={setShowAddProductModal}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Agregar Producto
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Agregar Producto</DialogTitle>
-                      </DialogHeader>
-                      <Form {...productForm}>
-                        <form onSubmit={productForm.handleSubmit((data) => createProductMutation.mutate(data))} className="space-y-4">
-                          <FormField
-                            control={productForm.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Nombre del Producto</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Ej: Concreto Premezclado" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={productForm.control}
-                            name="category"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Categoría</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Ej: Concreto" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={productForm.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Descripción</FormLabel>
-                                <FormControl>
-                                  <Textarea placeholder="Describe el producto..." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" onClick={() => setShowAddProductModal(false)}>
-                              Cancelar
-                            </Button>
-                            <Button type="submit" disabled={createProductMutation.isPending}>
-                              {createProductMutation.isPending ? "Guardando..." : "Guardar"}
-                            </Button>
-                          </div>
-                        </form>
-                      </Form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                <CardTitle>Actividad Reciente</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {!products || products.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No tienes productos registrados</p>
-                      <Button className="mt-4" onClick={() => setShowAddProductModal(true)}>
-                        Agregar tu primer producto
-                      </Button>
-                    </div>
-                  ) : (
-                    products.map((product: any) => (
-                      <div key={product.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                {quotes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay cotizaciones</h3>
+                    <p className="text-gray-600">
+                      Las nuevas solicitudes de cotización aparecerán aquí.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {quotes.slice(0, 5).map((quote: any) => (
+                      <div key={quote.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                          <h4 className="font-medium text-gray-900">{product.name}</h4>
-                          <p className="text-sm text-gray-600">{product.description}</p>
-                          {product.category && (
-                            <Badge variant="secondary" className="mt-1">
-                              {product.category}
-                            </Badge>
-                          )}
+                          <p className="font-medium">{quote.projectName}</p>
+                          <p className="text-sm text-gray-600">{quote.clientName}</p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button variant="outline" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Badge>{quote.status}</Badge>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Products Tab */}
+          <TabsContent value="products" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Catálogo de Productos</h2>
+              <Dialog open={showAddProductModal} onOpenChange={setShowAddProductModal}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar Producto
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Nuevo Producto</DialogTitle>
+                  </DialogHeader>
+                  <Form {...productForm}>
+                    <form onSubmit={productForm.handleSubmit((data) => createProductMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={productForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre del Producto</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Cemento Portland" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={productForm.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Categoría</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona una categoría" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={productForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descripción</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Describe el producto..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="outline" onClick={() => setShowAddProductModal(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={createProductMutation.isPending}>
+                          {createProductMutation.isPending ? "Creando..." : "Crear Producto"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardContent className="p-6">
+                {products.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay productos</h3>
+                    <p className="text-gray-600 mb-4">
+                      Agrega productos a tu catálogo para que los clientes puedan encontrarte.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products.map((product: any) => (
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <h3 className="font-medium mb-2">{product.name}</h3>
+                          <p className="text-sm text-gray-600 mb-2">{product.category}</p>
+                          <p className="text-xs text-gray-500">{product.description}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Quotes Tab */}
           <TabsContent value="quotes" className="space-y-6">
+            <h2 className="text-xl font-semibold">Solicitudes de Cotización</h2>
+            
             <Card>
-              <CardHeader>
-                <CardTitle>Solicitudes de Cotización</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {!quotes || quotes.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No tienes solicitudes de cotización</p>
-                  ) : (
-                    quotes.map((quote: any) => (
-                      <div key={quote.id} className="border border-gray-200 rounded-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-900">{quote.projectType}</h4>
-                            <p className="text-sm text-gray-600">
-                              {quote.clientName} - {quote.company}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(quote.createdAt).toLocaleDateString('es-DO')}
-                            </p>
-                          </div>
-                          <Badge className={getQuoteStatusColor(quote.status)}>
-                            {quote.status === 'pending' ? 'Pendiente' : 
-                             quote.status === 'responded' ? 'Respondida' : 'Cerrada'}
-                          </Badge>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <h5 className="font-medium text-gray-900 mb-2">Descripción del Proyecto:</h5>
-                          <p className="text-gray-700 text-sm">{quote.description}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                          <div>
-                            <span className="font-medium">Email:</span> {quote.clientEmail}
-                          </div>
-                          {quote.clientPhone && (
-                            <div>
-                              <span className="font-medium">Teléfono:</span> {quote.clientPhone}
-                            </div>
-                          )}
-                          {quote.budget && (
-                            <div>
-                              <span className="font-medium">Presupuesto:</span> {quote.budget}
-                            </div>
-                          )}
-                          {quote.estimatedStartDate && (
-                            <div>
-                              <span className="font-medium">Inicio estimado:</span>{" "}
-                              {new Date(quote.estimatedStartDate).toLocaleDateString('es-DO')}
-                            </div>
-                          )}
-                        </div>
-
-                        {quote.status === 'pending' && (
-                          <div className="flex space-x-2">
-                            <Button 
-                              size="sm"
-                              onClick={() => updateQuoteStatusMutation.mutate({ id: quote.id, status: 'responded' })}
-                              disabled={updateQuoteStatusMutation.isPending}
-                            >
-                              Marcar como Respondida
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateQuoteStatusMutation.mutate({ id: quote.id, status: 'closed' })}
-                              disabled={updateQuoteStatusMutation.isPending}
-                            >
-                              Cerrar
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Subscription Tab */}
-          <TabsContent value="subscription" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CreditCard className="w-5 h-5 mr-2" />
-                  Información de Suscripción
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {subscription ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Plan:</p>
-                        <p className="text-lg font-semibold">Plan Proveedor Verificado</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Estado:</p>
-                        <Badge className={subscription.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}>
-                          {subscription.status === 'active' ? 'Activa' : 'Inactiva'}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Período actual:</p>
-                        <p>{new Date(subscription.currentPeriodStart).toLocaleDateString('es-DO')} - {new Date(subscription.currentPeriodEnd).toLocaleDateString('es-DO')}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Próximo cobro:</p>
-                        <p>{new Date(subscription.currentPeriodEnd).toLocaleDateString('es-DO')}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Costo mensual:</h4>
-                      <p className="text-2xl font-bold text-gray-900">RD$1,000</p>
-                    </div>
+              <CardContent className="p-6">
+                {quotes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay cotizaciones</h3>
+                    <p className="text-gray-600">
+                      Las solicitudes de cotización de los clientes aparecerán aquí.
+                    </p>
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">No tienes una suscripción activa</p>
-                    <Button>Activar Suscripción</Button>
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Proyecto</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quotes.map((quote: any) => (
+                        <TableRow key={quote.id}>
+                          <TableCell className="font-medium">{quote.projectName}</TableCell>
+                          <TableCell>{quote.clientName}</TableCell>
+                          <TableCell>{new Date(quote.createdAt).toLocaleDateString('es-DO')}</TableCell>
+                          <TableCell>
+                            <Badge>{quote.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="outline" size="sm">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
               </CardContent>
             </Card>
@@ -608,81 +481,167 @@ export default function SupplierDashboard() {
 
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Información del Perfil</h2>
+              <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Editar Perfil
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Perfil</DialogTitle>
+                  </DialogHeader>
+                  <Form {...profileForm}>
+                    <form onSubmit={profileForm.handleSubmit((data) => updateProfileMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={profileForm.control}
+                        name="legalName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre Legal</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Teléfono</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="location"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ubicación</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descripción</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="website"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sitio Web</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="outline" onClick={() => setShowProfileModal(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={updateProfileMutation.isPending}>
+                          {updateProfileMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
             <Card>
-              <CardHeader>
-                <CardTitle>Información del Proveedor</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {supplier && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <Package className="w-5 h-5 text-gray-400 mr-3" />
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Nombre Legal
-                        </label>
-                        <p className="text-gray-900">{supplier.legalName}</p>
+                        <p className="text-sm text-gray-600">Nombre Legal</p>
+                        <p className="font-medium">{supplier?.legalName || "No especificado"}</p>
                       </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          RNC
-                        </label>
-                        <p className="text-gray-900">{supplier.rnc}</p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Teléfono
-                        </label>
-                        <p className="text-gray-900 flex items-center">
-                          <Phone className="w-4 h-4 mr-2" />
-                          {supplier.phone}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email
-                        </label>
-                        <p className="text-gray-900 flex items-center">
-                          <Mail className="w-4 h-4 mr-2" />
-                          {supplier.email}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Ubicación
-                        </label>
-                        <p className="text-gray-900 flex items-center">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          {supplier.location}
-                        </p>
-                      </div>
-                      
-                      {supplier.website && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Sitio Web
-                          </label>
-                          <p className="text-gray-900 flex items-center">
-                            <Globe className="w-4 h-4 mr-2" />
-                            <a href={supplier.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                              {supplier.website}
-                            </a>
-                          </p>
-                        </div>
-                      )}
                     </div>
                     
-                    {supplier.description && (
+                    <div className="flex items-center">
+                      <Phone className="w-5 h-5 text-gray-400 mr-3" />
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Descripción
-                        </label>
-                        <p className="text-gray-900">{supplier.description}</p>
+                        <p className="text-sm text-gray-600">Teléfono</p>
+                        <p className="font-medium">{supplier?.phone || "No especificado"}</p>
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex items-center">
+                      <MapPin className="w-5 h-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Ubicación</p>
+                        <p className="font-medium">{supplier?.location || "No especificado"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <Mail className="w-5 h-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Email</p>
+                        <p className="font-medium">{user?.email || "No especificado"}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center">
+                      <Globe className="w-5 h-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Sitio Web</p>
+                        <p className="font-medium">{supplier?.website || "No especificado"}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center">
+                      <Calendar className="w-5 h-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Miembro desde</p>
+                        <p className="font-medium">
+                          {supplier?.createdAt ? new Date(supplier.createdAt).toLocaleDateString('es-DO') : "No especificado"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {supplier?.description && (
+                  <div className="mt-6 pt-6 border-t">
+                    <p className="text-sm text-gray-600 mb-2">Descripción</p>
+                    <p className="text-gray-900">{supplier.description}</p>
                   </div>
                 )}
               </CardContent>
