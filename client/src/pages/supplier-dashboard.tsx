@@ -49,19 +49,22 @@ export default function SupplierDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showAddProductModal, setShowAddProductModal] = useState(false);
 
-  // Redirect if not authenticated or not a supplier
-  useEffect(() => {
-    if (!authLoading && (!user || user.role !== 'supplier')) {
-      toast({
-        title: "Acceso denegado",
-        description: "Debes ser un proveedor para acceder a esta página.",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 500);
-    }
-  }, [user, authLoading, toast]);
+  // Show access denied if user is definitely not a supplier (but allow loading states)
+  if (!authLoading && user && user.role !== 'supplier') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Acceso Denegado</h2>
+            <p className="text-gray-600">
+              Debes ser un proveedor para acceder a esta página.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Fetch dashboard data
   const { data: dashboardData, isLoading } = useQuery({

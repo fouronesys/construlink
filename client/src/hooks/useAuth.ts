@@ -19,16 +19,11 @@ export function useAuth() {
     error
   } = useQuery<User>({
     queryKey: ["/api/auth/user"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/auth/user", {});
-      if (!response.ok) {
-        throw new Error("Not authenticated");
-      }
-      return response.json();
-    },
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    staleTime: 0,
   });
+
+  console.log('useAuth hook state:', { user, isLoading, error: error?.message, isAuthenticated: !!user && !error });
 
   return {
     user,

@@ -208,7 +208,8 @@ export default function AdminPanel() {
     );
   };
 
-  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'superadmin')) {
+  // Show access denied only if user is definitely not an admin (but allow loading states)
+  if (user && user.role !== 'admin' && user.role !== 'superadmin') {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />

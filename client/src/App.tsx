@@ -19,24 +19,8 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Durante desarrollo, mostrar siempre la landing page hasta que la autenticación esté configurada
-  if (import.meta.env.DEV) {
-    return (
-      <Switch>
-        <Route path="/" component={Landing} />
-        <Route path="/directory" component={Directory} />
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/register-supplier" component={RegisterSupplier} />
-        <Route path="/supplier-dashboard" component={SupplierDashboard} />
-        <Route path="/admin-panel" component={AdminPanel} />
-        <Route path="/payment" component={Payment} />
-        <Route path="/dashboard" component={SupplierDashboard} />
-        <Route path="/terms" component={Terms} />
-        <Route component={NotFound} />
-      </Switch>
-    );
-  }
+  // Show loading state while checking authentication
+  console.log('Auth state:', { isAuthenticated, isLoading, user: user?.role });
 
   if (isLoading) {
     return (
