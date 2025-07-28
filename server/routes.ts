@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { eq, and, desc, ilike } from "drizzle-orm";
+import { eq, and, desc, ilike, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { 
   suppliers, 
@@ -177,50 +177,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier registration
   app.post('/api/suppliers/register', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const userId = req.session.userId!;
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!user.length) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       // Validate input
-      const supplierData = insertSupplierSchema.parse({
+      const supplierData = {
         ...req.body,
         userId,
-        email: user.email,
-      });
+        email: user[0].email,
+      };
 
       // Check if RNC already exists
-      const existingSupplier = await storage.getSupplierByRnc(supplierData.rnc);
-      if (existingSupplier) {
-        return res.status(400).json({ message: "RNC already registered" });
+      const existingSupplier = await db.select().from(suppliers).where(eq(suppliers.rnc, supplierData.rnc)).limit(1);
+      if (existingSupplier.length > 0) {
+        return res.status(400).json({ message: "RNC ya está registrado" });
       }
 
       // Create supplier
-      const supplier = await storage.createSupplier(supplierData);
+      const newSupplier = await db.insert(suppliers).values({
+        userId: supplierData.userId,
+        legalName: supplierData.legalName,
+        rnc: supplierData.rnc,
+        phone: supplierData.phone,
+        email: supplierData.email,
+        location: supplierData.location,
+        description: supplierData.description,
+        website: supplierData.website,
+        profileImageUrl: supplierData.profileImageUrl,
+      }).returning();
 
       // Add specialties
       if (req.body.specialties && Array.isArray(req.body.specialties)) {
         for (const specialty of req.body.specialties) {
-          await storage.addSupplierSpecialty({
-            supplierId: supplier.id,
+          await db.insert(supplierSpecialties).values({
+            supplierId: newSupplier[0].id,
             specialty,
           });
         }
       }
 
       // Update user role
-      await storage.upsertUser({
-        id: userId,
-        role: 'supplier',
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        profileImageUrl: user.profileImageUrl,
-      });
+      await db.update(users).set({ role: 'supplier' }).where(eq(users.id, userId));
 
-      res.json(supplier);
+      res.json(newSupplier[0]);
     } catch (error) {
       console.error("Error registering supplier:", error);
       res.status(500).json({ message: "Failed to register supplier" });
@@ -230,20 +233,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create subscription with Verifone
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!;
       const { plan = 'basic' } = req.body;
       
-      const user = await storage.getUser(userId);
-      const supplier = await storage.getSupplierByUserId(userId);
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const supplier = await db.select().from(suppliers).where(eq(suppliers.userId, userId)).limit(1);
 
-      if (!user || !supplier) {
-        return res.status(404).json({ message: "User or supplier not found" });
+      if (!user.length || !supplier.length) {
+        return res.status(404).json({ message: "Usuario o proveedor no encontrado" });
       }
 
       // Check if supplier already has an active subscription
-      const existingSubscription = await storage.getSubscriptionBySupplierId(supplier.id);
-      if (existingSubscription && (existingSubscription.status === 'active' || existingSubscription.status === 'trialing')) {
-        return res.status(400).json({ message: "Supplier already has an active subscription" });
+      const existingSubscription = await db.select().from(subscriptions)
+        .where(and(
+          eq(subscriptions.supplierId, supplier[0].id),
+          inArray(subscriptions.status, ['active', 'trialing'])
+        )).limit(1);
+      if (existingSubscription.length > 0) {
+        return res.status(400).json({ message: "El proveedor ya tiene una suscripción activa" });
       }
 
       // Plan pricing and trial days
@@ -263,8 +270,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentPeriodEnd = new Date();
       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1); // Monthly subscription
 
-      await storage.createSubscription({
-        supplierId: supplier.id,
+      await db.insert(subscriptions).values({
+        supplierId: supplier[0].id,
         verifoneSubscriptionId: verifoneSubscriptionId,
         currentPeriodStart: currentPeriodStart,
         currentPeriodEnd: currentPeriodEnd,

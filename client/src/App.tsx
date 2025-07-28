@@ -13,6 +13,7 @@ import RegisterSupplier from "@/pages/register-supplier";
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import AdminPanel from "@/pages/admin-panel";
 import Payment from "@/pages/payment";
+import Terms from "@/pages/terms";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/admin-panel" component={AdminPanel} />
         <Route path="/payment" component={Payment} />
         <Route path="/dashboard" component={SupplierDashboard} />
+        <Route path="/terms" component={Terms} />
         <Route component={NotFound} />
       </Switch>
     );
@@ -53,6 +55,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
           <Route path="/register-supplier" component={RegisterSupplier} />
+          <Route path="/terms" component={Terms} />
         </>
       ) : (
         <>

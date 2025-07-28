@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import Navigation from "@/components/navigation";
+import Footer from "@/components/footer";
 import { QuoteModal } from "@/components/quote-modal";
 import { ProviderProfileModal } from "@/components/provider-profile-modal";
 import { 
@@ -577,6 +578,8 @@ export default function Landing() {
           handleRequestQuote(providerId);
         }}
       />
+
+      <Footer />
     </div>
   );
 }
