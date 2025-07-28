@@ -123,6 +123,21 @@
     }
   }
 
+  /* Mobile dialog positioning */
+  @media (max-width: 640px) {
+    .dialog-mobile {
+      position: fixed !important;
+      left: 4px !important;
+      right: 4px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      margin: 0 !important;
+      width: calc(100vw - 8px) !important;
+      max-width: calc(100vw - 8px) !important;
+      max-height: 90vh !important;
+    }
+  }
+
   @keyframes fade-in-left {
     from {
       opacity: 0;

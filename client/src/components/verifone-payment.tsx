@@ -94,16 +94,17 @@ export default function VerifonePayment({
   };
 
   return (
-    <div className="w-full space-y-4 sm:space-y-6">
+    <div className="w-full space-y-3 sm:space-y-4 lg:space-y-6">
       {/* Payment Information */}
       <Card className="border-blue-200 bg-blue-50">
-        <CardHeader className="pb-3 px-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-            <CardTitle className="text-base sm:text-lg text-blue-800">Suscripción Mensual</CardTitle>
+        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-600 flex-shrink-0" />
+            <CardTitle className="text-sm sm:text-base lg:text-lg text-blue-800">Suscripción Mensual</CardTitle>
           </div>
-          <CardDescription className="text-blue-700 text-sm sm:text-base">
+          <CardDescription className="text-blue-700 text-xs sm:text-sm lg:text-base leading-relaxed">
             Se cobrará RD${(amount || 0).toLocaleString()} mensualmente a partir de hoy.
+            <br className="hidden sm:block" />
             Puedes cancelar en cualquier momento desde tu panel de control.
           </CardDescription>
         </CardHeader>
@@ -111,60 +112,60 @@ export default function VerifonePayment({
 
       {/* Payment Form */}
       <Card>
-        <CardHeader className="px-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-            <CardTitle className="text-base sm:text-lg">Información de Pago</CardTitle>
+        <CardHeader className="px-3 sm:px-4 lg:px-6 pb-2 sm:pb-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-600 flex-shrink-0" />
+            <CardTitle className="text-sm sm:text-base lg:text-lg">Información de Pago</CardTitle>
           </div>
-          <CardDescription className="text-sm sm:text-base">
+          <CardDescription className="text-xs sm:text-sm lg:text-base">
             Configurar método de pago para la suscripción mensual
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 px-4 sm:px-6">
-          <div className="space-y-2">
-            <Label htmlFor="cardName" className="text-sm font-medium">Nombre en la Tarjeta</Label>
+        <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-4 lg:px-6">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="cardName" className="text-xs sm:text-sm font-medium">Nombre en la Tarjeta</Label>
             <Input
               id="cardName"
               placeholder="Juan Pérez"
               value={paymentMethod.cardName}
               onChange={(e) => handleInputChange('cardName', e.target.value)}
-              className="text-sm sm:text-base"
+              className="text-xs sm:text-sm lg:text-base h-9 sm:h-10"
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="cardNumber" className="text-sm font-medium">Número de Tarjeta</Label>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="cardNumber" className="text-xs sm:text-sm font-medium">Número de Tarjeta</Label>
             <Input
               id="cardNumber"
               placeholder="1234 5678 9012 3456"
               value={paymentMethod.cardNumber}
               onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
               maxLength={19}
-              className="text-sm sm:text-base"
+              className="text-xs sm:text-sm lg:text-base h-9 sm:h-10"
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="expiryDate" className="text-sm font-medium">Fecha de Vencimiento</Label>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="expiryDate" className="text-xs sm:text-sm font-medium">Fecha de Vencimiento</Label>
               <Input
                 id="expiryDate"
                 placeholder="MM/AA"
                 value={paymentMethod.expiryDate}
                 onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
                 maxLength={5}
-                className="text-sm sm:text-base"
+                className="text-xs sm:text-sm lg:text-base h-9 sm:h-10"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cvv" className="text-sm font-medium">CVV</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="cvv" className="text-xs sm:text-sm font-medium">CVV</Label>
               <Input
                 id="cvv"
                 placeholder="123"
                 value={paymentMethod.cvv}
                 onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, ''))}
                 maxLength={4}
-                className="text-sm sm:text-base"
+                className="text-xs sm:text-sm lg:text-base h-9 sm:h-10"
               />
             </div>
           </div>
@@ -173,20 +174,20 @@ export default function VerifonePayment({
 
       {/* Security Information */}
       <Card className="border-gray-200 bg-gray-50">
-        <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+        <CardContent className="pt-3 sm:pt-4 lg:pt-6 px-3 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
             <Shield className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span>Tus datos están protegidos con encriptación SSL de 256 bits</span>
+            <span className="leading-tight">Tus datos están protegidos con encriptación SSL de 256 bits</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 pt-1 sm:pt-2">
         <Button
           onClick={() => onCancel?.()}
           variant="outline"
-          className="w-full sm:flex-1 text-sm sm:text-base"
+          className="w-full sm:flex-1 text-xs sm:text-sm lg:text-base h-9 sm:h-10"
           disabled={paymentMutation.isPending}
         >
           Cancelar
@@ -194,16 +195,16 @@ export default function VerifonePayment({
         <Button
           onClick={() => paymentMutation.mutate()}
           disabled={!isFormValid() || paymentMutation.isPending}
-          className="w-full sm:flex-1 text-sm sm:text-base"
+          className="w-full sm:flex-1 text-xs sm:text-sm lg:text-base h-9 sm:h-10"
         >
           {paymentMutation.isPending ? (
             <>
-              <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+              <Loader2 className="mr-1.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
               Procesando...
             </>
           ) : (
             <>
-              <CreditCard className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <CreditCard className="mr-1.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Activar Suscripción
             </>
           )}

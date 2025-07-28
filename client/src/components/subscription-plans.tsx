@@ -363,24 +363,29 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
       )}
 
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Procesar Pago - {subscriptionData?.plan}</DialogTitle>
-            <DialogDescription className="text-sm sm:text-base">
+        <DialogContent className="dialog-mobile sm:max-w-2xl w-full max-h-[95vh] overflow-y-auto p-3 sm:p-4 lg:p-6">
+          <DialogHeader className="space-y-2 pb-2 sm:pb-4">
+            <DialogTitle className="text-sm sm:text-base lg:text-lg font-semibold">
+              Procesar Pago - {subscriptionData?.plan}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm text-gray-600">
               Completa tu pago para activar tu suscripción.
-              Monto: RD${subscriptionData?.amount?.toLocaleString()}
+              <br />
+              <span className="font-medium text-gray-900">Monto: RD${subscriptionData?.amount?.toLocaleString()}</span>
             </DialogDescription>
           </DialogHeader>
           
-          {subscriptionData && (
-            <VerifonePayment
-              subscriptionId={subscriptionData.subscriptionId}
-              amount={subscriptionData.amount}
-              trialEndDate={subscriptionData.trialEndDate}
-              onSuccess={handlePaymentSuccess}
-              onCancel={handlePaymentCancel}
-            />
-          )}
+          <div className="mt-2 sm:mt-4">
+            {subscriptionData && (
+              <VerifonePayment
+                subscriptionId={subscriptionData.subscriptionId}
+                amount={subscriptionData.amount}
+                trialEndDate={subscriptionData.trialEndDate}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
