@@ -341,7 +341,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inArray(subscriptions.status, ['active', 'trialing'])
         )).limit(1);
       if (existingSubscription.length > 0) {
-        return res.status(400).json({ message: "El proveedor ya tiene una suscripción activa" });
+        // Update existing subscription plan instead of blocking
+        const planPricing: Record<string, number> = {
+          basic: 1000,
+          professional: 2500,
+          enterprise: 5000
+        };
+        const amount = planPricing[plan] || 1000;
+        
+        // Update existing subscription
+        await db.update(subscriptions).set({ 
+          plan: plan as 'basic' | 'professional' | 'enterprise',
+          monthlyAmount: amount.toString(),
+          status: 'inactive'
+        }).where(eq(subscriptions.id, existingSubscription[0].id));
+        
+        return res.json({
+          subscriptionId: existingSubscription[0].verifoneSubscriptionId,
+          paymentSession: {
+            subscriptionId: existingSubscription[0].verifoneSubscriptionId,
+            amount,
+            currency: 'DOP',
+            plan,
+            description: `Actualización a Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+          },
+          amount,
+          plan,
+          message: "Subscription updated successfully"
+        });
       }
 
       // Plan pricing and trial days

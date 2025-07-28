@@ -268,7 +268,24 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
               className={`relative cursor-pointer ${getPlanColorClasses(plan, isSelected, isHovered)}`}
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
-              onClick={() => handlePlanSelect(plan.id)}
+              onClick={() => {
+                console.log("Plan selected:", plan.id);
+                setSelected(plan.id);
+                onPlanSelect(plan.id);
+                
+                // Proceed directly to payment
+                if (!user) {
+                  toast({
+                    title: "Sesión requerida",
+                    description: "Debes iniciar sesión para continuar con la suscripción.",
+                    variant: "destructive",
+                  });
+                  setLocation("/login?redirect=subscription-selection");
+                  return;
+                }
+                
+                createSubscriptionMutation.mutate(plan.id);
+              }}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -336,12 +353,18 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
                 <Button
                   className={`w-full ${getPlanButtonClasses(plan, isSelected)}`}
                   variant={isSelected ? "default" : "outline"}
+                  disabled={createSubscriptionMutation.isPending && selected === plan.id}
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePlanSelect(plan.id);
                   }}
                 >
-                  {isSelected ? "Seleccionado" : "Seleccionar Plan"}
+                  {createSubscriptionMutation.isPending && selected === plan.id 
+                    ? "Procesando..." 
+                    : isSelected 
+                      ? "Procesando Pago..." 
+                      : "Seleccionar Plan"
+                  }
                 </Button>
               </CardContent>
             </Card>
@@ -349,18 +372,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
         })}
       </div>
 
-      {selected && (
-        <div className="text-center pt-6 border-t">
-          <Button
-            size="lg"
-            onClick={handleContinue}
-            disabled={createSubscriptionMutation.isPending}
-            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            {createSubscriptionMutation.isPending ? "Procesando..." : `Continuar con ${plans.find(p => p.id === selected)?.name}`}
-          </Button>
-        </div>
-      )}
+
 
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
         <DialogContent className="dialog-mobile sm:max-w-2xl w-full max-h-[95vh] overflow-y-auto p-3 sm:p-4 lg:p-6">
