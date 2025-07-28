@@ -470,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier dashboard endpoints
   app.get('/api/supplier/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -496,7 +496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier quotes
   app.get('/api/supplier/quotes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier products
   app.get('/api/supplier/products', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -546,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create product
   app.post('/api/supplier/products', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const supplier = await storage.getSupplierByUserId(userId);
       
       if (!supplier) {
@@ -569,7 +569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin endpoints
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = req.user; // User is already attached by isAuthenticated middleware
       
       if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
         return res.status(403).json({ message: "Insufficient permissions" });
@@ -586,7 +586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get pending approvals
   app.get('/api/admin/approvals', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = req.user; // User is already attached by isAuthenticated middleware
       
       if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
         return res.status(403).json({ message: "Insufficient permissions" });
