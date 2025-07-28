@@ -231,6 +231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const { plan = 'basic' } = req.body;
+      
       const user = await storage.getUser(userId);
       const supplier = await storage.getSupplierByUserId(userId);
 
@@ -240,16 +242,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if supplier already has an active subscription
       const existingSubscription = await storage.getSubscriptionBySupplierId(supplier.id);
-      if (existingSubscription && existingSubscription.status === 'active') {
+      if (existingSubscription && (existingSubscription.status === 'active' || existingSubscription.status === 'trialing')) {
         return res.status(400).json({ message: "Supplier already has an active subscription" });
       }
+
+      // Plan pricing and trial days
+      const planPricing: Record<string, number> = {
+        basic: 1000,
+        premium: 2500,
+        enterprise: 5000
+      };
+
+      const trialDays: Record<string, number> = {
+        basic: 7,
+        premium: 14,
+        enterprise: 30
+      };
+
+      const amount = planPricing[plan] || 1000;
+      const trialDaysCount = trialDays[plan] || 7;
 
       // Generate unique Verifone subscription ID
       const verifoneSubscriptionId = `vf_sub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
       // Create subscription record with trial period
       const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 7); // 7-day trial
+      trialEndDate.setDate(trialEndDate.getDate() + trialDaysCount);
       
       const currentPeriodEnd = new Date(trialEndDate);
       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1); // Monthly subscription
@@ -259,27 +277,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         verifoneSubscriptionId: verifoneSubscriptionId,
         currentPeriodStart: new Date(),
         currentPeriodEnd: currentPeriodEnd,
-        status: 'active',
-        plan: 'basic'
-      });
-
-      // Update user with Verifone subscription ID
-      await storage.upsertUser({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        profileImageUrl: user.profileImageUrl,
+        trialEndDate: trialEndDate,
+        status: 'trialing',
+        plan: plan as 'basic' | 'premium' | 'enterprise',
+        monthlyAmount: amount.toString()
       });
 
       // Generate payment session for Verifone
       const paymentSession = {
         subscriptionId: verifoneSubscriptionId,
-        amount: MONTHLY_SUBSCRIPTION_AMOUNT,
+        amount,
         currency: 'DOP',
-        description: 'Suscripción mensual - Plan Proveedor Verificado',
-        trialDays: 7,
+        plan,
+        description: `Suscripción mensual - Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+        trialDays: trialDaysCount,
         redirectUrl: `${req.protocol}://${req.get('host')}/supplier-dashboard?payment=success`,
         cancelUrl: `${req.protocol}://${req.get('host')}/register-supplier?payment=cancelled`
       };
@@ -288,11 +299,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionId: verifoneSubscriptionId,
         paymentSession: paymentSession,
         trialEndDate: trialEndDate,
-        message: "Subscription created with 7-day free trial"
+        amount,
+        plan,
+        message: `Subscription created with ${trialDaysCount}-day free trial`
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
       res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Process Verifone payment
+  app.post('/api/process-verifone-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const { subscriptionId, paymentMethod, amount } = req.body;
+      
+      // In a real implementation, you would call Verifone API here
+      // For now, we'll simulate a successful payment
+      
+      const success = Math.random() > 0.1; // 90% success rate for demo
+      
+      if (success) {
+        // Update subscription status
+        const subscription = await storage.getSubscriptionByVerifoneId(subscriptionId);
+        if (subscription) {
+          await storage.updateSubscriptionStatus(subscription.id, 'active');
+        }
+        
+        res.json({
+          success: true,
+          transactionId: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          message: 'Payment processed successfully'
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'Payment failed. Please check your payment details.'
+        });
+      }
+    } catch (error) {
+      console.error("Payment processing error:", error);
+      res.status(500).json({ message: "Failed to process payment" });
     }
   });
 

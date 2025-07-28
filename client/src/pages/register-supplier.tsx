@@ -15,8 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Navigation from "@/components/navigation";
-import { CreditCard, CheckCircle, Info } from "lucide-react";
-// Removed Stripe imports as we're now using Verifone
+import SubscriptionPlans from "@/components/subscription-plans";
+import VerifonePayment from "@/components/verifone-payment";
+import { CreditCard, CheckCircle, Info, ArrowLeft } from "lucide-react";
 
 const supplierSchema = z.object({
   legalName: z.string().min(1, "Nombre legal es requerido"),
@@ -44,6 +45,8 @@ function RegistrationForm() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+  const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [rncValidation, setRncValidation] = useState<{ valid: boolean; message: string } | null>(null);
 
   const form = useForm<SupplierFormData>({
@@ -112,14 +115,13 @@ function RegistrationForm() {
   });
 
   const createSubscriptionMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/create-subscription");
+    mutationFn: async (plan: string) => {
+      const response = await apiRequest("POST", "/api/create-subscription", { plan });
       return response.json();
     },
     onSuccess: (data) => {
-      setCurrentStep(3);
-      // Store client secret for payment
-      sessionStorage.setItem('clientSecret', data.clientSecret);
+      setSubscriptionData(data);
+      setCurrentStep(4);
     },
     onError: (error) => {
       toast({
@@ -194,23 +196,39 @@ function RegistrationForm() {
               <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                 1
               </div>
-              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Información Básica</span>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Información</span>
               <span className="ml-1 text-xs sm:hidden">Info</span>
             </div>
-            <div className="w-4 sm:w-8 h-px bg-gray-300"></div>
+            <div className="w-2 sm:w-4 h-px bg-gray-300"></div>
             <div className={`flex items-center ${currentStep >= 2 ? 'text-primary' : 'text-gray-400'}`}>
               <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                 2
               </div>
-              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Suscripción</span>
-              <span className="ml-1 text-xs sm:hidden">Plan</span>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Revisión</span>
+              <span className="ml-1 text-xs sm:hidden">Rev</span>
             </div>
-            <div className="w-4 sm:w-8 h-px bg-gray-300"></div>
+            <div className="w-2 sm:w-4 h-px bg-gray-300"></div>
             <div className={`flex items-center ${currentStep >= 3 ? 'text-primary' : 'text-gray-400'}`}>
               <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                 3
               </div>
-              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Confirmación</span>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Plan</span>
+              <span className="ml-1 text-xs sm:hidden">Plan</span>
+            </div>
+            <div className="w-2 sm:w-4 h-px bg-gray-300"></div>
+            <div className={`flex items-center ${currentStep >= 4 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 4 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+                4
+              </div>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Pago</span>
+              <span className="ml-1 text-xs sm:hidden">Pago</span>
+            </div>
+            <div className="w-2 sm:w-4 h-px bg-gray-300"></div>
+            <div className={`flex items-center ${currentStep >= 5 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${currentStep >= 5 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+                5
+              </div>
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm hidden sm:block">Fin</span>
               <span className="ml-1 text-xs sm:hidden">Fin</span>
             </div>
           </div>
@@ -362,7 +380,7 @@ function RegistrationForm() {
                     className="w-full"
                     disabled={registerMutation.isPending || !rncValidation?.valid}
                   >
-                    {registerMutation.isPending ? "Registrando..." : "Continuar al Pago"}
+                    {registerMutation.isPending ? "Registrando..." : "Continuar"}
                   </Button>
                 </form>
               </Form>
@@ -370,48 +388,125 @@ function RegistrationForm() {
           </Card>
         )}
 
-        {/* Step 2: Subscription */}
+        {/* Step 2: Review Information */}
         {currentStep === 2 && (
           <Card>
             <CardHeader>
-              <CardTitle>Suscripción Mensual</CardTitle>
+              <CardTitle>Revisar Información</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h3 className="font-semibold mb-4">Información de la Empresa</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <h5 className="font-medium text-gray-900">Plan Proveedor Verificado</h5>
-                    <p className="text-sm text-gray-600">Acceso completo a la plataforma</p>
+                    <p className="text-gray-600">Nombre Legal:</p>
+                    <p className="font-medium">{form.getValues("legalName")}</p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">RD$1,000</div>
-                    <div className="text-sm text-gray-600">por mes</div>
+                  <div>
+                    <p className="text-gray-600">RNC:</p>
+                    <p className="font-medium">{form.getValues("rnc")}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Teléfono:</p>
+                    <p className="font-medium">{form.getValues("phone")}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Ubicación:</p>
+                    <p className="font-medium">{form.getValues("location")}</p>
+                  </div>
+                  {form.getValues("website") && (
+                    <div>
+                      <p className="text-gray-600">Sitio Web:</p>
+                      <p className="font-medium">{form.getValues("website")}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-gray-600">Especialidades:</p>
+                    <p className="font-medium">{form.getValues("specialties").join(", ")}</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex">
-                  <Info className="text-blue-400 mt-0.5 mr-3" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium">Período de prueba de 7 días gratis</p>
-                    <p>No se cobrará hasta después del período de prueba. Puedes cancelar en cualquier momento.</p>
+                {form.getValues("description") && (
+                  <div className="mt-4">
+                    <p className="text-gray-600">Descripción:</p>
+                    <p className="font-medium text-sm">{form.getValues("description")}</p>
                   </div>
-                </div>
+                )}
               </div>
 
-              <Button 
-                onClick={() => setCurrentStep(3)}
-                className="w-full"
-              >
-                Continuar
-              </Button>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                  <span className="text-green-800 font-medium">RNC Validado</span>
+                </div>
+                <p className="text-green-700 text-sm mt-1">
+                  Tu RNC ha sido verificado exitosamente con la DGII
+                </p>
+              </div>
+
+              <div className="flex gap-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => setCurrentStep(1)}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+                <Button 
+                  onClick={() => setCurrentStep(3)}
+                  className="flex-1"
+                >
+                  Continuar
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 3: Select Subscription Plan */}
         {currentStep === 3 && (
+          <Card>
+            <CardContent className="p-8">
+              <SubscriptionPlans
+                selectedPlan={selectedPlan}
+                onPlanSelect={setSelectedPlan}
+                onContinue={() => createSubscriptionMutation.mutate(selectedPlan)}
+              />
+              
+              <div className="flex justify-center mt-8">
+                <Button 
+                  variant="outline"
+                  onClick={() => setCurrentStep(2)}
+                  className="mr-4"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Volver
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 4: Payment */}
+        {currentStep === 4 && subscriptionData && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurar Pago</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VerifonePayment
+                subscriptionId={subscriptionData.subscriptionId}
+                amount={subscriptionData.amount || 1000}
+                trialEndDate={subscriptionData.trialEndDate ? new Date(subscriptionData.trialEndDate) : undefined}
+                onSuccess={() => setCurrentStep(5)}
+                onCancel={() => setCurrentStep(3)}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 5: Confirmation */}
+        {currentStep === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-center">

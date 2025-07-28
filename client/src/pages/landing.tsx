@@ -262,6 +262,7 @@ export default function Landing() {
         isOpen={showQuoteModal}
         onClose={() => setShowQuoteModal(false)}
         providerId={selectedProviderId}
+        providerName={sampleProviders.find(p => p.id === selectedProviderId)?.legalName || "Proveedor"}
       />
 
       {/* Provider Profile Modal */}

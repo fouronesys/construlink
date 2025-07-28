@@ -143,14 +143,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Supplier operations
-  async createSupplier(supplier: InsertSupplier): Promise<Supplier> {
-    const supplierData = {
-      ...supplier,
-      userId: supplier.userId || '',
-      email: supplier.email || '',
-    };
-    const [newSupplier] = await db.insert(suppliers).values(supplierData).returning();
+  async createSupplier(supplier: InsertSupplier & { userId: string }): Promise<Supplier> {
+    const [newSupplier] = await db.insert(suppliers).values(supplier).returning();
     return newSupplier;
+  }
+
+  async getSupplierByUserId(userId: string): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.userId, userId));
+    return supplier;
   }
 
   async getSupplier(id: string): Promise<Supplier | undefined> {

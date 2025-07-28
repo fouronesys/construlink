@@ -88,11 +88,13 @@ export const supplierDocuments = pgTable("supplier_documents", {
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
-  plan: varchar("plan", { enum: ["basic", "premium"] }).default("basic"),
-  status: varchar("status", { enum: ["active", "inactive", "cancelled"] }).default("inactive"),
+  plan: varchar("plan", { enum: ["basic", "premium", "enterprise"] }).default("basic"),
+  status: varchar("status", { enum: ["active", "inactive", "cancelled", "trialing"] }).default("inactive"),
   verifoneSubscriptionId: varchar("verifone_subscription_id"),
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
+  trialEndDate: timestamp("trial_end_date"),
+  monthlyAmount: decimal("monthly_amount", { precision: 10, scale: 2 }).default("1000.00"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -343,7 +345,7 @@ export type Verification = typeof verifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type UpsertUser = InsertUser & { id?: string };
+export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;

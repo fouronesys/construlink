@@ -30,6 +30,7 @@ function Router() {
         <Route path="/supplier-dashboard" component={SupplierDashboard} />
         <Route path="/admin-panel" component={AdminPanel} />
         <Route path="/payment" component={Payment} />
+        <Route path="/dashboard" component={SupplierDashboard} />
         <Route component={NotFound} />
       </Switch>
     );
