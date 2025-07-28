@@ -764,13 +764,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create subscription record
       const subscription = await storage.createSubscription({
         supplierId: supplier.id,
-        planId,
-        planName,
-        monthlyAmount,
-        status: 'pending',
-        currentPeriodStart: new Date().toISOString(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-        trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days trial
+        plan: planId,
+        monthlyAmount: monthlyAmount.toString(),
+        status: 'trialing',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
       });
 
       res.json({ subscriptionId: subscription.id });
@@ -794,6 +793,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching subscription:", error);
       res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // Get supplier plan limits
+  app.get('/api/suppliers/plan-limits/:supplierId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { supplierId } = req.params;
+      const limits = await storage.getSupplierPlanLimits(supplierId);
+      res.json(limits);
+    } catch (error) {
+      console.error("Error fetching plan limits:", error);
+      res.status(500).json({ message: "Failed to fetch plan limits" });
+    }
+  });
+
+  // Update plan usage (for tracking limits)
+  app.post('/api/plan-usage/update', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const { supplierId, type, increment = 1 } = req.body;
+      const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+      // Get or create plan usage for current month
+      let usage = await storage.getPlanUsage(supplierId, month);
+      if (!usage) {
+        usage = await storage.createPlanUsage({
+          supplierId,
+          month,
+          productsCount: "0",
+          quotesReceived: "0",
+          specialtiesCount: "0",
+          projectPhotos: "0"
+        });
+      }
+
+      // Update the specific counter
+      const updates: Partial<typeof usage> = {};
+      switch (type) {
+        case 'products':
+          updates.productsCount = (parseInt(usage.productsCount || "0") + increment).toString();
+          break;
+        case 'quotes':
+          updates.quotesReceived = (parseInt(usage.quotesReceived || "0") + increment).toString();
+          break;
+        case 'specialties':
+          updates.specialtiesCount = (parseInt(usage.specialtiesCount || "0") + increment).toString();
+          break;
+        case 'photos':
+          updates.projectPhotos = (parseInt(usage.projectPhotos || "0") + increment).toString();
+          break;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        usage = await storage.updatePlanUsage(supplierId, month, updates);
+      }
+
+      res.json(usage);
+    } catch (error) {
+      console.error("Error updating plan usage:", error);
+      res.status(500).json({ message: "Failed to update plan usage" });
+    }
+  });
+
+  // Check plan limits before actions
+  app.post('/api/plan-limits/check', isAuthenticated, async (req: any, res) => {
+    try {
+      const { supplierId, type } = req.body;
+      const month = new Date().toISOString().slice(0, 7);
+
+      const limits = await storage.getSupplierPlanLimits(supplierId);
+      const usage = await storage.getPlanUsage(supplierId, month);
+
+      let canPerformAction = true;
+      let message = "";
+
+      if (usage) {
+        switch (type) {
+          case 'product':
+            if (limits.maxProducts !== -1 && parseInt(usage.productsCount || "0") >= limits.maxProducts) {
+              canPerformAction = false;
+              message = `Has alcanzado el límite de ${limits.maxProducts} productos para tu plan ${limits.plan}`;
+            }
+            break;
+          case 'quote':
+            if (limits.maxQuotes !== -1 && parseInt(usage.quotesReceived || "0") >= limits.maxQuotes) {
+              canPerformAction = false;
+              message = `Has alcanzado el límite de ${limits.maxQuotes} cotizaciones por mes para tu plan ${limits.plan}`;
+            }
+            break;
+          case 'specialty':
+            if (limits.maxSpecialties !== -1 && parseInt(usage.specialtiesCount || "0") >= limits.maxSpecialties) {
+              canPerformAction = false;
+              message = `Has alcanzado el límite de ${limits.maxSpecialties} especialidades para tu plan ${limits.plan}`;
+            }
+            break;
+          case 'photo':
+            if (limits.maxProjectPhotos !== -1 && parseInt(usage.projectPhotos || "0") >= limits.maxProjectPhotos) {
+              canPerformAction = false;
+              message = `Has alcanzado el límite de ${limits.maxProjectPhotos} fotos de proyectos para tu plan ${limits.plan}`;
+            }
+            break;
+        }
+      }
+
+      res.json({ 
+        canPerformAction, 
+        message, 
+        limits, 
+        currentUsage: usage 
+      });
+    } catch (error) {
+      console.error("Error checking plan limits:", error);
+      res.status(500).json({ message: "Failed to check plan limits" });
+    }
+  });
+
+  // Get plan usage for specific month
+  app.get('/api/plan-usage/:supplierId/:month', isAuthenticated, async (req: any, res) => {
+    try {
+      const { supplierId, month } = req.params;
+      const usage = await storage.getPlanUsage(supplierId, month);
+      
+      if (!usage) {
+        return res.status(404).json({ message: "Usage data not found" });
+      }
+      
+      res.json(usage);
+    } catch (error) {
+      console.error("Error fetching plan usage:", error);
+      res.status(500).json({ message: "Failed to fetch plan usage" });
     }
   });
 

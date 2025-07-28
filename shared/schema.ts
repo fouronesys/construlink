@@ -88,7 +88,7 @@ export const supplierDocuments = pgTable("supplier_documents", {
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
-  plan: varchar("plan", { enum: ["basic", "premium", "enterprise"] }).default("basic"),
+  plan: varchar("plan", { enum: ["basic", "professional", "enterprise"] }).default("basic"),
   status: varchar("status", { enum: ["active", "inactive", "cancelled", "trialing"] }).default("inactive"),
   verifoneSubscriptionId: varchar("verifone_subscription_id"),
   currentPeriodStart: timestamp("current_period_start"),
@@ -119,6 +119,20 @@ export const products = pgTable("products", {
   category: varchar("category", { length: 100 }),
   imageUrl: varchar("image_url", { length: 500 }),
   isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Plan usage tracking 
+export const planUsage = pgTable("plan_usage", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  month: varchar("month", { length: 7 }).notNull(), // YYYY-MM format
+  productsCount: decimal("products_count", { precision: 10, scale: 0 }).default("0"),
+  quotesReceived: decimal("quotes_received", { precision: 10, scale: 0 }).default("0"),
+  specialtiesCount: decimal("specialties_count", { precision: 10, scale: 0 }).default("0"),
+  projectPhotos: decimal("project_photos", { precision: 10, scale: 0 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -189,6 +203,7 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   quoteRequests: many(quoteRequests),
   verifications: many(verifications),
   reviews: many(reviews),
+  planUsage: many(planUsage),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
@@ -241,6 +256,13 @@ export const verificationsRelations = relations(verifications, ({ one }) => ({
 export const reviewsRelations = relations(reviews, ({ one }) => ({
   supplier: one(suppliers, {
     fields: [reviews.supplierId],
+    references: [suppliers.id],
+  }),
+}));
+
+export const planUsageRelations = relations(planUsage, ({ one }) => ({
+  supplier: one(suppliers, {
+    fields: [planUsage.supplierId],
     references: [suppliers.id],
   }),
 }));
@@ -313,6 +335,12 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   createdAt: true,
 });
 
+export const insertPlanUsageSchema = createInsertSchema(planUsage).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -343,6 +371,7 @@ export type Service = typeof services.$inferSelect;
 export type QuoteRequest = typeof quoteRequests.$inferSelect;
 export type Verification = typeof verifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type PlanUsage = typeof planUsage.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
@@ -356,6 +385,7 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type InsertVerification = z.infer<typeof insertVerificationSchema>;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type InsertPlanUsage = z.infer<typeof insertPlanUsageSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 

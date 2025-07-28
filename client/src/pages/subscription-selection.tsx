@@ -42,6 +42,7 @@ const subscriptionPlans = [
       "Todo lo del Plan Básico",
       "Productos ilimitados en catálogo",
       "Cotizaciones ilimitadas",
+      "Hasta 5 especialidades",
       "Perfil destacado en búsquedas",
       "Analytics básicos de perfil",
       "Galería de proyectos (hasta 20 fotos)",
@@ -49,7 +50,9 @@ const subscriptionPlans = [
       "Soporte prioritario"
     ],
     limitations: [
+      "Sin especialidades ilimitadas",
       "Sin análisis avanzados de competencia",
+      "Sin API access",
       "Sin leads exclusivos"
     ],
     popular: true,
@@ -64,15 +67,18 @@ const subscriptionPlans = [
     description: "Para empresas grandes y corporaciones",
     features: [
       "Todo lo del Plan Profesional",
+      "Especialidades ilimitadas",
       "Galería ilimitada de proyectos",
       "Analytics avanzados y reportes",
       "Leads exclusivos prioritarios",
-      "API personalizada",
+      "API access completo",
       "Gerente de cuenta dedicado",
       "Soporte 24/7",
       "Badge de 'Proveedor Premium'",
       "Integración con CRM",
-      "Capacitación personalizada"
+      "Capacitación personalizada",
+      "Múltiples ubicaciones",
+      "SLA garantizado"
     ],
     limitations: [],
     popular: false,

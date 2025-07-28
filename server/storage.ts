@@ -10,6 +10,7 @@ import {
   verifications,
   reviews,
   supplierDocuments,
+  planUsage,
   type User,
   type UpsertUser,
   type Supplier,
@@ -32,6 +33,8 @@ import {
   type InsertReview,
   type SupplierDocument,
   type InsertSupplierDocument,
+  type PlanUsage,
+  type InsertPlanUsage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -98,6 +101,21 @@ export interface IStorage {
   // Review operations
   createReview(review: InsertReview): Promise<Review>;
   getReviewsBySupplierId(supplierId: string): Promise<Review[]>;
+  
+  // Plan usage operations
+  createPlanUsage(usage: InsertPlanUsage): Promise<PlanUsage>;
+  getPlanUsage(supplierId: string, month: string): Promise<PlanUsage | undefined>;
+  updatePlanUsage(supplierId: string, month: string, updates: Partial<PlanUsage>): Promise<PlanUsage>;
+  getSupplierPlanLimits(supplierId: string): Promise<{
+    plan: string;
+    maxProducts: number;
+    maxQuotes: number;
+    maxSpecialties: number;
+    maxProjectPhotos: number;
+    hasPriority: boolean;
+    hasAnalytics: boolean;
+    hasApiAccess: boolean;
+  }>;
   
   // Analytics
   getSupplierStats(supplierId: string): Promise<{
@@ -399,12 +417,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(reviews.createdAt));
   }
 
-  // Subscription operations
-  async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
-    const [newSubscription] = await db.insert(subscriptions).values(subscription).returning();
-    return newSubscription;
-  }
-
+  // Additional subscription operations
   async getSubscription(id: string): Promise<Subscription | null> {
     const [subscription] = await db
       .select()
@@ -414,16 +427,7 @@ export class DatabaseStorage implements IStorage {
     return subscription || null;
   }
 
-  async getSubscriptionBySupplierId(supplierId: string): Promise<Subscription | null> {
-    const [subscription] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.supplierId, supplierId))
-      .limit(1);
-    return subscription || null;
-  }
-
-  async updateSubscriptionStatus(id: string, status: "pending" | "active" | "cancelled" | "suspended"): Promise<Subscription> {
+  async updateSubscriptionStatus(id: string, status: "active" | "inactive" | "cancelled" | "trialing"): Promise<Subscription> {
     const [updatedSubscription] = await db
       .update(subscriptions)
       .set({ status, updatedAt: new Date() })
@@ -465,6 +469,85 @@ export class DatabaseStorage implements IStorage {
       averageRating: reviewsResult?.avgRating || 0,
       totalReviews: reviewsResult?.count || 0,
     };
+  }
+
+  // Plan usage operations
+  async createPlanUsage(usage: InsertPlanUsage): Promise<PlanUsage> {
+    const [newUsage] = await db.insert(planUsage).values(usage).returning();
+    return newUsage;
+  }
+
+  async getPlanUsage(supplierId: string, month: string): Promise<PlanUsage | undefined> {
+    const [usage] = await db
+      .select()
+      .from(planUsage)
+      .where(and(eq(planUsage.supplierId, supplierId), eq(planUsage.month, month)))
+      .limit(1);
+    return usage;
+  }
+
+  async updatePlanUsage(supplierId: string, month: string, updates: Partial<PlanUsage>): Promise<PlanUsage> {
+    const [updatedUsage] = await db
+      .update(planUsage)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(planUsage.supplierId, supplierId), eq(planUsage.month, month)))
+      .returning();
+    return updatedUsage;
+  }
+
+  async getSupplierPlanLimits(supplierId: string): Promise<{
+    plan: string;
+    maxProducts: number;
+    maxQuotes: number;
+    maxSpecialties: number;
+    maxProjectPhotos: number;
+    hasPriority: boolean;
+    hasAnalytics: boolean;
+    hasApiAccess: boolean;
+  }> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.supplierId, supplierId))
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(1);
+
+    const plan = subscription?.plan || 'basic';
+    
+    const planLimits = {
+      basic: {
+        plan: 'basic',
+        maxProducts: 10,
+        maxQuotes: 5,
+        maxSpecialties: 1,
+        maxProjectPhotos: 0,
+        hasPriority: false,
+        hasAnalytics: false,
+        hasApiAccess: false,
+      },
+      professional: {
+        plan: 'professional',
+        maxProducts: -1, // unlimited
+        maxQuotes: -1, // unlimited
+        maxSpecialties: 5,
+        maxProjectPhotos: 20,
+        hasPriority: true,
+        hasAnalytics: true,
+        hasApiAccess: false,
+      },
+      enterprise: {
+        plan: 'enterprise',
+        maxProducts: -1, // unlimited
+        maxQuotes: -1, // unlimited
+        maxSpecialties: -1, // unlimited
+        maxProjectPhotos: -1, // unlimited
+        hasPriority: true,
+        hasAnalytics: true,
+        hasApiAccess: true,
+      }
+    };
+
+    return planLimits[plan as keyof typeof planLimits] || planLimits.basic;
   }
 
   async getAdminStats(): Promise<{
