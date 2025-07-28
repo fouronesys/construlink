@@ -8,7 +8,12 @@ export interface User {
   lastName: string;
   role: string;
   profileImageUrl?: string;
-  supplier?: any;
+  supplier?: {
+    id?: string;
+    hasActiveSubscription?: boolean;
+    needsSetup?: boolean;
+    [key: string]: any;
+  };
 }
 
 export function useAuth() {

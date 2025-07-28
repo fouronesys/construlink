@@ -116,7 +116,7 @@ export default function SupplierDashboard() {
     );
   }
 
-  const { data: dashboardData, isLoading } = useQuery({
+  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/supplier/dashboard"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
@@ -129,13 +129,13 @@ export default function SupplierDashboard() {
     retry: false,
   });
 
-  const { data: products = [] } = useQuery({
+  const { data: products = [] } = useQuery<any[]>({
     queryKey: ["/api/supplier/products"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
   });
 
-  const { data: quotes = [] } = useQuery({
+  const { data: quotes = [] } = useQuery<any[]>({
     queryKey: ["/api/supplier/quotes"],
     enabled: !!user && user.role === 'supplier',
     retry: false,
@@ -236,8 +236,11 @@ export default function SupplierDashboard() {
     return null;
   }
 
+  // Check if supplier needs to select a subscription plan
+  const needsSubscription = user?.supplier && !user.supplier.hasActiveSubscription;
+  
   // If supplier doesn't have active subscription, show plan selection
-  if (subscriptionStatus && !subscriptionStatus.hasActiveSubscription) {
+  if (needsSubscription || (subscriptionStatus && !subscriptionStatus.hasActiveSubscription)) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />

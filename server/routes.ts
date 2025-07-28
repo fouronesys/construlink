@@ -153,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, user[0].id)).limit(1);
         supplier = supplierData.length > 0 ? supplierData[0] : null;
         
-        // Check if supplier has an active subscription
+        // Check if supplier has an active subscription - but allow login anyway
         if (supplier) {
           const activeSubscription = await db.select().from(subscriptions)
             .where(and(
@@ -161,13 +161,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               eq(subscriptions.status, 'active')
             )).limit(1);
           
-          if (activeSubscription.length === 0) {
-            return res.status(403).json({ 
-              message: "Tu suscripción no está activa. Por favor, actualiza tu plan para acceder.",
-              requiresSubscription: true,
-              supplier
-            });
-          }
+          (supplier as any).hasActiveSubscription = activeSubscription.length > 0;
+        } else if (user[0].role === 'supplier') {
+          // Supplier role but no supplier profile - needs setup
+          supplier = { hasActiveSubscription: false, needsSetup: true };
         }
       }
 
