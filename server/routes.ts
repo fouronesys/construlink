@@ -400,12 +400,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { subscriptionId, paymentMethod, amount } = req.body;
       
-      // In a real implementation, you would call Verifone API here
-      // For now, we'll simulate a successful payment
+      // Basic card validation
+      const cardNumber = paymentMethod.cardNumber.replace(/\s/g, '');
+      const isValidCard = validateCreditCard(cardNumber, paymentMethod.expiryDate, paymentMethod.cvv);
       
-      const success = Math.random() > 0.1; // 90% success rate for demo
+      if (!isValidCard.valid) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_CARD',
+          message: isValidCard.message
+        });
+      }
       
-      if (success) {
+      // Simulate Verifone API call with more realistic validation
+      const paymentResult = await simulateVerifonePayment(paymentMethod, amount);
+      
+      if (paymentResult.success) {
         // Update subscription status
         const subscription = await storage.getSubscriptionByVerifoneId(subscriptionId);
         if (subscription) {
@@ -414,20 +424,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         res.json({
           success: true,
-          transactionId: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          transactionId: paymentResult.transactionId,
           message: 'Payment processed successfully'
         });
       } else {
         res.status(400).json({
           success: false,
-          message: 'Payment failed. Please check your payment details.'
+          error: (paymentResult as any).error,
+          message: (paymentResult as any).message
         });
       }
     } catch (error) {
       console.error("Payment processing error:", error);
-      res.status(500).json({ message: "Failed to process payment" });
+      res.status(500).json({ 
+        success: false,
+        error: 'SYSTEM_ERROR',
+        message: "Error interno del sistema. Inténtalo de nuevo." 
+      });
     }
   });
+
+  // Card validation function
+  function validateCreditCard(cardNumber: string, expiryDate: string, cvv: string) {
+    // Basic Luhn algorithm check
+    const luhnCheck = (num: string) => {
+      let sum = 0;
+      let isEven = false;
+      for (let i = num.length - 1; i >= 0; i--) {
+        let digit = parseInt(num[i]);
+        if (isEven) {
+          digit *= 2;
+          if (digit > 9) digit -= 9;
+        }
+        sum += digit;
+        isEven = !isEven;
+      }
+      return sum % 10 === 0;
+    };
+
+    // Check card number length and format
+    if (cardNumber.length < 13 || cardNumber.length > 19) {
+      return { valid: false, message: 'Número de tarjeta inválido' };
+    }
+
+    if (!/^\d+$/.test(cardNumber)) {
+      return { valid: false, message: 'El número de tarjeta debe contener solo números' };
+    }
+
+    if (!luhnCheck(cardNumber)) {
+      return { valid: false, message: 'Número de tarjeta inválido' };
+    }
+
+    // Check expiry date
+    const [month, year] = expiryDate.split('/');
+    const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
+    const now = new Date();
+    
+    if (expiry <= now) {
+      return { valid: false, message: 'La tarjeta ha expirado' };
+    }
+
+    // Check CVV
+    if (cvv.length < 3 || cvv.length > 4) {
+      return { valid: false, message: 'CVV inválido' };
+    }
+
+    return { valid: true, message: 'Valid card' };
+  }
+
+  // Simulate Verifone payment processing
+  async function simulateVerifonePayment(paymentMethod: any, amount: number): Promise<{ success: true; transactionId: string } | { success: false; error: string; message: string }> {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    
+    const cardNumber = paymentMethod.cardNumber.replace(/\s/g, '');
+    
+    // Test cards that should pass (Visa/MC test numbers)
+    const testSuccessCards = ['4111111111111111', '5555555555554444', '4242424242424242'];
+    
+    // Test cards that should fail for different reasons
+    const testFailures: { [key: string]: { error: string, message: string } } = {
+      '4000000000000002': { error: 'DECLINED', message: 'Tarjeta declinada por el banco' },
+      '4000000000000119': { error: 'INSUFFICIENT_FUNDS', message: 'Fondos insuficientes' },
+      '4000000000000127': { error: 'EXPIRED_CARD', message: 'Tarjeta expirada' },
+      '4000000000000069': { error: 'INVALID_CVC', message: 'Código CVV incorrecto' },
+    };
+
+    // Check for specific test failure cards
+    if (testFailures[cardNumber]) {
+      return {
+        success: false,
+        ...testFailures[cardNumber]
+      };
+    }
+
+    // Check for known success test cards
+    if (testSuccessCards.includes(cardNumber)) {
+      return {
+        success: true,
+        transactionId: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+      };
+    }
+
+    // Random failure for unknown cards (simulate real-world scenarios)
+    if (Math.random() < 0.3) { // 30% failure rate for random cards
+      const failures = [
+        { error: 'DECLINED', message: 'Tarjeta declinada por el banco' },
+        { error: 'INSUFFICIENT_FUNDS', message: 'Fondos insuficientes' },
+        { error: 'NETWORK_ERROR', message: 'Error de red. Inténtalo de nuevo.' },
+      ];
+      return {
+        success: false,
+        ...failures[Math.floor(Math.random() * failures.length)]
+      };
+    }
+
+    // Success case
+    return {
+      success: true,
+      transactionId: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+    };
+  }
 
   // Verifone payment webhook
   app.post('/api/webhooks/verifone', async (req, res) => {
