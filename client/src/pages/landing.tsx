@@ -229,21 +229,21 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <Navigation />
       
-      {/* Featured Suppliers Banner Carousel */}
+      {/* Horizontal Banner Carousel */}
       {isFeaturedLoading ? (
-        <section className="container mx-auto px-6 py-8">
-          <Skeleton className="w-full h-[400px] rounded-2xl" data-testid="skeleton-featured-carousel" />
-        </section>
+        <div className="w-full bg-gray-100">
+          <Skeleton className="w-full h-24 sm:h-32 md:h-40" data-testid="skeleton-featured-carousel" />
+        </div>
       ) : featuredSuppliers && featuredSuppliers.length > 0 ? (
-        <section className="container mx-auto px-6 py-8">
+        <div className="w-full bg-white border-b border-gray-200">
           <Carousel
             opts={{
-              align: "start",
+              align: "center",
               loop: true,
             }}
             plugins={[
               Autoplay({
-                delay: 5000,
+                delay: 4000,
               }),
             ]}
             className="w-full"
@@ -252,27 +252,31 @@ export default function Landing() {
             <CarouselContent>
               {featuredSuppliers.map((supplier) => (
                 <CarouselItem key={supplier.id} data-testid={`carousel-item-${supplier.id}`}>
-                  <div className="relative w-full h-[400px] rounded-2xl overflow-hidden group cursor-pointer transition-transform duration-300 hover:scale-[1.02]">
+                  <div 
+                    className="relative w-full h-24 sm:h-32 md:h-40 cursor-pointer overflow-hidden group"
+                    onClick={() => setLocation(`/directory?id=${supplier.id}`)}
+                    data-testid={`banner-click-${supplier.id}`}
+                  >
                     {supplier.bannerImageUrl ? (
                       <img
                         src={supplier.bannerImageUrl}
                         alt={supplier.legalName}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         data-testid={`img-banner-${supplier.id}`}
                       />
                     ) : (
                       <div 
-                        className="w-full h-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700"
+                        className="w-full h-full bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 transition-all duration-500 group-hover:from-blue-700 group-hover:via-blue-800 group-hover:to-purple-800"
                         data-testid={`bg-gradient-${supplier.id}`}
                       />
                     )}
                     
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
                     
-                    <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-                      <div className="max-w-4xl">
+                    <div className="absolute inset-0 flex items-center px-4 sm:px-8 md:px-16">
+                      <div className="max-w-2xl">
                         <h2 
-                          className="text-3xl md:text-4xl font-bold mb-3"
+                          className="text-sm sm:text-xl md:text-3xl font-bold text-white mb-1 sm:mb-2"
                           data-testid={`text-supplier-name-${supplier.id}`}
                         >
                           {supplier.legalName}
@@ -280,30 +284,21 @@ export default function Landing() {
                         
                         {supplier.location && (
                           <div 
-                            className="flex items-center gap-2 mb-3 text-blue-100"
+                            className="hidden sm:flex items-center gap-1 md:gap-2 text-blue-100 mb-1"
                             data-testid={`text-location-${supplier.id}`}
                           >
-                            <MapPin className="w-5 h-5" />
-                            <span className="text-lg">{supplier.location}</span>
+                            <MapPin className="w-3 h-3 md:w-4 md:h-4" />
+                            <span className="text-xs md:text-sm">{supplier.location}</span>
                           </div>
                         )}
                         
-                        {supplier.description && (
-                          <p 
-                            className="text-gray-200 mb-4 line-clamp-2 max-w-2xl"
-                            data-testid={`text-description-${supplier.id}`}
-                          >
-                            {supplier.description}
-                          </p>
-                        )}
-                        
                         {supplier.specialties && supplier.specialties.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            {supplier.specialties.slice(0, 4).map((specialty, idx) => (
+                          <div className="flex flex-wrap gap-1 md:gap-2">
+                            {supplier.specialties.slice(0, 3).map((specialty, idx) => (
                               <Badge 
                                 key={idx} 
                                 variant="secondary" 
-                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                                className="bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs md:text-sm px-2 py-0.5"
                                 data-testid={`badge-specialty-${supplier.id}-${idx}`}
                               >
                                 {specialty}
@@ -311,16 +306,6 @@ export default function Landing() {
                             ))}
                           </div>
                         )}
-                        
-                        <Button
-                          size="lg"
-                          className="bg-white text-blue-600 hover:bg-blue-50 font-semibold transition-all duration-300 hover:shadow-lg"
-                          onClick={() => setLocation(`/directory?id=${supplier.id}`)}
-                          data-testid={`button-ver-perfil-${supplier.id}`}
-                        >
-                          Ver Perfil
-                          <ArrowRight className="ml-2 w-5 h-5" />
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -328,15 +313,15 @@ export default function Landing() {
               ))}
             </CarouselContent>
             <CarouselPrevious 
-              className="left-4 bg-white/90 hover:bg-white border-0 shadow-lg"
+              className="left-2 sm:left-4 bg-white/80 hover:bg-white border-0 shadow-md h-8 w-8 md:h-10 md:w-10"
               data-testid="button-carousel-previous"
             />
             <CarouselNext 
-              className="right-4 bg-white/90 hover:bg-white border-0 shadow-lg"
+              className="right-2 sm:right-4 bg-white/80 hover:bg-white border-0 shadow-md h-8 w-8 md:h-10 md:w-10"
               data-testid="button-carousel-next"
             />
           </Carousel>
-        </section>
+        </div>
       ) : null}
       
       {/* Search Hero Section */}
