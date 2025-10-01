@@ -312,14 +312,6 @@ export default function Landing() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious 
-              className="left-2 sm:left-4 bg-white/80 hover:bg-white border-0 shadow-md h-8 w-8 md:h-10 md:w-10"
-              data-testid="button-carousel-previous"
-            />
-            <CarouselNext 
-              className="right-2 sm:right-4 bg-white/80 hover:bg-white border-0 shadow-md h-8 w-8 md:h-10 md:w-10"
-              data-testid="button-carousel-next"
-            />
           </Carousel>
         </div>
       ) : null}
