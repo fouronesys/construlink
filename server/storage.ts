@@ -50,6 +50,7 @@ export interface IStorage {
   getSupplierByUserId(userId: string): Promise<Supplier | undefined>;
   getSupplierByRnc(rnc: string): Promise<Supplier | undefined>;
   updateSupplierStatus(id: string, status: "pending" | "approved" | "suspended" | "rejected"): Promise<Supplier>;
+  updateSupplier(id: string, updates: Partial<Supplier>): Promise<Supplier>;
   getSuppliers(filters?: {
     status?: string;
     specialty?: string;
@@ -192,6 +193,18 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         status, 
         approvalDate: status === "approved" ? new Date() : null,
+        updatedAt: new Date() 
+      })
+      .where(eq(suppliers.id, id))
+      .returning();
+    return updatedSupplier;
+  }
+
+  async updateSupplier(id: string, updates: Partial<Supplier>): Promise<Supplier> {
+    const [updatedSupplier] = await db
+      .update(suppliers)
+      .set({ 
+        ...updates,
         updatedAt: new Date() 
       })
       .where(eq(suppliers.id, id))

@@ -62,6 +62,8 @@ export const suppliers = pgTable("suppliers", {
   description: text("description"),
   website: varchar("website", { length: 255 }),
   profileImageUrl: varchar("profile_image_url"),
+  bannerImageUrl: varchar("banner_image_url"),
+  isFeatured: boolean("is_featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import Autoplay from "embla-carousel-autoplay";
 import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { QuoteModal } from "@/components/quote-modal";
@@ -51,6 +55,15 @@ interface Provider {
   description: string;
   averageRating: number;
   totalReviews: number;
+}
+
+interface FeaturedSupplier {
+  id: string;
+  legalName: string;
+  location: string;
+  description: string;
+  bannerImageUrl: string | null;
+  specialties: string[];
 }
 
 const sampleProviders: Provider[] = [
@@ -153,6 +166,10 @@ export default function Landing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
+  const { data: featuredSuppliers, isLoading: isFeaturedLoading } = useQuery<FeaturedSupplier[]>({
+    queryKey: ['/api/suppliers/featured'],
+  });
+
   const handleViewProfile = (provider: Provider) => {
     setSelectedProvider(provider);
   };
@@ -211,6 +228,116 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <Navigation />
+      
+      {/* Featured Suppliers Banner Carousel */}
+      {isFeaturedLoading ? (
+        <section className="container mx-auto px-6 py-8">
+          <Skeleton className="w-full h-[400px] rounded-2xl" data-testid="skeleton-featured-carousel" />
+        </section>
+      ) : featuredSuppliers && featuredSuppliers.length > 0 ? (
+        <section className="container mx-auto px-6 py-8">
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            plugins={[
+              Autoplay({
+                delay: 5000,
+              }),
+            ]}
+            className="w-full"
+            data-testid="carousel-featured-suppliers"
+          >
+            <CarouselContent>
+              {featuredSuppliers.map((supplier) => (
+                <CarouselItem key={supplier.id} data-testid={`carousel-item-${supplier.id}`}>
+                  <div className="relative w-full h-[400px] rounded-2xl overflow-hidden group cursor-pointer transition-transform duration-300 hover:scale-[1.02]">
+                    {supplier.bannerImageUrl ? (
+                      <img
+                        src={supplier.bannerImageUrl}
+                        alt={supplier.legalName}
+                        className="w-full h-full object-cover"
+                        data-testid={`img-banner-${supplier.id}`}
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700"
+                        data-testid={`bg-gradient-${supplier.id}`}
+                      />
+                    )}
+                    
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    
+                    <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                      <div className="max-w-4xl">
+                        <h2 
+                          className="text-3xl md:text-4xl font-bold mb-3"
+                          data-testid={`text-supplier-name-${supplier.id}`}
+                        >
+                          {supplier.legalName}
+                        </h2>
+                        
+                        {supplier.location && (
+                          <div 
+                            className="flex items-center gap-2 mb-3 text-blue-100"
+                            data-testid={`text-location-${supplier.id}`}
+                          >
+                            <MapPin className="w-5 h-5" />
+                            <span className="text-lg">{supplier.location}</span>
+                          </div>
+                        )}
+                        
+                        {supplier.description && (
+                          <p 
+                            className="text-gray-200 mb-4 line-clamp-2 max-w-2xl"
+                            data-testid={`text-description-${supplier.id}`}
+                          >
+                            {supplier.description}
+                          </p>
+                        )}
+                        
+                        {supplier.specialties && supplier.specialties.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {supplier.specialties.slice(0, 4).map((specialty, idx) => (
+                              <Badge 
+                                key={idx} 
+                                variant="secondary" 
+                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                                data-testid={`badge-specialty-${supplier.id}-${idx}`}
+                              >
+                                {specialty}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <Button
+                          size="lg"
+                          className="bg-white text-blue-600 hover:bg-blue-50 font-semibold transition-all duration-300 hover:shadow-lg"
+                          onClick={() => setLocation(`/directory?id=${supplier.id}`)}
+                          data-testid={`button-ver-perfil-${supplier.id}`}
+                        >
+                          Ver Perfil
+                          <ArrowRight className="ml-2 w-5 h-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious 
+              className="left-4 bg-white/90 hover:bg-white border-0 shadow-lg"
+              data-testid="button-carousel-previous"
+            />
+            <CarouselNext 
+              className="right-4 bg-white/90 hover:bg-white border-0 shadow-lg"
+              data-testid="button-carousel-next"
+            />
+          </Carousel>
+        </section>
+      ) : null}
       
       {/* Search Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-600 to-blue-800 text-white py-16">

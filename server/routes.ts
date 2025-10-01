@@ -691,6 +691,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Get featured suppliers (public endpoint)
+  app.get('/api/suppliers/featured', async (req, res) => {
+    try {
+      const featuredSuppliers = await db
+        .select()
+        .from(suppliers)
+        .where(and(eq(suppliers.status, 'approved'), eq(suppliers.isFeatured, true)))
+        .limit(10);
+
+      // Get specialties for each featured supplier
+      const suppliersWithSpecialties = await Promise.all(
+        featuredSuppliers.map(async (supplier) => {
+          const specialties = await storage.getSupplierSpecialties(supplier.id);
+          
+          return {
+            id: supplier.id,
+            legalName: supplier.legalName,
+            location: supplier.location,
+            description: supplier.description,
+            bannerImageUrl: supplier.bannerImageUrl,
+            specialties: specialties.map(s => s.specialty),
+          };
+        })
+      );
+
+      res.json(suppliersWithSpecialties);
+    } catch (error) {
+      console.error("Error fetching featured suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch featured suppliers" });
+    }
+  });
+
   // Get suppliers (public endpoint with filters)
   app.get('/api/suppliers', async (req, res) => {
     try {
@@ -1346,12 +1378,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Supplier not found" });
       }
 
-      // Update supplier data (this would need to be implemented in storage)
-      // For now, we'll return the current supplier data
-      res.json(supplier);
+      const allowedFields = [
+        'legalName', 'phone', 'location', 'description', 
+        'website', 'profileImageUrl', 'bannerImageUrl'
+      ];
+      
+      const updates: Partial<Supplier> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          (updates as any)[field] = req.body[field];
+        }
+      }
+
+      const updatedSupplier = await storage.updateSupplier(supplier.id, updates);
+      res.json(updatedSupplier);
     } catch (error) {
       console.error("Error updating supplier profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Update supplier banner image
+  app.patch('/api/supplier/banner', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = req.user;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      if (user.role !== 'supplier') {
+        return res.status(403).json({ message: "Only suppliers can update banner images" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const { bannerImageUrl } = req.body;
+      
+      if (!bannerImageUrl) {
+        return res.status(400).json({ message: "Banner image URL is required" });
+      }
+
+      const updatedSupplier = await storage.updateSupplier(supplier.id, { bannerImageUrl });
+      res.json(updatedSupplier);
+    } catch (error) {
+      console.error("Error updating banner image:", error);
+      res.status(500).json({ message: "Failed to update banner image" });
+    }
+  });
+
+  // Toggle supplier featured status (admin only)
+  app.patch('/api/supplier/featured', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { supplierId, isFeatured } = req.body;
+      
+      if (!supplierId) {
+        return res.status(400).json({ message: "Supplier ID is required" });
+      }
+
+      if (typeof isFeatured !== 'boolean') {
+        return res.status(400).json({ message: "isFeatured must be a boolean value" });
+      }
+
+      const supplier = await storage.getSupplier(supplierId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const updatedSupplier = await storage.updateSupplier(supplierId, { isFeatured });
+      res.json(updatedSupplier);
+    } catch (error) {
+      console.error("Error updating featured status:", error);
+      res.status(500).json({ message: "Failed to update featured status" });
     }
   });
 
