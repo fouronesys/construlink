@@ -24,6 +24,7 @@ import {
 import { z } from "zod";
 import { isAuthenticated, hasRole, hashPassword, comparePassword } from "./auth";
 import { storage } from "./storage";
+import { upload } from "./upload";
 
 // Simulate Verifone payment processing (replace with actual API integration)
 async function simulateVerifonePayment(paymentData: any) {
@@ -1396,6 +1397,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete banner" });
     }
   });
+
+  // Admin upload banner image
+  app.post('/api/admin/upload/banner', 
+    isAuthenticated, 
+    async (req: any, res, next) => {
+      const user = req.user;
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      next();
+    },
+    upload.single('image'), 
+    async (req: any, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const imageUrl = `/uploads/banners/${req.file.filename}`;
+        
+        res.json({
+          imageUrl,
+          filename: req.file.filename,
+          size: req.file.size,
+          mimetype: req.file.mimetype
+        });
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        res.status(500).json({ message: "Failed to upload image" });
+      }
+    }
+  );
 
   // Create review for supplier
   app.post('/api/suppliers/:id/reviews', async (req, res) => {
