@@ -666,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create payment record
-      await storage.createPayment({
+      const payment = await storage.createPayment({
         subscriptionId: subscription.id,
         amount: amount.toString(),
         currency: currency || 'DOP',
@@ -684,6 +684,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentPeriodStart: subscription.currentPeriodEnd || new Date(),
           currentPeriodEnd: nextPeriodEnd,
         });
+
+        // Auto-generate invoice for completed payment
+        try {
+          const invoiceNumber = await storage.getNextInvoiceNumber();
+          const paymentAmount = Number(payment.amount);
+          
+          // Calculate ITBIS (18% tax) with proper 2-decimal rounding per DR fiscal requirements
+          const itbis = Math.round(paymentAmount * 0.18 * 100) / 100;
+          const total = Math.round((paymentAmount + itbis) * 100) / 100;
+
+          // Get NCF sequence from platform config (optional)
+          let ncf: string | undefined = undefined;
+          let ncfSequence: string | undefined = undefined;
+          const ncfConfig = await storage.getPlatformConfig('default_ncf_sequence');
+          if (ncfConfig && ncfConfig.configValue && typeof ncfConfig.configValue === 'string') {
+            ncfSequence = ncfConfig.configValue;
+            ncf = await storage.getNextNCF(ncfSequence);
+          }
+
+          await storage.createInvoice({
+            paymentId: payment.id,
+            supplierId: subscription.supplierId,
+            invoiceNumber,
+            ncf,
+            ncfSequence,
+            subtotal: paymentAmount.toFixed(2),
+            itbis: itbis.toFixed(2),
+            total: total.toFixed(2),
+            currency: payment.currency || 'DOP',
+            status: 'sent',
+            notes: 'Factura generada automáticamente por pago de suscripción',
+          });
+        } catch (invoiceError) {
+          console.error("Error generating invoice:", invoiceError);
+          // Don't fail the webhook if invoice generation fails
+        }
       } else if (status === 'failed') {
         await storage.updateSubscription(subscription.id, {
           status: 'inactive',
