@@ -12,6 +12,7 @@ import {
   supplierDocuments,
   supplierBanners,
   planUsage,
+  adminActions,
   type User,
   type UpsertUser,
   type Supplier,
@@ -38,6 +39,8 @@ import {
   type InsertSupplierDocument,
   type PlanUsage,
   type InsertPlanUsage,
+  type AdminAction,
+  type InsertAdminAction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -150,6 +153,19 @@ export interface IStorage {
     activeSubscriptions: number;
     monthlyRevenue: number;
   }>;
+  
+  // Admin actions operations
+  logAdminAction(action: InsertAdminAction): Promise<AdminAction>;
+  getAdminActions(filters?: {
+    adminId?: string;
+    actionType?: string;
+    entityType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AdminAction[]>;
+  getAdminUsers(): Promise<User[]>;
+  updateUserRole(userId: string, role: "client" | "supplier" | "admin" | "superadmin"): Promise<User>;
+  updateUserStatus(userId: string, isActive: boolean): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -743,6 +759,77 @@ export class DatabaseStorage implements IStorage {
       activeSubscriptions: activeSubscriptionsResult?.count || 0,
       monthlyRevenue: monthlyRevenueResult?.total || 0,
     };
+  }
+
+  // Admin actions operations
+  async logAdminAction(action: InsertAdminAction): Promise<AdminAction> {
+    const [adminAction] = await db
+      .insert(adminActions)
+      .values(action)
+      .returning();
+    return adminAction;
+  }
+
+  async getAdminActions(filters?: {
+    adminId?: string;
+    actionType?: string;
+    entityType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AdminAction[]> {
+    let query = db.select().from(adminActions);
+
+    const conditions = [];
+    if (filters?.adminId) {
+      conditions.push(eq(adminActions.adminId, filters.adminId));
+    }
+    if (filters?.actionType) {
+      conditions.push(eq(adminActions.actionType, filters.actionType));
+    }
+    if (filters?.entityType) {
+      conditions.push(eq(adminActions.entityType, filters.entityType));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    query = query.orderBy(desc(adminActions.createdAt)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+
+    return query;
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return db
+      .select()
+      .from(users)
+      .where(inArray(users.role, ['admin', 'superadmin']))
+      .orderBy(desc(users.createdAt));
+  }
+
+  async updateUserRole(userId: string, role: "client" | "supplier" | "admin" | "superadmin"): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserStatus(userId: string, isActive: boolean): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 }
 

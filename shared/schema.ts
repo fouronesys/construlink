@@ -212,6 +212,17 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Admin actions log
+export const adminActions = pgTable("admin_actions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").references(() => users.id).notNull(),
+  actionType: varchar("action_type", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }),
+  entityId: varchar("entity_id"),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   user: one(users, {
@@ -298,6 +309,13 @@ export const supplierBannersRelations = relations(supplierBanners, ({ one }) => 
   }),
 }));
 
+export const adminActionsRelations = relations(adminActions, ({ one }) => ({
+  admin: one(users, {
+    fields: [adminActions.adminId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas for forms
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -378,6 +396,11 @@ export const insertPlanUsageSchema = createInsertSchema(planUsage).omit({
   updatedAt: true,
 });
 
+export const insertAdminActionSchema = createInsertSchema(adminActions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -423,6 +446,7 @@ export type QuoteRequest = typeof quoteRequests.$inferSelect;
 export type Verification = typeof verifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type PlanUsage = typeof planUsage.$inferSelect;
+export type AdminAction = typeof adminActions.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
@@ -438,6 +462,7 @@ export type InsertService = z.infer<typeof insertServiceSchema>;
 export type InsertVerification = z.infer<typeof insertVerificationSchema>;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type InsertPlanUsage = z.infer<typeof insertPlanUsageSchema>;
+export type InsertAdminAction = z.infer<typeof insertAdminActionSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 
