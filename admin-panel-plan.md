@@ -445,13 +445,15 @@ CREATE TABLE admin_actions (
 
 **Fecha de Creación**: 1 de Octubre, 2025  
 **Última Actualización**: 2 de Octubre, 2025  
-**Estado**: Fase 1 Backend - Completado
+**Estado**: Fase 1 (Sprint 1) - Completado ✅
 
 ---
 
-## ✅ REGISTRO DE AVANCE - FASE 1
+## ✅ REGISTRO DE AVANCE
 
-### Backend Implementado (Octubre 2, 2025)
+### SPRINT 1 - Sistema de Banners (COMPLETADO ✅)
+
+#### Backend Implementado (Octubre 2, 2025)
 
 **✅ Tarea 1: Schema de Base de Datos**
 - Agregado enum `deviceTypeEnum` (desktop, tablet, mobile)
@@ -475,9 +477,35 @@ CREATE TABLE admin_actions (
 - Verificación de roles ANTES de upload
 - `/uploads` estático configurado
 
-**Archivos Creados/Modificados:**
-- `shared/schema.ts`, `server/storage.ts`, `server/routes.ts`
-- `server/upload.ts` (nuevo), `server/index.ts`
+#### Frontend Implementado (Octubre 2, 2025)
+
+**✅ Tarea 5: Nueva Pestaña "Featured Suppliers"**
+- Agregada nueva pestaña "Destacados" al panel admin
+- Listado completo de proveedores aprobados
+- Switch para marcar/desmarcar como destacado
+- Badge visual indicando estado featured
+
+**✅ Tarea 6: Modal de Gestión de Banners**
+- Modal completo con diseño responsive
+- Selección de tipo de dispositivo (desktop/tablet/mobile)
+- Preview de imágenes antes de subir
+- Validación de tamaño (5MB) y formatos (JPG/PNG/WebP)
+- Campos opcionales de título y descripción
+
+**✅ Tarea 7: CRUD de Banners**
+- Upload de banners con preview en tiempo real
+- Listado de banners existentes por proveedor
+- Eliminación de banners con confirmación
+- Invalidación correcta de cache para actualización inmediata del UI
+
+**✅ Tarea 8: Integración con React Query**
+- Mutations para toggle featured, upload y delete banners
+- Invalidación de queries global y específica
+- Manejo de estados de carga y errores
+- Toast notifications para feedback al usuario
+
+**Archivos Modificados:**
+- `client/src/pages/admin-panel.tsx` (actualizado con nueva funcionalidad completa)
 
 **Próximo Paso:**
-Frontend (UI admin, modal upload, carousel público)
+Sprint 2 - Analytics Básico (tracking de clicks, dashboard mejorado, exportación de reportes)
