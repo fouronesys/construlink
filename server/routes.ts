@@ -226,26 +226,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-      
-      if (!user.length) {
-        return res.status(404).json({ message: "Usuario no encontrado" });
-      }
+      // The user is already attached by the isAuthenticated middleware
+      const user = (req as any).user;
       
       // Get supplier info if user is a supplier
       let supplier = null;
-      if (user[0].role === 'supplier') {
-        const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, userId)).limit(1);
+      if (user.role === 'supplier') {
+        const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, user.id)).limit(1);
         supplier = supplierData.length > 0 ? supplierData[0] : null;
       }
       
       res.json({ 
-        id: user[0].id, 
-        email: user[0].email, 
-        firstName: user[0].firstName,
-        lastName: user[0].lastName,
-        role: user[0].role,
+        id: user.id, 
+        email: user.email, 
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
         supplier
       });
     } catch (error) {
