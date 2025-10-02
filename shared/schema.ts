@@ -35,7 +35,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["client", "supplier", "admin", "superadmin"] }).default("client"),
+  role: varchar("role", { enum: ["client", "supplier", "moderator", "support", "admin", "superadmin"] }).default("client"),
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
@@ -463,7 +463,7 @@ export const logAdminActionSchema = z.object({
 });
 
 export const updateUserRoleSchema = z.object({
-  role: z.enum(["client", "supplier", "admin", "superadmin"]),
+  role: z.enum(["client", "supplier", "moderator", "support", "admin", "superadmin"]),
 });
 
 export const updateUserStatusSchema = z.object({

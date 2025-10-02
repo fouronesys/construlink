@@ -193,8 +193,9 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<AdminAction[]>;
+  getUsers(): Promise<User[]>;
   getAdminUsers(): Promise<User[]>;
-  updateUserRole(userId: string, role: "client" | "supplier" | "admin" | "superadmin"): Promise<User>;
+  updateUserRole(userId: string, role: "client" | "supplier" | "moderator" | "support" | "admin" | "superadmin"): Promise<User>;
   updateUserStatus(userId: string, isActive: boolean): Promise<User>;
   
   // Platform configuration operations
@@ -992,15 +993,22 @@ export class DatabaseStorage implements IStorage {
     return query;
   }
 
+  async getUsers(): Promise<User[]> {
+    return db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+  }
+
   async getAdminUsers(): Promise<User[]> {
     return db
       .select()
       .from(users)
-      .where(inArray(users.role, ['admin', 'superadmin']))
+      .where(inArray(users.role, ['moderator', 'support', 'admin', 'superadmin']))
       .orderBy(desc(users.createdAt));
   }
 
-  async updateUserRole(userId: string, role: "client" | "supplier" | "admin" | "superadmin"): Promise<User> {
+  async updateUserRole(userId: string, role: "client" | "supplier" | "moderator" | "support" | "admin" | "superadmin"): Promise<User> {
     const [user] = await db
       .update(users)
       .set({ role, updatedAt: new Date() })
