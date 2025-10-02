@@ -1988,6 +1988,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export endpoints (no pagination) for CSV exports
+  app.get('/api/admin/payments/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, plan, search } = req.query;
+      
+      const payments = await storage.getAllPayments({
+        status: status && status !== 'all' ? status as string : undefined,
+        plan: plan && plan !== 'all' ? plan as string : undefined,
+        search: search ? search as string : undefined,
+        limit: 999999,
+        offset: 0,
+      });
+
+      res.json({ payments: payments.payments });
+    } catch (error) {
+      console.error("Error exporting payments:", error);
+      res.status(500).json({ message: "Failed to export payments" });
+    }
+  });
+
+  app.get('/api/admin/invoices/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, supplierId, search } = req.query;
+      
+      const invoices = await storage.getAllInvoices({
+        status: status && status !== 'all' ? status as string : undefined,
+        supplierId: supplierId as string | undefined,
+        search: search ? search as string : undefined,
+        limit: 999999,
+        offset: 0,
+      });
+
+      res.json({ invoices: invoices.invoices });
+    } catch (error) {
+      console.error("Error exporting invoices:", error);
+      res.status(500).json({ message: "Failed to export invoices" });
+    }
+  });
+
+  app.get('/api/admin/subscriptions/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, plan, search } = req.query;
+      
+      const subscriptions = await storage.getAllSubscriptions({
+        status: status && status !== 'all' ? status as string : undefined,
+        plan: plan && plan !== 'all' ? plan as string : undefined,
+        search: search ? search as string : undefined,
+        limit: 999999,
+        offset: 0,
+      });
+
+      res.json({ subscriptions: subscriptions.subscriptions });
+    } catch (error) {
+      console.error("Error exporting subscriptions:", error);
+      res.status(500).json({ message: "Failed to export subscriptions" });
+    }
+  });
+
   // Admin create invoice
   app.post('/api/admin/invoices', isAuthenticated, async (req: any, res) => {
     try {

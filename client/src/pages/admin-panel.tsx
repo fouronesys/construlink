@@ -952,6 +952,169 @@ export default function AdminPanel() {
     }
   };
 
+  // CSV Export Functions
+  const exportToCSV = (data: any[], filename: string, headers: string[]) => {
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => {
+        const value = row[h] ?? '';
+        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+      }).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPayments = async () => {
+    try {
+      const params = new URLSearchParams({
+        status: paymentStatusFilter,
+        plan: paymentPlanFilter,
+        search: paymentSearch,
+      });
+      const response = await fetch(`/api/admin/payments/export?${params}`);
+      if (!response.ok) throw new Error('Failed to export payments');
+      const data = await response.json();
+      
+      if (!data.payments || data.payments.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay pagos para exportar",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const exportData = data.payments.map((payment: Payment) => ({
+        Fecha: new Date(payment.createdAt).toLocaleString('es-DO'),
+        Usuario: payment.userName ?? 'N/A',
+        Email: payment.userEmail,
+        Plan: payment.planType,
+        Monto: payment.amount,
+        Moneda: payment.currency,
+        Estado: payment.status,
+        Metodo: payment.paymentMethod,
+        TransaccionID: payment.transactionId ?? 'N/A',
+      }));
+
+      exportToCSV(exportData, 'pagos', ['Fecha', 'Usuario', 'Email', 'Plan', 'Monto', 'Moneda', 'Estado', 'Metodo', 'TransaccionID']);
+      toast({
+        title: "Exportación exitosa",
+        description: `Se exportaron ${data.payments.length} pagos correctamente`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron exportar los pagos",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportInvoices = async () => {
+    try {
+      const params = new URLSearchParams({
+        status: invoiceStatusFilter,
+        supplierId: invoiceSupplierFilter,
+        search: invoiceSearch,
+      });
+      const response = await fetch(`/api/admin/invoices/export?${params}`);
+      if (!response.ok) throw new Error('Failed to export invoices');
+      const data = await response.json();
+      
+      if (!data.invoices || data.invoices.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay facturas para exportar",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const exportData = data.invoices.map((invoice: Invoice) => ({
+        NumeroFactura: invoice.invoiceNumber,
+        NCF: invoice.ncf ?? 'N/A',
+        Proveedor: invoice.supplier?.legalName ?? 'N/A',
+        RNC: invoice.supplier?.rnc ?? 'N/A',
+        Subtotal: invoice.subtotal,
+        ITBIS: invoice.itbis,
+        Total: invoice.total,
+        Moneda: invoice.currency,
+        Estado: invoice.status,
+        Fecha: new Date(invoice.createdAt).toLocaleDateString('es-DO'),
+        FechaPago: invoice.paidDate ? new Date(invoice.paidDate).toLocaleDateString('es-DO') : 'N/A',
+        Notas: invoice.notes ?? '',
+      }));
+
+      exportToCSV(exportData, 'facturas_fiscales', ['NumeroFactura', 'NCF', 'Proveedor', 'RNC', 'Subtotal', 'ITBIS', 'Total', 'Moneda', 'Estado', 'Fecha', 'FechaPago', 'Notas']);
+      toast({
+        title: "Exportación exitosa",
+        description: `Se exportaron ${data.invoices.length} facturas correctamente`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron exportar las facturas",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportSubscriptions = async () => {
+    try {
+      const params = new URLSearchParams({
+        status: subscriptionStatusFilter,
+        plan: subscriptionPlanFilter,
+        search: subscriptionSearch,
+      });
+      const response = await fetch(`/api/admin/subscriptions/export?${params}`);
+      if (!response.ok) throw new Error('Failed to export subscriptions');
+      const data = await response.json();
+      
+      if (!data.subscriptions || data.subscriptions.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay suscripciones para exportar",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const exportData = data.subscriptions.map((subscription: Subscription) => ({
+        Proveedor: subscription.supplier?.legalName ?? 'N/A',
+        RNC: subscription.supplier?.rnc ?? 'N/A',
+        Email: subscription.supplier?.email ?? 'N/A',
+        Plan: subscription.plan,
+        Estado: subscription.status,
+        MontoMensual: subscription.monthlyAmount,
+        PeriodoInicio: subscription.currentPeriodStart ? new Date(subscription.currentPeriodStart).toLocaleDateString('es-DO') : 'N/A',
+        PeriodoFin: subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString('es-DO') : 'N/A',
+        TotalPagos: subscription.totalPayments ?? 0,
+        FechaCreacion: new Date(subscription.createdAt).toLocaleDateString('es-DO'),
+      }));
+
+      exportToCSV(exportData, 'suscripciones', ['Proveedor', 'RNC', 'Email', 'Plan', 'Estado', 'MontoMensual', 'PeriodoInicio', 'PeriodoFin', 'TotalPagos', 'FechaCreacion']);
+      toast({
+        title: "Exportación exitosa",
+        description: `Se exportaron ${data.subscriptions.length} suscripciones correctamente`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron exportar las suscripciones",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleManageBanner = (supplier: Supplier) => {
     setSelectedBannerSupplier(supplier);
     setShowBannerModal(true);
@@ -2088,6 +2251,14 @@ export default function AdminPanel() {
                 <h2 className="text-xl font-semibold" data-testid="heading-payments">Gestión de Pagos</h2>
                 <p className="text-sm text-gray-600 mt-1" data-testid="text-payments-description">Administra y monitorea todos los pagos de la plataforma</p>
               </div>
+              <Button
+                onClick={handleExportPayments}
+                variant="outline"
+                data-testid="button-export-payments"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Pagos CSV
+              </Button>
             </div>
 
             {/* Payment Statistics */}
@@ -2356,6 +2527,15 @@ export default function AdminPanel() {
                   <h3 className="text-lg font-semibold" data-testid="heading-subscriptions">Gestión de Suscripciones</h3>
                   <p className="text-sm text-gray-600 mt-1">Administra las suscripciones de proveedores y su historial de pagos</p>
                 </div>
+                <Button
+                  onClick={handleExportSubscriptions}
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-export-subscriptions"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar Suscripciones CSV
+                </Button>
               </div>
 
               {/* Subscription Filters */}
@@ -2821,6 +3001,14 @@ export default function AdminPanel() {
                 <h2 className="text-xl font-semibold" data-testid="heading-invoices">Gestión de Facturas</h2>
                 <p className="text-sm text-gray-600 mt-1">Administra las facturas con NCF para República Dominicana</p>
               </div>
+              <Button
+                onClick={handleExportInvoices}
+                variant="outline"
+                data-testid="button-export-invoices"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Facturas CSV
+              </Button>
             </div>
 
             <Card>
