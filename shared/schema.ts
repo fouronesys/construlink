@@ -223,6 +223,16 @@ export const adminActions = pgTable("admin_actions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Platform configuration
+export const platformConfig = pgTable("platform_config", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  configKey: varchar("config_key", { length: 100 }).unique().notNull(),
+  configValue: jsonb("config_value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+});
+
 // Relations
 export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   user: one(users, {
@@ -316,6 +326,13 @@ export const adminActionsRelations = relations(adminActions, ({ one }) => ({
   }),
 }));
 
+export const platformConfigRelations = relations(platformConfig, ({ one }) => ({
+  updater: one(users, {
+    fields: [platformConfig.updatedBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas for forms
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -401,6 +418,11 @@ export const insertAdminActionSchema = createInsertSchema(adminActions).omit({
   createdAt: true,
 });
 
+export const insertPlatformConfigSchema = createInsertSchema(platformConfig).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -448,6 +470,11 @@ export const updateUserStatusSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const updatePlatformConfigSchema = z.object({
+  configValue: z.any(),
+  description: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
@@ -463,6 +490,7 @@ export type Verification = typeof verifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type PlanUsage = typeof planUsage.$inferSelect;
 export type AdminAction = typeof adminActions.$inferSelect;
+export type PlatformConfig = typeof platformConfig.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
@@ -479,6 +507,7 @@ export type InsertVerification = z.infer<typeof insertVerificationSchema>;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type InsertPlanUsage = z.infer<typeof insertPlanUsageSchema>;
 export type InsertAdminAction = z.infer<typeof insertAdminActionSchema>;
+export type InsertPlatformConfig = z.infer<typeof insertPlatformConfigSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 

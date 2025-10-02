@@ -18,6 +18,7 @@ import {
   logAdminActionSchema,
   updateUserRoleSchema,
   updateUserStatusSchema,
+  updatePlatformConfigSchema,
   type InsertSupplier,
   type Supplier,
   type RegisterData,
@@ -1707,6 +1708,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching payment stats:", error);
       res.status(500).json({ message: "Failed to fetch payment statistics" });
+    }
+  });
+
+  // Admin get all platform configurations
+  app.get('/api/admin/config', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only super admins can view platform configuration" });
+      }
+
+      const configs = await storage.getAllPlatformConfigs();
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching platform configs:", error);
+      res.status(500).json({ message: "Failed to fetch platform configurations" });
+    }
+  });
+
+  // Admin get specific platform configuration
+  app.get('/api/admin/config/:key', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only super admins can view platform configuration" });
+      }
+
+      const { key } = req.params;
+      const config = await storage.getPlatformConfig(key);
+      
+      if (!config) {
+        return res.status(404).json({ message: "Configuration not found" });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching platform config:", error);
+      res.status(500).json({ message: "Failed to fetch platform configuration" });
+    }
+  });
+
+  // Admin update platform configuration
+  app.put('/api/admin/config/:key', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only super admins can update platform configuration" });
+      }
+
+      const { key } = req.params;
+      
+      // Validate request body using Zod schema
+      const validation = updatePlatformConfigSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      // Check if configValue is provided (including falsy values like 0, false, empty string)
+      if (!req.body.hasOwnProperty('configValue')) {
+        return res.status(400).json({ message: "configValue is required" });
+      }
+
+      const { configValue, description } = validation.data;
+
+      const config = await storage.upsertPlatformConfig({
+        configKey: key,
+        configValue,
+        description,
+        updatedBy: user.id,
+      });
+
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_platform_config',
+        entityType: 'platform_config',
+        entityId: key,
+        details: { configKey: key, configValue, description },
+      });
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating platform config:", error);
+      res.status(500).json({ message: "Failed to update platform configuration" });
     }
   });
 

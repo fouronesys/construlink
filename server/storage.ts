@@ -13,6 +13,7 @@ import {
   supplierBanners,
   planUsage,
   adminActions,
+  platformConfig,
   type User,
   type UpsertUser,
   type Supplier,
@@ -41,6 +42,8 @@ import {
   type InsertPlanUsage,
   type AdminAction,
   type InsertAdminAction,
+  type PlatformConfig,
+  type InsertPlatformConfig,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -184,6 +187,11 @@ export interface IStorage {
   getAdminUsers(): Promise<User[]>;
   updateUserRole(userId: string, role: "client" | "supplier" | "admin" | "superadmin"): Promise<User>;
   updateUserStatus(userId: string, isActive: boolean): Promise<User>;
+  
+  // Platform configuration operations
+  getPlatformConfig(configKey: string): Promise<PlatformConfig | undefined>;
+  getAllPlatformConfigs(): Promise<PlatformConfig[]>;
+  upsertPlatformConfig(config: { configKey: string; configValue: any; description?: string; updatedBy?: string; }): Promise<PlatformConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -949,6 +957,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  // Platform configuration operations
+  async getPlatformConfig(configKey: string): Promise<PlatformConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(platformConfig)
+      .where(eq(platformConfig.configKey, configKey))
+      .limit(1);
+    return config;
+  }
+
+  async getAllPlatformConfigs(): Promise<PlatformConfig[]> {
+    return db
+      .select()
+      .from(platformConfig)
+      .orderBy(platformConfig.configKey);
+  }
+
+  async upsertPlatformConfig(config: { 
+    configKey: string; 
+    configValue: any; 
+    description?: string; 
+    updatedBy?: string; 
+  }): Promise<PlatformConfig> {
+    const existing = await this.getPlatformConfig(config.configKey);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(platformConfig)
+        .set({ 
+          configValue: config.configValue, 
+          description: config.description,
+          updatedBy: config.updatedBy,
+          updatedAt: new Date() 
+        })
+        .where(eq(platformConfig.configKey, config.configKey))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(platformConfig)
+        .values({
+          configKey: config.configKey,
+          configValue: config.configValue,
+          description: config.description,
+          updatedBy: config.updatedBy,
+        })
+        .returning();
+      return created;
+    }
   }
 }
 
