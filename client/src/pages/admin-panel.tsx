@@ -42,6 +42,8 @@ import {
   Smartphone,
   TrendingDown,
   MousePointerClick,
+  Receipt,
+  RefreshCw,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
@@ -155,6 +157,56 @@ interface PlatformConfig {
   updatedAt: string;
 }
 
+interface Refund {
+  id: string;
+  paymentId: string;
+  amount: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  verifoneRefundId?: string;
+  processedBy?: string;
+  processedAt?: string;
+  createdAt: string;
+  payment?: {
+    id: string;
+    userId: string;
+    userName?: string;
+    userEmail?: string;
+    planType: string;
+    amount: string;
+    currency: string;
+  };
+}
+
+interface Invoice {
+  id: string;
+  paymentId: string;
+  supplierId: string;
+  invoiceNumber: string;
+  ncf?: string;
+  ncfSequence?: string;
+  subtotal: string;
+  itbis: string;
+  total: string;
+  currency: string;
+  status: 'draft' | 'sent' | 'paid' | 'cancelled';
+  paidDate?: string;
+  notes?: string;
+  createdAt: string;
+  payment?: {
+    id: string;
+    userId: string;
+    userName?: string;
+    userEmail?: string;
+    planType: string;
+  };
+  supplier?: {
+    id: string;
+    legalName: string;
+    rnc: string;
+  };
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -190,6 +242,36 @@ export default function AdminPanel() {
   useEffect(() => {
     setPaymentPage(1);
   }, [paymentSearch, paymentStatusFilter, paymentPlanFilter, paymentLimit]);
+
+  // Refund filters and states
+  const [refundSearch, setRefundSearch] = useState("");
+  const [refundStatusFilter, setRefundStatusFilter] = useState("all");
+  const [refundPage, setRefundPage] = useState(1);
+  const [refundLimit, setRefundLimit] = useState(10);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [selectedPaymentForRefund, setSelectedPaymentForRefund] = useState<Payment | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+
+  // Invoice filters and states
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
+  const [invoiceSupplierFilter, setInvoiceSupplierFilter] = useState("all");
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [invoiceLimit, setInvoiceLimit] = useState(10);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedPaymentForInvoice, setSelectedPaymentForInvoice] = useState<Payment | null>(null);
+  const [invoiceNcfSequence, setInvoiceNcfSequence] = useState("");
+  const [invoiceNotes, setInvoiceNotes] = useState("");
+
+  // Reset pages when filters change
+  useEffect(() => {
+    setRefundPage(1);
+  }, [refundSearch, refundStatusFilter, refundLimit]);
+
+  useEffect(() => {
+    setInvoicePage(1);
+  }, [invoiceSearch, invoiceStatusFilter, invoiceSupplierFilter, invoiceLimit]);
 
   // Plan configuration states
   const [basicPrice, setBasicPrice] = useState(1000);
@@ -293,6 +375,20 @@ export default function AdminPanel() {
   // Fetch payment statistics
   const { data: paymentStats } = useQuery<PaymentStats>({
     queryKey: ["/api/admin/payments/stats"],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Fetch refunds
+  const { data: refundsData, isLoading: refundsLoading } = useQuery<{ refunds: Refund[]; total: number }>({
+    queryKey: [`/api/admin/refunds?page=${refundPage}&limit=${refundLimit}&status=${refundStatusFilter}&search=${refundSearch}`],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Fetch invoices
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[]; total: number }>({
+    queryKey: [`/api/admin/invoices?page=${invoicePage}&limit=${invoiceLimit}&status=${invoiceStatusFilter}&supplierId=${invoiceSupplierFilter}&search=${invoiceSearch}`],
     enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
@@ -577,6 +673,107 @@ export default function AdminPanel() {
     },
   });
 
+  // Create refund mutation
+  const createRefundMutation = useMutation({
+    mutationFn: async ({ paymentId, amount, reason }: { paymentId: string; amount: number; reason: string }) => {
+      const response = await apiRequest("POST", "/api/admin/refunds", { paymentId, amount, reason });
+      if (!response.ok) throw new Error("Failed to create refund");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/refunds"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/payments"] });
+      setShowRefundModal(false);
+      setSelectedPaymentForRefund(null);
+      setRefundAmount("");
+      setRefundReason("");
+      toast({
+        title: "Éxito",
+        description: "Reembolso creado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el reembolso",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Process refund mutation (approve/reject)
+  const processRefundMutation = useMutation({
+    mutationFn: async ({ id, status, verifoneRefundId }: { id: string; status: 'approved' | 'rejected'; verifoneRefundId?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/refunds/${id}`, { status, verifoneRefundId });
+      if (!response.ok) throw new Error("Failed to process refund");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/refunds"] });
+      toast({
+        title: "Éxito",
+        description: "Reembolso procesado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo procesar el reembolso",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create invoice mutation
+  const createInvoiceMutation = useMutation({
+    mutationFn: async ({ paymentId, supplierId, ncfSequence, notes }: { paymentId: string; supplierId: string; ncfSequence?: string; notes?: string }) => {
+      const response = await apiRequest("POST", "/api/admin/invoices", { paymentId, supplierId, ncfSequence, notes });
+      if (!response.ok) throw new Error("Failed to create invoice");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
+      setShowInvoiceModal(false);
+      setSelectedPaymentForInvoice(null);
+      setInvoiceNcfSequence("");
+      setInvoiceNotes("");
+      toast({
+        title: "Éxito",
+        description: "Factura creada correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la factura",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update invoice mutation
+  const updateInvoiceMutation = useMutation({
+    mutationFn: async ({ id, status, paidDate }: { id: string; status: string; paidDate?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/invoices/${id}`, { status, paidDate });
+      if (!response.ok) throw new Error("Failed to update invoice");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
+      toast({
+        title: "Éxito",
+        description: "Factura actualizada correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la factura",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApprovalAction = (supplier: Supplier, action: 'approve' | 'reject') => {
     setSelectedSupplier(supplier);
     setApprovalAction(action);
@@ -818,7 +1015,7 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-12">
             <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Aprobaciones
@@ -841,6 +1038,14 @@ export default function AdminPanel() {
             <TabsTrigger value="payments" data-testid="tab-payments">
               <DollarSign className="w-4 h-4 mr-1" />
               Pagos
+            </TabsTrigger>
+            <TabsTrigger value="refunds" data-testid="tab-refunds">
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Reembolsos
+            </TabsTrigger>
+            <TabsTrigger value="invoices" data-testid="tab-invoices">
+              <Receipt className="w-4 h-4 mr-1" />
+              Facturas
             </TabsTrigger>
             {user?.role === 'superadmin' && (
               <>
@@ -2061,6 +2266,304 @@ export default function AdminPanel() {
                       </div>
                     )}
                   </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Refunds Tab */}
+          <TabsContent value="refunds" className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-xl font-semibold" data-testid="heading-refunds">Gestión de Reembolsos</h2>
+                <p className="text-sm text-gray-600 mt-1">Administra las solicitudes de reembolso de pagos</p>
+              </div>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <CardTitle data-testid="heading-refunds-list">Lista de Reembolsos</CardTitle>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Buscar por ID de pago..."
+                      value={refundSearch}
+                      onChange={(e) => setRefundSearch(e.target.value)}
+                      className="sm:w-64"
+                      data-testid="input-refund-search"
+                    />
+                    <select
+                      value={refundStatusFilter}
+                      onChange={(e) => setRefundStatusFilter(e.target.value)}
+                      className="px-3 py-2 border rounded-md"
+                      data-testid="select-refund-status-filter"
+                    >
+                      <option value="all">Todos los estados</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="approved">Aprobado</option>
+                      <option value="rejected">Rechazado</option>
+                    </select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {refundsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : refundsData?.refunds && refundsData.refunds.length > 0 ? (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Pago</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Monto</TableHead>
+                          <TableHead>Razón</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {refundsData.refunds.map((refund) => (
+                          <TableRow key={refund.id} data-testid={`row-refund-${refund.id}`}>
+                            <TableCell data-testid={`text-refund-id-${refund.id}`}>
+                              {refund.id.substring(0, 8)}
+                            </TableCell>
+                            <TableCell data-testid={`text-refund-payment-${refund.id}`}>
+                              {refund.paymentId.substring(0, 8)}
+                            </TableCell>
+                            <TableCell data-testid={`text-refund-user-${refund.id}`}>
+                              <div>
+                                <div>{refund.payment?.userName || 'N/A'}</div>
+                                <div className="text-xs text-gray-500">{refund.payment?.userEmail}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`text-refund-amount-${refund.id}`}>
+                              {refund.payment?.currency} {Number(refund.amount).toLocaleString()}
+                            </TableCell>
+                            <TableCell data-testid={`text-refund-reason-${refund.id}`}>
+                              <div className="max-w-xs truncate">{refund.reason}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(refund.status)} data-testid={`status-refund-${refund.id}`}>
+                                {refund.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-refund-date-${refund.id}`}>
+                              {new Date(refund.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {refund.status === 'pending' && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => processRefundMutation.mutate({ 
+                                      id: refund.id, 
+                                      status: 'approved',
+                                      verifoneRefundId: `VRF-${Date.now()}`
+                                    })}
+                                    data-testid={`button-approve-refund-${refund.id}`}
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Aprobar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => processRefundMutation.mutate({ 
+                                      id: refund.id, 
+                                      status: 'rejected' 
+                                    })}
+                                    data-testid={`button-reject-refund-${refund.id}`}
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Rechazar
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-gray-600">
+                        Mostrando {((refundPage - 1) * refundLimit) + 1} - {Math.min(refundPage * refundLimit, refundsData.total)} de {refundsData.total} reembolsos
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={refundPage === 1}
+                          onClick={() => setRefundPage(p => p - 1)}
+                          data-testid="button-refund-prev-page"
+                        >
+                          Anterior
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={refundPage * refundLimit >= refundsData.total}
+                          onClick={() => setRefundPage(p => p + 1)}
+                          data-testid="button-refund-next-page"
+                        >
+                          Siguiente
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No hay reembolsos registrados
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Invoices Tab */}
+          <TabsContent value="invoices" className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-xl font-semibold" data-testid="heading-invoices">Gestión de Facturas</h2>
+                <p className="text-sm text-gray-600 mt-1">Administra las facturas con NCF para República Dominicana</p>
+              </div>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <CardTitle data-testid="heading-invoices-list">Lista de Facturas</CardTitle>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Buscar por número o NCF..."
+                      value={invoiceSearch}
+                      onChange={(e) => setInvoiceSearch(e.target.value)}
+                      className="sm:w-64"
+                      data-testid="input-invoice-search"
+                    />
+                    <select
+                      value={invoiceStatusFilter}
+                      onChange={(e) => setInvoiceStatusFilter(e.target.value)}
+                      className="px-3 py-2 border rounded-md"
+                      data-testid="select-invoice-status-filter"
+                    >
+                      <option value="all">Todos los estados</option>
+                      <option value="draft">Borrador</option>
+                      <option value="sent">Enviada</option>
+                      <option value="paid">Pagada</option>
+                      <option value="cancelled">Cancelada</option>
+                    </select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {invoicesLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : invoicesData?.invoices && invoicesData.invoices.length > 0 ? (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Número</TableHead>
+                          <TableHead>NCF</TableHead>
+                          <TableHead>Proveedor</TableHead>
+                          <TableHead>Subtotal</TableHead>
+                          <TableHead>ITBIS (18%)</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoicesData.invoices.map((invoice) => (
+                          <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
+                            <TableCell data-testid={`text-invoice-number-${invoice.id}`}>
+                              {invoice.invoiceNumber}
+                            </TableCell>
+                            <TableCell data-testid={`text-invoice-ncf-${invoice.id}`}>
+                              {invoice.ncf || 'N/A'}
+                            </TableCell>
+                            <TableCell data-testid={`text-invoice-supplier-${invoice.id}`}>
+                              <div>
+                                <div>{invoice.supplier?.legalName || 'N/A'}</div>
+                                <div className="text-xs text-gray-500">{invoice.supplier?.rnc}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`text-invoice-subtotal-${invoice.id}`}>
+                              {invoice.currency} {Number(invoice.subtotal).toLocaleString()}
+                            </TableCell>
+                            <TableCell data-testid={`text-invoice-itbis-${invoice.id}`}>
+                              {invoice.currency} {Number(invoice.itbis).toLocaleString()}
+                            </TableCell>
+                            <TableCell data-testid={`text-invoice-total-${invoice.id}`}>
+                              <strong>{invoice.currency} {Number(invoice.total).toLocaleString()}</strong>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(invoice.status)} data-testid={`status-invoice-${invoice.id}`}>
+                                {invoice.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <select
+                                value={invoice.status}
+                                onChange={(e) => updateInvoiceMutation.mutate({
+                                  id: invoice.id,
+                                  status: e.target.value,
+                                  paidDate: e.target.value === 'paid' ? new Date().toISOString() : undefined
+                                })}
+                                className="px-2 py-1 border rounded text-sm"
+                                data-testid={`select-invoice-status-${invoice.id}`}
+                              >
+                                <option value="draft">Borrador</option>
+                                <option value="sent">Enviada</option>
+                                <option value="paid">Pagada</option>
+                                <option value="cancelled">Cancelada</option>
+                              </select>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-gray-600">
+                        Mostrando {((invoicePage - 1) * invoiceLimit) + 1} - {Math.min(invoicePage * invoiceLimit, invoicesData.total)} de {invoicesData.total} facturas
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={invoicePage === 1}
+                          onClick={() => setInvoicePage(p => p - 1)}
+                          data-testid="button-invoice-prev-page"
+                        >
+                          Anterior
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={invoicePage * invoiceLimit >= invoicesData.total}
+                          onClick={() => setInvoicePage(p => p + 1)}
+                          data-testid="button-invoice-next-page"
+                        >
+                          Siguiente
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No hay facturas registradas
+                  </div>
                 )}
               </CardContent>
             </Card>
