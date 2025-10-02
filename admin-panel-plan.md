@@ -446,7 +446,16 @@ CREATE TABLE admin_actions (
 
 **Fecha de Creación**: 1 de Octubre, 2025  
 **Última Actualización**: 2 de Octubre, 2025  
-**Estado**: Fase 1 (Sprint 1) - Completado ✅
+**Estado**: Sprint 3 - Completado ✅
+
+**Fases Completadas:**
+- ✅ Fase 1 (Sprint 1): Sistema de Banners y Proveedores Destacados
+- ✅ Fase 2 (Sprint 2): Analytics y Reportes de Banners
+- ✅ Fase 3 (Sprint 3): Gestión Avanzada (Usuarios Admin, Logs, Pagos, Configuración)
+
+**Fases Pendientes:**
+- ⏳ Fase 4: Gestión de Pagos y Facturación (reembolsos, facturas, NCF)
+- ⏳ Fase 5: Configuración de Plataforma (SEO, personalización)
 
 ---
 
@@ -633,16 +642,16 @@ CREATE TABLE admin_actions (
 - Exportación funcional a CSV
 - Data-testids completos para testing automatizado
 
-**Próximo Paso:**
+**Próximo Paso (Completado):**
 Sprint 3 (Semana 4) - Gestión Avanzada:
 1. ✅ Sistema de roles y permisos
 2. ✅ Log de acciones admin
-3. ⏳ Mejoras en gestión de pagos
-4. ⏳ Configuraciones generales
+3. ✅ Mejoras en gestión de pagos
+4. ✅ Configuraciones generales
 
 ---
 
-## ✅ SPRINT 3 - Gestión de Usuarios Admin y Logs (PARCIALMENTE COMPLETADO ✅)
+## ✅ SPRINT 3 - Gestión Avanzada (COMPLETADO ✅)
 
 ### Backend Implementado (Octubre 2, 2025)
 
@@ -742,8 +751,108 @@ Sprint 3 (Semana 4) - Gestión Avanzada:
 - Confirmaciones antes de cambios críticos
 - Toast notifications para feedback al usuario
 
-**Estado**: Sprint 3 (Gestión de Usuarios Admin y Logs) - Tareas 1-5 Completadas ✅
+**✅ Tarea 6: Dashboard de Pagos y Transacciones**
+- Agregada pestaña "Pagos" en el panel admin
+- Estadísticas de pagos:
+  - Total de ingresos (RD$)
+  - Pagos exitosos
+  - Pagos fallidos
+  - Monto promedio por transacción
+- Gráfico de barras: Ingresos por plan (Basic, Professional, Enterprise)
+- Sistema de filtros avanzado:
+  - Búsqueda por nombre, email, ID de transacción
+  - Filtro por estado (completado, fallido, pendiente)
+  - Filtro por plan (Basic, Professional, Enterprise)
+  - Selector de límite de resultados (10, 25, 50, 100)
+- Tabla detallada de pagos:
+  - Fecha y hora de transacción
+  - Información del usuario (nombre y email)
+  - Plan de suscripción
+  - Monto con moneda (RD$)
+  - Método de pago
+  - Estado con badge de color
+  - ID de transacción Verifone
+- Paginación funcional
+- Integración con Verifone para procesamiento de pagos
+- Data-testids completos en todos los elementos
 
-**Pendiente en Sprint 3:**
-- Tarea 6: Mejoras en gestión de pagos con dashboard de transacciones
-- Tarea 7: Configuraciones generales de la plataforma
+**✅ Tarea 7: Configuración General de Plataforma**
+- Agregada pestaña "Configuración" (solo visible para superadmin)
+- Configuración de planes de suscripción:
+  - Plan Basic: Precio mensual y límites (productos, imágenes)
+  - Plan Professional: Precio mensual y límites (productos, imágenes)
+  - Plan Enterprise: Precio mensual y límites (productos, imágenes, ilimitados)
+- Funcionalidad de guardado:
+  - Botón "Guardar Configuración" con estado de carga
+  - Integración con endpoint PUT `/api/admin/config/:key`
+  - Validación con Zod schema `updatePlatformConfigSchema`
+  - Sistema de upsert en base de datos (crea o actualiza)
+  - Log automático de cambios en `admin_actions`
+- Almacenamiento en tabla `platform_config`:
+  - configKey, configValue (JSONB)
+  - description, updatedBy, updatedAt
+- Card de advertencia:
+  - Notifica que los cambios afectan a todos los proveedores
+  - Estilo destacado (fondo amarillo)
+- Storage methods:
+  - `getPlatformConfig(configKey)` - Obtiene configuración específica
+  - `getAllPlatformConfigs()` - Lista todas las configuraciones
+  - `upsertPlatformConfig()` - Crea o actualiza configuración
+- Data-testids completos en todos los elementos
+
+**Archivos Modificados (Tareas 6-7):**
+- `shared/schema.ts` (tabla platformConfig ya existente, schemas de validación)
+- `server/storage.ts` (métodos getAllPayments, getPaymentStats, getPlatformConfig, upsertPlatformConfig)
+- `server/routes.ts` (endpoints para pagos y configuración)
+- `client/src/pages/admin-panel.tsx` (pestañas de Pagos y Configuración)
+
+**Tecnologías Utilizadas:**
+- Recharts para gráficos (BarChart)
+- React Query para fetching y mutaciones
+- Verifone para procesamiento de pagos
+- Zod para validación de schemas
+- Shadcn UI (Card, Table, Badge, Input, Button, Label)
+- Lucide React (iconos: DollarSign, CheckCircle, XCircle, TrendingUp, Settings)
+
+**Métricas de Éxito Alcanzadas:**
+- Dashboard completo de transacciones con estadísticas en tiempo real
+- Filtrado y búsqueda funcional de pagos
+- Gráfico de ingresos por plan
+- Sistema de configuración flexible para planes
+- Audit trail de cambios en configuración
+- Data-testids completos para testing automatizado
+- Protección a nivel de permisos (solo superadmin)
+
+---
+
+## ✅ SPRINT 3 - COMPLETADO (Octubre 2, 2025)
+
+**Estado**: Sprint 3 (Gestión Avanzada) - Completado ✅
+
+**Resumen del Sprint 3:**
+1. ✅ Sistema de roles y permisos (Tareas 1-3)
+2. ✅ Log de acciones admin (Tareas 4-5)
+3. ✅ Mejoras en gestión de pagos (Tarea 6)
+4. ✅ Configuraciones generales (Tarea 7)
+
+**Funcionalidades Implementadas:**
+- Gestión completa de usuarios administradores
+- Sistema de roles (client, supplier, moderator, support, admin, superadmin)
+- Log de auditoría de acciones administrativas
+- Dashboard de pagos y transacciones con filtros avanzados
+- Configuración de planes y límites de la plataforma
+- Protecciones de seguridad contra auto-modificación
+- Validación robusta con Zod en todos los endpoints
+
+**Próximos Pasos:**
+Fase 4 - Gestión de Pagos y Facturación (Prioridad Media):
+- Gestión avanzada de suscripciones
+- Sistema de reembolsos y créditos
+- Generación de facturas
+- Reportes fiscales (NCF para República Dominicana)
+
+Fase 5 - Configuración de Plataforma (Prioridad Baja):
+- Configuración de SEO (meta tags, open graph, sitemap)
+- Personalización de marca (logo, colores, textos)
+- Gestión de emails transaccionales
+- Textos legales (términos y condiciones, privacidad)
