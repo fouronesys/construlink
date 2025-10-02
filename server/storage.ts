@@ -82,6 +82,9 @@ export interface IStorage {
   updateBanner(id: string, updates: Partial<SupplierBanner>): Promise<SupplierBanner>;
   deleteBanner(id: string): Promise<void>;
   getActiveFeaturedBanners(): Promise<SupplierBanner[]>;
+  incrementBannerClicks(bannerId: string): Promise<boolean>;
+  incrementBannerImpressions(bannerId: string): Promise<boolean>;
+  getBannerStats(): Promise<{ bannerId: string; supplierId: string; supplierName: string; clicks: number; impressions: number; deviceType: string; }[]>;
   
   // Subscription operations
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
@@ -363,6 +366,57 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(asc(supplierBanners.displayOrder))
       .then(results => results.map(r => r.supplier_banners));
+  }
+
+  async incrementBannerClicks(bannerId: string): Promise<boolean> {
+    const result = await db
+      .update(supplierBanners)
+      .set({ 
+        clickCount: sql`${supplierBanners.clickCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(supplierBanners.id, bannerId))
+      .returning({ id: supplierBanners.id });
+    
+    return result.length > 0;
+  }
+
+  async incrementBannerImpressions(bannerId: string): Promise<boolean> {
+    const result = await db
+      .update(supplierBanners)
+      .set({ 
+        impressionCount: sql`${supplierBanners.impressionCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(supplierBanners.id, bannerId))
+      .returning({ id: supplierBanners.id });
+    
+    return result.length > 0;
+  }
+
+  async getBannerStats(): Promise<{ bannerId: string; supplierId: string; supplierName: string; clicks: number; impressions: number; deviceType: string; }[]> {
+    const results = await db
+      .select({
+        bannerId: supplierBanners.id,
+        supplierId: suppliers.id,
+        supplierName: suppliers.legalName,
+        clicks: supplierBanners.clickCount,
+        impressions: supplierBanners.impressionCount,
+        deviceType: supplierBanners.deviceType,
+      })
+      .from(supplierBanners)
+      .innerJoin(suppliers, eq(supplierBanners.supplierId, suppliers.id))
+      .where(eq(suppliers.isFeatured, true))
+      .orderBy(desc(supplierBanners.clickCount));
+    
+    return results.map(r => ({
+      bannerId: r.bannerId,
+      supplierId: r.supplierId,
+      supplierName: r.supplierName,
+      clicks: parseInt(r.clicks || '0'),
+      impressions: parseInt(r.impressions || '0'),
+      deviceType: r.deviceType,
+    }));
   }
 
   // Subscription operations

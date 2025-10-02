@@ -64,6 +64,21 @@ interface FeaturedSupplier {
   description: string;
   bannerImageUrl: string | null;
   specialties: string[];
+  bannerId?: string;
+}
+
+interface SupplierBanner {
+  id: string;
+  supplierId: string;
+  deviceType: 'desktop' | 'tablet' | 'mobile';
+  imageUrl: string;
+  title?: string;
+  description?: string;
+  linkUrl?: string;
+  displayOrder: number;
+  isActive: boolean;
+  clickCount: number;
+  impressionCount: number;
 }
 
 const sampleProviders: Provider[] = [
@@ -165,10 +180,69 @@ export default function Landing() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [carouselApi, setCarouselApi] = useState<any>(null);
+  const [viewedBanners, setViewedBanners] = useState<Set<string>>(new Set());
 
   const { data: featuredSuppliers, isLoading: isFeaturedLoading } = useQuery<FeaturedSupplier[]>({
     queryKey: ['/api/suppliers/featured'],
   });
+
+  // Track banner impression
+  const trackImpression = async (bannerId: string) => {
+    if (!bannerId || viewedBanners.has(bannerId)) return;
+    
+    try {
+      await fetch(`/api/banners/${bannerId}/impression`, {
+        method: 'POST',
+      });
+      setViewedBanners(prev => new Set(prev).add(bannerId));
+    } catch (error) {
+      console.error('Failed to track impression:', error);
+    }
+  };
+
+  // Track banner click
+  const trackClick = async (bannerId: string) => {
+    if (!bannerId) return;
+    
+    try {
+      await fetch(`/api/banners/${bannerId}/click`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Failed to track click:', error);
+    }
+  };
+
+  // Track impressions when carousel slides change
+  useEffect(() => {
+    if (!carouselApi || !featuredSuppliers?.length) return;
+
+    const onSelect = () => {
+      const currentIndex = carouselApi.selectedScrollSnap();
+      const supplier = featuredSuppliers[currentIndex];
+      if (supplier?.bannerId) {
+        trackImpression(supplier.bannerId);
+      }
+    };
+
+    // Track first banner on mount
+    if (featuredSuppliers[0]?.bannerId) {
+      trackImpression(featuredSuppliers[0].bannerId);
+    }
+
+    carouselApi.on('select', onSelect);
+    return () => {
+      carouselApi.off('select', onSelect);
+    };
+  }, [carouselApi, featuredSuppliers]);
+
+  const handleBannerClick = async (supplier: FeaturedSupplier) => {
+    if (supplier.bannerId) {
+      await trackClick(supplier.bannerId);
+    }
+    setLocation(`/directory?id=${supplier.id}`);
+  };
 
   const handleViewProfile = (provider: Provider) => {
     setSelectedProvider(provider);
@@ -246,6 +320,7 @@ export default function Landing() {
                 delay: 4000,
               }),
             ]}
+            setApi={setCarouselApi}
             className="w-full"
             data-testid="carousel-featured-suppliers"
           >
@@ -254,7 +329,7 @@ export default function Landing() {
                 <CarouselItem key={supplier.id} data-testid={`carousel-item-${supplier.id}`}>
                   <div 
                     className="relative w-full h-24 sm:h-32 md:h-40 cursor-pointer overflow-hidden group"
-                    onClick={() => setLocation(`/directory?id=${supplier.id}`)}
+                    onClick={() => handleBannerClick(supplier)}
                     data-testid={`banner-click-${supplier.id}`}
                   >
                     {supplier.bannerImageUrl ? (

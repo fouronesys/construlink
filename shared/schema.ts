@@ -101,6 +101,8 @@ export const supplierBanners = pgTable("supplier_banners", {
   linkUrl: text("link_url"),
   displayOrder: decimal("display_order", { precision: 10, scale: 0 }).default("0"),
   isActive: boolean("is_active").default(true),
+  clickCount: decimal("click_count", { precision: 10, scale: 0 }).default("0"),
+  impressionCount: decimal("impression_count", { precision: 10, scale: 0 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

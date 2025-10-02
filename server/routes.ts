@@ -701,10 +701,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(eq(suppliers.status, 'approved'), eq(suppliers.isFeatured, true)))
         .limit(10);
 
-      // Get specialties for each featured supplier
+      // Get specialties and banner for each featured supplier
       const suppliersWithSpecialties = await Promise.all(
         featuredSuppliers.map(async (supplier) => {
           const specialties = await storage.getSupplierSpecialties(supplier.id);
+          const banners = await storage.getBannersBySupplierId(supplier.id);
+          // Get desktop banner for tracking (or first available)
+          const desktopBanner = banners.find(b => b.deviceType === 'desktop' && b.isActive) || banners.find(b => b.isActive);
           
           return {
             id: supplier.id,
@@ -713,6 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: supplier.description,
             bannerImageUrl: supplier.bannerImageUrl,
             specialties: specialties.map(s => s.specialty),
+            bannerId: desktopBanner?.id, // Include banner ID for tracking
           };
         })
       );
@@ -732,6 +736,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching featured banners:", error);
       res.status(500).json({ message: "Failed to fetch featured banners" });
+    }
+  });
+
+  // Track banner click (public endpoint)
+  app.post('/api/banners/:id/click', async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Banner ID is required" });
+      }
+      
+      const success = await storage.incrementBannerClicks(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Banner not found" });
+      }
+      
+      res.json({ message: "Click recorded" });
+    } catch (error) {
+      console.error("Error recording banner click:", error);
+      res.status(500).json({ message: "Failed to record click" });
+    }
+  });
+
+  // Track banner impression (public endpoint)
+  app.post('/api/banners/:id/impression', async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Banner ID is required" });
+      }
+      
+      const success = await storage.incrementBannerImpressions(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Banner not found" });
+      }
+      
+      res.json({ message: "Impression recorded" });
+    } catch (error) {
+      console.error("Error recording banner impression:", error);
+      res.status(500).json({ message: "Failed to record impression" });
     }
   });
 
@@ -1296,6 +1344,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching featured suppliers:", error);
       res.status(500).json({ message: "Failed to fetch featured suppliers" });
+    }
+  });
+
+  // Admin get banner statistics
+  app.get('/api/admin/banners/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const stats = await storage.getBannerStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching banner stats:", error);
+      res.status(500).json({ message: "Failed to fetch banner statistics" });
     }
   });
 
