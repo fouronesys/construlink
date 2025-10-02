@@ -15,6 +15,9 @@ import {
   insertProductSchema,
   registerSchema, 
   loginSchema,
+  logAdminActionSchema,
+  updateUserRoleSchema,
+  updateUserStatusSchema,
   type InsertSupplier,
   type Supplier,
   type RegisterData,
@@ -1494,6 +1497,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // Admin get all admin users
+  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const adminUsers = await storage.getAdminUsers();
+      res.json(adminUsers);
+    } catch (error) {
+      console.error("Error fetching admin users:", error);
+      res.status(500).json({ message: "Failed to fetch admin users" });
+    }
+  });
+
+  // Admin get action logs
+  app.get('/api/admin/actions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { adminId, actionType, entityType, limit, offset } = req.query;
+      
+      const actions = await storage.getAdminActions({
+        adminId: adminId as string,
+        actionType: actionType as string,
+        entityType: entityType as string,
+        limit: limit ? parseInt(limit as string) : 100,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+
+      res.json(actions);
+    } catch (error) {
+      console.error("Error fetching admin actions:", error);
+      res.status(500).json({ message: "Failed to fetch admin actions" });
+    }
+  });
+
+  // Admin log action
+  app.post('/api/admin/actions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const validation = logAdminActionSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const actionData = {
+        adminId: user.id,
+        ...validation.data,
+      };
+
+      const action = await storage.logAdminAction(actionData);
+      res.json(action);
+    } catch (error) {
+      console.error("Error logging admin action:", error);
+      res.status(500).json({ message: "Failed to log action" });
+    }
+  });
+
+  // Admin update user role
+  app.patch('/api/admin/users/:id/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only super admins can change user roles" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate request body
+      const validation = updateUserRoleSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { role } = validation.data;
+
+      // Get current user data before updating
+      const currentUser = await storage.getUser(id);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const oldRole = currentUser.role;
+      const updatedUser = await storage.updateUserRole(id, role);
+      
+      // Log the action with accurate before/after details
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_user_role',
+        entityType: 'user',
+        entityId: id,
+        details: { oldRole, newRole: role },
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  // Admin update user status
+  app.patch('/api/admin/users/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only super admins can change user status" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate request body
+      const validation = updateUserStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { isActive } = validation.data;
+
+      // Get current user data before updating
+      const currentUser = await storage.getUser(id);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const oldStatus = currentUser.isActive;
+      const updatedUser = await storage.updateUserStatus(id, isActive);
+      
+      // Log the action with accurate before/after details
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_user_status',
+        entityType: 'user',
+        entityId: id,
+        details: { oldStatus, newStatus: isActive },
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
 
   // Create review for supplier
   app.post('/api/suppliers/:id/reviews', async (req, res) => {

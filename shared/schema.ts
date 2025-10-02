@@ -432,6 +432,22 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Contraseña es requerida"),
 });
 
+// Admin schemas
+export const logAdminActionSchema = z.object({
+  actionType: z.string().min(1, "Action type is required"),
+  entityType: z.string().optional(),
+  entityId: z.string().optional(),
+  details: z.record(z.any()).optional(),
+});
+
+export const updateUserRoleSchema = z.object({
+  role: z.enum(["client", "supplier", "admin", "superadmin"]),
+});
+
+export const updateUserStatusSchema = z.object({
+  isActive: z.boolean(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
