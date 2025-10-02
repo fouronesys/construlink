@@ -1753,7 +1753,7 @@ export default function AdminPanel() {
             </div>
 
             {/* Charts */}
-            {bannerStats && bannerStats.bannerDetails.length > 0 ? (
+            {bannerStats?.bannerDetails?.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Clicks Chart */}
@@ -1763,7 +1763,7 @@ export default function AdminPanel() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={bannerStats.bannerDetails}>
+                        <BarChart data={bannerStats!.bannerDetails}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="supplierName"
@@ -1788,7 +1788,7 @@ export default function AdminPanel() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={bannerStats.bannerDetails}>
+                        <BarChart data={bannerStats!.bannerDetails}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="supplierName"
@@ -1813,7 +1813,7 @@ export default function AdminPanel() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={bannerStats.bannerDetails}>
+                        <BarChart data={bannerStats!.bannerDetails}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="supplierName"
@@ -1849,7 +1849,7 @@ export default function AdminPanel() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {bannerStats.bannerDetails.map((banner) => (
+                        {bannerStats!.bannerDetails!.map((banner) => (
                           <TableRow key={banner.id}>
                             <TableCell className="font-medium">{banner.supplierName}</TableCell>
                             <TableCell>
