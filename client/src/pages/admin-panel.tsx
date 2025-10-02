@@ -99,6 +99,15 @@ interface BannerStats {
   }>;
 }
 
+interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'client' | 'supplier' | 'admin' | 'superadmin';
+  isActive: boolean;
+  createdAt: string;
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -182,6 +191,13 @@ export default function AdminPanel() {
   const { data: bannerStats } = useQuery<BannerStats>({
     queryKey: ["/api/admin/banners/stats"],
     enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Fetch admin users (superadmin only)
+  const { data: adminUsers = [] } = useQuery<AdminUser[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: !!user && user.role === 'superadmin',
     retry: false,
   });
 
@@ -334,6 +350,52 @@ export default function AdminPanel() {
       toast({
         title: "Error",
         description: "No se pudo eliminar el banner",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update user role mutation (superadmin only)
+  const updateUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/role`, { role });
+      if (!response.ok) throw new Error("Failed to update user role");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Éxito",
+        description: "Rol de usuario actualizado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el rol del usuario",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update user status mutation (superadmin only)
+  const updateUserStatusMutation = useMutation({
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/status`, { isActive });
+      if (!response.ok) throw new Error("Failed to update user status");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Éxito",
+        description: "Estado de usuario actualizado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el estado del usuario",
         variant: "destructive",
       });
     },
@@ -513,7 +575,7 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Aprobaciones
@@ -533,6 +595,12 @@ export default function AdminPanel() {
               Analytics
             </TabsTrigger>
             <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
+            {user?.role === 'superadmin' && (
+              <TabsTrigger value="admins" data-testid="tab-admins">
+                <Shield className="w-4 h-4 mr-1" />
+                Administradores
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -1168,6 +1236,142 @@ export default function AdminPanel() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Admin Users Management Tab (Superadmin Only) */}
+          {user?.role === 'superadmin' && (
+            <TabsContent value="admins" className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold" data-testid="heading-admin-management">Gestión de Administradores</h2>
+                  <p className="text-sm text-gray-600 mt-1" data-testid="text-admin-description">Administrar roles y permisos de usuarios</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardContent className="p-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha de Registro</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {adminUsers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                            No hay usuarios registrados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        adminUsers.map((adminUser: AdminUser) => (
+                          <TableRow key={adminUser.id}>
+                            <TableCell className="font-medium" data-testid={`text-email-${adminUser.id}`}>
+                              {adminUser.email}
+                            </TableCell>
+                            <TableCell data-testid={`text-name-${adminUser.id}`}>
+                              {adminUser.name || 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <select
+                                value={adminUser.role}
+                                onChange={(e) => {
+                                  if (adminUser.id === user.id) {
+                                    toast({
+                                      title: "Acción no permitida",
+                                      description: "No puedes cambiar tu propio rol",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  if (confirm(`¿Cambiar rol de ${adminUser.email} a ${e.target.value}?`)) {
+                                    updateUserRoleMutation.mutate({
+                                      userId: adminUser.id,
+                                      role: e.target.value,
+                                    });
+                                  }
+                                }}
+                                disabled={adminUser.id === user.id}
+                                className="border rounded px-2 py-1 text-sm"
+                                data-testid={`select-role-${adminUser.id}`}
+                              >
+                                <option value="client" data-testid={`option-role-client-${adminUser.id}`}>Cliente</option>
+                                <option value="supplier" data-testid={`option-role-supplier-${adminUser.id}`}>Proveedor</option>
+                                <option value="admin" data-testid={`option-role-admin-${adminUser.id}`}>Admin</option>
+                                <option value="superadmin" data-testid={`option-role-superadmin-${adminUser.id}`}>Superadmin</option>
+                              </select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={adminUser.isActive}
+                                  onCheckedChange={(checked) => {
+                                    if (adminUser.id === user.id) {
+                                      toast({
+                                        title: "Acción no permitida",
+                                        description: "No puedes desactivar tu propia cuenta",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    const action = checked ? 'activar' : 'desactivar';
+                                    if (confirm(`¿Estás seguro de ${action} la cuenta de ${adminUser.email}?`)) {
+                                      updateUserStatusMutation.mutate({
+                                        userId: adminUser.id,
+                                        isActive: checked,
+                                      });
+                                    }
+                                  }}
+                                  disabled={adminUser.id === user.id}
+                                  data-testid={`switch-status-${adminUser.id}`}
+                                />
+                                <span className="text-sm" data-testid={`text-status-${adminUser.id}`}>
+                                  {adminUser.isActive ? 'Activo' : 'Inactivo'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`text-date-${adminUser.id}`}>
+                              {new Date(adminUser.createdAt).toLocaleDateString('es-DO')}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={adminUser.role === 'superadmin' ? 'default' : 'secondary'}
+                                data-testid={`badge-role-${adminUser.id}`}
+                              >
+                                {adminUser.role === 'superadmin' && <Shield className="w-3 h-3 mr-1" />}
+                                {adminUser.role}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-blue-50 border-blue-200" data-testid="card-permissions-info">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900" data-testid="heading-permissions">Permisos por Rol</h4>
+                      <ul className="text-sm text-blue-800 mt-2 space-y-1" data-testid="list-permissions">
+                        <li data-testid="text-permission-superadmin"><strong>Superadmin:</strong> Control total de la plataforma</li>
+                        <li data-testid="text-permission-admin"><strong>Admin:</strong> Gestión de proveedores y contenido</li>
+                        <li data-testid="text-permission-supplier"><strong>Proveedor:</strong> Gestión de productos y cotizaciones</li>
+                        <li data-testid="text-permission-client"><strong>Cliente:</strong> Acceso básico a la plataforma</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
