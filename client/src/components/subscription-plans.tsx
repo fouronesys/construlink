@@ -269,7 +269,6 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
               onClick={() => {
-                console.log("Plan selected:", plan.id);
                 setSelected(plan.id);
                 onPlanSelect(plan.id);
                 

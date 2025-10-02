@@ -85,17 +85,21 @@ export default function Directory() {
   const [selectedProviderName, setSelectedProviderName] = useState<string>("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Parse URL parameters for search and category
+  // Parse URL parameters for search, category, and supplier id
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get('search');
     const categoryParam = urlParams.get('category');
+    const idParam = urlParams.get('id');
     
     if (searchParam) {
       setFilters(prev => ({ ...prev, search: searchParam }));
     }
     if (categoryParam) {
       setFilters(prev => ({ ...prev, specialty: categoryParam }));
+    }
+    if (idParam) {
+      handleViewProfile(idParam);
     }
   }, []);
 

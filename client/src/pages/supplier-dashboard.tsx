@@ -255,7 +255,7 @@ export default function SupplierDashboard() {
             </p>
           </div>
           <SubscriptionPlans 
-            onPlanSelect={(plan) => console.log('Plan selected:', plan)}
+            onPlanSelect={() => {}}
             onContinue={() => window.location.reload()}
           />
         </div>
