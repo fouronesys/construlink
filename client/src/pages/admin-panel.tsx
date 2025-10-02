@@ -207,6 +207,28 @@ interface Invoice {
   };
 }
 
+interface Subscription {
+  id: string;
+  supplierId: string;
+  plan: 'basic' | 'professional' | 'enterprise';
+  status: 'active' | 'inactive' | 'cancelled' | 'trialing';
+  verifoneSubscriptionId?: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  trialEndDate?: string;
+  monthlyAmount: string;
+  createdAt: string;
+  updatedAt: string;
+  supplier?: {
+    id: string;
+    legalName: string;
+    rnc: string;
+    email: string;
+  };
+  payments?: Payment[];
+  totalPayments?: number;
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -264,6 +286,15 @@ export default function AdminPanel() {
   const [invoiceNcfSequence, setInvoiceNcfSequence] = useState("");
   const [invoiceNotes, setInvoiceNotes] = useState("");
 
+  // Subscription filters and states
+  const [subscriptionSearch, setSubscriptionSearch] = useState("");
+  const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState("all");
+  const [subscriptionPlanFilter, setSubscriptionPlanFilter] = useState("all");
+  const [subscriptionPage, setSubscriptionPage] = useState(1);
+  const [subscriptionLimit, setSubscriptionLimit] = useState(10);
+  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
+  const [showSubscriptionDetailsModal, setShowSubscriptionDetailsModal] = useState(false);
+
   // Reset pages when filters change
   useEffect(() => {
     setRefundPage(1);
@@ -272,6 +303,10 @@ export default function AdminPanel() {
   useEffect(() => {
     setInvoicePage(1);
   }, [invoiceSearch, invoiceStatusFilter, invoiceSupplierFilter, invoiceLimit]);
+
+  useEffect(() => {
+    setSubscriptionPage(1);
+  }, [subscriptionSearch, subscriptionStatusFilter, subscriptionPlanFilter, subscriptionLimit]);
 
   // Plan configuration states
   const [basicPrice, setBasicPrice] = useState(1000);
@@ -389,6 +424,25 @@ export default function AdminPanel() {
   // Fetch invoices
   const { data: invoicesData, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[]; total: number }>({
     queryKey: [`/api/admin/invoices?page=${invoicePage}&limit=${invoiceLimit}&status=${invoiceStatusFilter}&supplierId=${invoiceSupplierFilter}&search=${invoiceSearch}`],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Fetch subscriptions
+  const { data: subscriptionsData, isLoading: subscriptionsLoading } = useQuery<{ subscriptions: Subscription[]; total: number }>({
+    queryKey: ['/api/admin/subscriptions', { page: subscriptionPage, limit: subscriptionLimit, status: subscriptionStatusFilter, plan: subscriptionPlanFilter, search: subscriptionSearch }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: subscriptionPage.toString(),
+        limit: subscriptionLimit.toString(),
+        status: subscriptionStatusFilter,
+        plan: subscriptionPlanFilter,
+        search: subscriptionSearch,
+      });
+      const response = await fetch(`/api/admin/subscriptions?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch subscriptions');
+      return response.json();
+    },
     enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
@@ -769,6 +823,31 @@ export default function AdminPanel() {
       toast({
         title: "Error",
         description: error.message || "No se pudo actualizar la factura",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update subscription status mutation
+  const updateSubscriptionStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'active' | 'inactive' | 'cancelled' | 'trialing' }) => {
+      const response = await apiRequest("PATCH", `/api/admin/subscriptions/${id}/status`, { status });
+      if (!response.ok) throw new Error("Failed to update subscription status");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
+      setShowSubscriptionDetailsModal(false);
+      setSelectedSubscription(null);
+      toast({
+        title: "Éxito",
+        description: "Estado de suscripción actualizado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la suscripción",
         variant: "destructive",
       });
     },
@@ -2269,6 +2348,315 @@ export default function AdminPanel() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Subscriptions Management Section */}
+            <div className="mt-8">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold" data-testid="heading-subscriptions">Gestión de Suscripciones</h3>
+                  <p className="text-sm text-gray-600 mt-1">Administra las suscripciones de proveedores y su historial de pagos</p>
+                </div>
+              </div>
+
+              {/* Subscription Filters */}
+              <Card className="mb-4">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="subscription-search">Buscar</Label>
+                      <Input
+                        id="subscription-search"
+                        placeholder="Buscar por proveedor, RNC..."
+                        value={subscriptionSearch}
+                        onChange={(e) => setSubscriptionSearch(e.target.value)}
+                        data-testid="input-subscription-search"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="subscription-status-filter">Estado</Label>
+                      <select
+                        id="subscription-status-filter"
+                        value={subscriptionStatusFilter}
+                        onChange={(e) => setSubscriptionStatusFilter(e.target.value)}
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        data-testid="select-subscription-status-filter"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="active">Activa</option>
+                        <option value="inactive">Inactiva</option>
+                        <option value="cancelled">Cancelada</option>
+                        <option value="trialing">En prueba</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="subscription-plan-filter">Plan</Label>
+                      <select
+                        id="subscription-plan-filter"
+                        value={subscriptionPlanFilter}
+                        onChange={(e) => setSubscriptionPlanFilter(e.target.value)}
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        data-testid="select-subscription-plan-filter"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="basic">Basic</option>
+                        <option value="professional">Professional</option>
+                        <option value="enterprise">Enterprise</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="subscription-limit">Resultados por página</Label>
+                      <select
+                        id="subscription-limit"
+                        value={subscriptionLimit}
+                        onChange={(e) => setSubscriptionLimit(Number(e.target.value))}
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        data-testid="select-subscription-limit"
+                      >
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Subscriptions Table */}
+              <Card>
+                <CardContent className="p-6">
+                  {subscriptionsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                    </div>
+                  ) : (
+                    <>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Proveedor</TableHead>
+                            <TableHead>Plan</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Monto Mensual</TableHead>
+                            <TableHead>Período Actual</TableHead>
+                            <TableHead>Total Pagos</TableHead>
+                            <TableHead>Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {subscriptionsData?.subscriptions.map((subscription: Subscription) => (
+                            <TableRow key={subscription.id} data-testid={`row-subscription-${subscription.id}`}>
+                              <TableCell data-testid={`text-subscription-supplier-${subscription.id}`}>
+                                <div>
+                                  <p className="font-medium">{subscription.supplier?.legalName || 'N/A'}</p>
+                                  <p className="text-sm text-gray-500">{subscription.supplier?.rnc || 'N/A'}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell data-testid={`text-subscription-plan-${subscription.id}`}>
+                                <Badge variant="outline" className="capitalize">
+                                  {subscription.plan}
+                                </Badge>
+                              </TableCell>
+                              <TableCell data-testid={`text-subscription-status-${subscription.id}`}>
+                                <Badge className={
+                                  subscription.status === 'active' ? 'bg-green-100 text-green-800' :
+                                  subscription.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  subscription.status === 'trialing' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }>
+                                  {subscription.status === 'active' ? 'Activa' :
+                                   subscription.status === 'inactive' ? 'Inactiva' :
+                                   subscription.status === 'cancelled' ? 'Cancelada' : 'En prueba'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell data-testid={`text-subscription-amount-${subscription.id}`}>
+                                <span className="font-medium">
+                                  RD${Number(subscription.monthlyAmount).toLocaleString()}
+                                </span>
+                              </TableCell>
+                              <TableCell data-testid={`text-subscription-period-${subscription.id}`}>
+                                {subscription.currentPeriodStart && subscription.currentPeriodEnd ? (
+                                  <div className="text-sm">
+                                    <p>{new Date(subscription.currentPeriodStart).toLocaleDateString('es-DO')}</p>
+                                    <p className="text-gray-500">hasta {new Date(subscription.currentPeriodEnd).toLocaleDateString('es-DO')}</p>
+                                  </div>
+                                ) : (
+                                  'N/A'
+                                )}
+                              </TableCell>
+                              <TableCell data-testid={`text-subscription-payments-${subscription.id}`}>
+                                <span className="font-medium">
+                                  {subscription.totalPayments || 0}
+                                </span>
+                              </TableCell>
+                              <TableCell data-testid={`actions-subscription-${subscription.id}`}>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSubscription(subscription);
+                                      setShowSubscriptionDetailsModal(true);
+                                    }}
+                                    data-testid={`button-view-subscription-${subscription.id}`}
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  {subscription.status === 'active' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => updateSubscriptionStatusMutation.mutate({ id: subscription.id, status: 'inactive' })}
+                                      data-testid={`button-deactivate-subscription-${subscription.id}`}
+                                    >
+                                      Desactivar
+                                    </Button>
+                                  )}
+                                  {subscription.status === 'inactive' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => updateSubscriptionStatusMutation.mutate({ id: subscription.id, status: 'active' })}
+                                      data-testid={`button-activate-subscription-${subscription.id}`}
+                                    >
+                                      Activar
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {(!subscriptionsData || subscriptionsData.subscriptions.length === 0) && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center text-gray-500 py-8" data-testid="text-no-subscriptions">
+                                No hay suscripciones registradas
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+
+                      {/* Pagination */}
+                      {subscriptionsData && subscriptionsData.total > 0 && (
+                        <div className="flex items-center justify-between mt-4">
+                          <p className="text-sm text-gray-600" data-testid="text-subscription-count">
+                            Mostrando {subscriptionsData.subscriptions.length} de {subscriptionsData.total} suscripciones
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSubscriptionPage(Math.max(1, subscriptionPage - 1))}
+                              disabled={subscriptionPage === 1}
+                              data-testid="button-subscription-prev-page"
+                            >
+                              Anterior
+                            </Button>
+                            <span className="px-3 py-2 text-sm" data-testid="text-subscription-current-page">
+                              Página {subscriptionPage}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSubscriptionPage(subscriptionPage + 1)}
+                              disabled={subscriptionsData.subscriptions.length < subscriptionLimit}
+                              data-testid="button-subscription-next-page"
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Subscription Details Modal */}
+            {selectedSubscription && (
+              <Dialog open={showSubscriptionDetailsModal} onOpenChange={setShowSubscriptionDetailsModal}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle data-testid="heading-subscription-details">Detalles de Suscripción</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-600">Proveedor</Label>
+                        <p className="font-medium" data-testid="text-modal-supplier-name">{selectedSubscription.supplier?.legalName || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">RNC</Label>
+                        <p className="font-medium" data-testid="text-modal-supplier-rnc">{selectedSubscription.supplier?.rnc || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Plan</Label>
+                        <Badge variant="outline" className="capitalize" data-testid="text-modal-plan">{selectedSubscription.plan}</Badge>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Estado</Label>
+                        <Badge className={
+                          selectedSubscription.status === 'active' ? 'bg-green-100 text-green-800' :
+                          selectedSubscription.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          selectedSubscription.status === 'trialing' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        } data-testid="text-modal-status">
+                          {selectedSubscription.status}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Monto Mensual</Label>
+                        <p className="font-medium" data-testid="text-modal-amount">RD${Number(selectedSubscription.monthlyAmount).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">ID Verifone</Label>
+                        <p className="text-sm font-mono text-gray-600" data-testid="text-modal-verifone-id">{selectedSubscription.verifoneSubscriptionId || 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    {selectedSubscription.currentPeriodStart && selectedSubscription.currentPeriodEnd && (
+                      <div>
+                        <Label className="text-gray-600">Período Actual</Label>
+                        <p className="font-medium" data-testid="text-modal-period">
+                          {new Date(selectedSubscription.currentPeriodStart).toLocaleDateString('es-DO')} - {new Date(selectedSubscription.currentPeriodEnd).toLocaleDateString('es-DO')}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowSubscriptionDetailsModal(false)}
+                        data-testid="button-close-modal"
+                      >
+                        Cerrar
+                      </Button>
+                      {selectedSubscription.status !== 'cancelled' && (
+                        <>
+                          {selectedSubscription.status === 'active' ? (
+                            <Button
+                              variant="destructive"
+                              onClick={() => updateSubscriptionStatusMutation.mutate({ id: selectedSubscription.id, status: 'cancelled' })}
+                              data-testid="button-cancel-subscription-modal"
+                            >
+                              Cancelar Suscripción
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => updateSubscriptionStatusMutation.mutate({ id: selectedSubscription.id, status: 'active' })}
+                              data-testid="button-activate-subscription-modal"
+                            >
+                              Activar Suscripción
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </TabsContent>
 
           {/* Refunds Tab */}
