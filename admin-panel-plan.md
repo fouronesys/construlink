@@ -635,7 +635,115 @@ CREATE TABLE admin_actions (
 
 **Próximo Paso:**
 Sprint 3 (Semana 4) - Gestión Avanzada:
-1. ⏳ Sistema de roles y permisos
-2. ⏳ Log de acciones admin
+1. ✅ Sistema de roles y permisos
+2. ✅ Log de acciones admin
 3. ⏳ Mejoras en gestión de pagos
 4. ⏳ Configuraciones generales
+
+---
+
+## ✅ SPRINT 3 - Gestión de Usuarios Admin y Logs (PARCIALMENTE COMPLETADO ✅)
+
+### Backend Implementado (Octubre 2, 2025)
+
+**✅ Tarea 1: Schema de Admin Actions**
+- Creada tabla `admin_actions` con campos:
+  - `id` (UUID primary key)
+  - `adminId` (referencia a users)
+  - `actionType` (tipo de acción realizada)
+  - `entityType` (tipo de entidad afectada: user, supplier, subscription)
+  - `entityId` (ID de la entidad afectada)
+  - `details` (JSONB con información adicional before/after)
+  - `createdAt` (timestamp automático)
+- Migración ejecutada con `npm run db:push`
+
+**✅ Tarea 2: Storage Methods para Admin**
+- `getUsers()` - Obtiene todos los usuarios de la plataforma
+- `getUser(id)` - Obtiene un usuario específico
+- `updateUserRole(id, role)` - Actualiza el rol de un usuario
+- `updateUserStatus(id, isActive)` - Activa/desactiva usuario
+- `logAdminAction(data)` - Registra acciones administrativas
+- `getAdminActions()` - Obtiene historial de acciones con email del admin
+
+**✅ Tarea 3: Endpoints del Backend con Validación Zod**
+- GET `/api/admin/users` - Lista todos los usuarios (superadmin only)
+- GET `/api/admin/actions` - Obtiene log de acciones (superadmin only)
+- POST `/api/admin/actions` - Registra nueva acción (admin/superadmin)
+- PATCH `/api/admin/users/:id/role` - Cambia rol de usuario (superadmin only)
+- PATCH `/api/admin/users/:id/status` - Activa/desactiva usuario (superadmin only)
+- Schemas de validación Zod:
+  - `logAdminActionSchema` - Valida actionType requerido
+  - `updateUserRoleSchema` - Valida rol (enum de 4 valores)
+  - `updateUserStatusSchema` - Valida isActive (boolean)
+- Todos los endpoints:
+  - Obtienen usuario actual antes de cambios para audit trail preciso
+  - Retornan 400 con detalles si validación falla
+  - Retornan 404 si usuario no existe
+  - Retornan 403 si permisos insuficientes
+
+### Frontend Implementado (Octubre 2, 2025)
+
+**✅ Tarea 4: Pestaña de Gestión de Usuarios Admin**
+- Agregada pestaña "Administradores" (solo visible para superadmin)
+- Tabla completa mostrando:
+  - Email del usuario
+  - Nombre (o N/A si no tiene)
+  - Select dropdown para cambiar rol (client, supplier, admin, superadmin)
+  - Switch para activar/desactivar cuenta
+  - Fecha de registro
+  - Badge con rol actual
+- Protecciones de seguridad:
+  - No permite cambiar propio rol (disabled + toast de error)
+  - No permite desactivar propia cuenta (disabled + toast de error)
+  - Confirmación antes de cualquier cambio crítico
+- Mutaciones:
+  - `updateUserRoleMutation` - Actualiza rol con invalidación de cache
+  - `updateUserStatusMutation` - Actualiza estado con invalidación de cache
+- Card informativo con descripción de permisos por rol
+- Data-testids completos en todos los elementos interactivos
+
+**✅ Tarea 5: Componente de Log de Acciones Administrativas**
+- Agregada pestaña "Logs" (solo visible para superadmin)
+- Sistema de filtros:
+  - Input de búsqueda por email del admin o ID de entidad
+  - Select para filtrar por tipo de acción (6 tipos predefinidos)
+  - Select para filtrar por tipo de entidad (user, supplier, subscription)
+- Tabla detallada mostrando:
+  - Fecha y hora formateada (es-DO locale)
+  - Email del administrador que realizó la acción
+  - Tipo de acción (badge con formato legible)
+  - Tipo de entidad y ID (primeros 8 caracteres)
+  - Detalles en JSON formateado (oldRole/newRole, oldStatus/newStatus, etc.)
+- Características:
+  - Límite de 50 registros más recientes
+  - Filtrado funcional con múltiples criterios
+  - Estado vacío apropiado
+  - Card informativo explicando el sistema de auditoría
+- Data-testids completos en todos los elementos
+
+**Archivos Modificados:**
+- `shared/schema.ts` (tabla admin_actions, schemas de validación Zod)
+- `server/storage.ts` (6 métodos nuevos para admin y logs)
+- `server/routes.ts` (5 endpoints nuevos con validación)
+- `client/src/pages/admin-panel.tsx` (2 pestañas nuevas: Administradores y Logs)
+
+**Tecnologías Utilizadas:**
+- Zod para validación de schemas en backend
+- React Query para fetching y mutaciones
+- Shadcn UI (Table, Card, Badge, Switch, Label, Input)
+- Lucide React (iconos: Shield, Activity)
+- TypeScript con interfaces tipadas
+
+**Métricas de Éxito Alcanzadas:**
+- Audit trail completo de acciones críticas
+- Validación robusta en backend (400 para errores de validación)
+- Protección contra auto-modificación
+- Data-testids completos para testing automatizado
+- Confirmaciones antes de cambios críticos
+- Toast notifications para feedback al usuario
+
+**Estado**: Sprint 3 (Gestión de Usuarios Admin y Logs) - Tareas 1-5 Completadas ✅
+
+**Pendiente en Sprint 3:**
+- Tarea 6: Mejoras en gestión de pagos con dashboard de transacciones
+- Tarea 7: Configuraciones generales de la plataforma
