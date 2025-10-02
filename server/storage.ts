@@ -98,6 +98,24 @@ export interface IStorage {
   // Payment operations
   createPayment(payment: InsertPayment): Promise<Payment>;
   getPaymentsBySubscriptionId(subscriptionId: string): Promise<Payment[]>;
+  getAllPayments(filters?: {
+    status?: string;
+    supplierId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Array<Payment & { 
+    subscription?: Subscription; 
+    supplier?: { id: string; legalName: string; plan: string; }; 
+  }>>;
+  getPaymentStats(): Promise<{
+    totalPayments: number;
+    completedPayments: number;
+    failedPayments: number;
+    pendingPayments: number;
+    totalRevenue: number;
+    monthlyRevenue: number;
+    recentPayments: Array<Payment & { supplierName: string; plan: string; }>;
+  }>;
   
   // Product operations
   createProduct(product: InsertProduct): Promise<Product>;
@@ -488,6 +506,107 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payments.id, id))
       .returning();
     return updatedPayment;
+  }
+
+  async getAllPayments(filters?: {
+    status?: string;
+    supplierId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Array<Payment & { 
+    subscription?: Subscription; 
+    supplier?: { id: string; legalName: string; plan: string; }; 
+  }>> {
+    const whereConditions = [];
+    
+    if (filters?.status) {
+      whereConditions.push(eq(payments.status, filters.status as any));
+    }
+
+    if (filters?.supplierId) {
+      whereConditions.push(eq(suppliers.id, filters.supplierId));
+    }
+
+    const results = await db
+      .select({
+        payment: payments,
+        subscription: subscriptions,
+        supplier: suppliers,
+      })
+      .from(payments)
+      .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(payments.paymentDate))
+      .limit(filters?.limit || 100)
+      .offset(filters?.offset || 0);
+    
+    return results.map(r => ({
+      ...r.payment,
+      subscription: r.subscription || undefined,
+      supplier: r.supplier ? {
+        id: r.supplier.id,
+        legalName: r.supplier.legalName,
+        plan: r.subscription?.plan || 'N/A',
+      } : undefined,
+    }));
+  }
+
+  async getPaymentStats(): Promise<{
+    totalPayments: number;
+    completedPayments: number;
+    failedPayments: number;
+    pendingPayments: number;
+    totalRevenue: number;
+    monthlyRevenue: number;
+    recentPayments: Array<Payment & { supplierName: string; plan: string; }>;
+  }> {
+    const allPayments = await db
+      .select({
+        payment: payments,
+        subscription: subscriptions,
+        supplier: suppliers,
+      })
+      .from(payments)
+      .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .orderBy(desc(payments.paymentDate));
+
+    const totalPayments = allPayments.length;
+    const completedPayments = allPayments.filter(p => p.payment.status === 'completed').length;
+    const failedPayments = allPayments.filter(p => p.payment.status === 'failed').length;
+    const pendingPayments = allPayments.filter(p => p.payment.status === 'pending').length;
+
+    const totalRevenue = allPayments
+      .filter(p => p.payment.status === 'completed')
+      .reduce((sum, p) => sum + parseFloat(p.payment.amount || '0'), 0);
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthlyRevenue = allPayments
+      .filter(p => 
+        p.payment.status === 'completed' && 
+        p.payment.paymentDate && 
+        p.payment.paymentDate.toISOString().slice(0, 7) === currentMonth
+      )
+      .reduce((sum, p) => sum + parseFloat(p.payment.amount || '0'), 0);
+
+    const recentPayments = allPayments
+      .slice(0, 10)
+      .map(r => ({
+        ...r.payment,
+        supplierName: r.supplier?.legalName || 'N/A',
+        plan: r.subscription?.plan || 'N/A',
+      }));
+
+    return {
+      totalPayments,
+      completedPayments,
+      failedPayments,
+      pendingPayments,
+      totalRevenue,
+      monthlyRevenue,
+      recentPayments,
+    };
   }
 
   // Product operations

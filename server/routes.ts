@@ -1665,6 +1665,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin get all payments
+  app.get('/api/admin/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, supplierId, limit, offset } = req.query;
+      
+      const parsedLimit = limit ? parseInt(limit as string) : 100;
+      const parsedOffset = offset ? parseInt(offset as string) : 0;
+      
+      const payments = await storage.getAllPayments({
+        status: status as string,
+        supplierId: supplierId as string,
+        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 100,
+        offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
+      });
+
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  // Admin get payment statistics
+  app.get('/api/admin/payments/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const stats = await storage.getPaymentStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching payment stats:", error);
+      res.status(500).json({ message: "Failed to fetch payment statistics" });
+    }
+  });
+
   // Create review for supplier
   app.post('/api/suppliers/:id/reviews', async (req, res) => {
     try {
