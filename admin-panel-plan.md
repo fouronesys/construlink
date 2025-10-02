@@ -444,5 +444,40 @@ CREATE TABLE admin_actions (
 ---
 
 **Fecha de Creación**: 1 de Octubre, 2025  
-**Última Actualización**: 1 de Octubre, 2025  
-**Estado**: Plan Inicial - Pendiente de Aprobación
+**Última Actualización**: 2 de Octubre, 2025  
+**Estado**: Fase 1 Backend - Completado
+
+---
+
+## ✅ REGISTRO DE AVANCE - FASE 1
+
+### Backend Implementado (Octubre 2, 2025)
+
+**✅ Tarea 1: Schema de Base de Datos**
+- Agregado enum `deviceTypeEnum` (desktop, tablet, mobile)
+- Creada tabla `supplier_banners` completa
+- Agregado campo `featuredSince` a `suppliers`
+- Relaciones y tipos TypeScript configurados
+- Migración ejecutada con `npm run db:push`
+
+**✅ Tarea 2: Storage Interface**
+- `toggleFeaturedStatus()`, `getFeaturedSuppliers()`
+- CRUD completo para banners
+- `getActiveFeaturedBanners()` para carousel público
+
+**✅ Tarea 3: Endpoints del Backend**
+- 7 endpoints admin protegidos con autenticación
+- 1 endpoint público para carousel
+- Validaciones: solo approved → featured → banners
+
+**✅ Tarea 4: Sistema de Upload**
+- Multer configurado con seguridad (5MB, JPEG/PNG/WebP)
+- Verificación de roles ANTES de upload
+- `/uploads` estático configurado
+
+**Archivos Creados/Modificados:**
+- `shared/schema.ts`, `server/storage.ts`, `server/routes.ts`
+- `server/upload.ts` (nuevo), `server/index.ts`
+
+**Próximo Paso:**
+Frontend (UI admin, modal upload, carousel público)
