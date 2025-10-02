@@ -1499,6 +1499,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Admin get all users (superadmin only)
+  app.get('/api/admin/all-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only super admins can view all users" });
+      }
+
+      const allUsers = await storage.getUsers();
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ message: "Failed to fetch all users" });
+    }
+  });
+
   // Admin get all admin users
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {

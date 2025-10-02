@@ -103,7 +103,7 @@ interface AdminUser {
   id: string;
   email: string;
   name: string | null;
-  role: 'client' | 'supplier' | 'admin' | 'superadmin';
+  role: 'client' | 'supplier' | 'moderator' | 'support' | 'admin' | 'superadmin';
   isActive: boolean;
   createdAt: string;
 }
@@ -269,9 +269,9 @@ export default function AdminPanel() {
     retry: false,
   });
 
-  // Fetch admin users (superadmin only)
+  // Fetch all users for role management (superadmin only)
   const { data: adminUsers = [] } = useQuery<AdminUser[]>({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/admin/all-users"],
     enabled: !!user && user.role === 'superadmin',
     retry: false,
   });
@@ -514,6 +514,7 @@ export default function AdminPanel() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/all-users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
         title: "Éxito",
@@ -537,6 +538,7 @@ export default function AdminPanel() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/all-users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
         title: "Éxito",
@@ -1556,6 +1558,8 @@ export default function AdminPanel() {
                               >
                                 <option value="client" data-testid={`option-role-client-${adminUser.id}`}>Cliente</option>
                                 <option value="supplier" data-testid={`option-role-supplier-${adminUser.id}`}>Proveedor</option>
+                                <option value="moderator" data-testid={`option-role-moderator-${adminUser.id}`}>Moderador</option>
+                                <option value="support" data-testid={`option-role-support-${adminUser.id}`}>Soporte</option>
                                 <option value="admin" data-testid={`option-role-admin-${adminUser.id}`}>Admin</option>
                                 <option value="superadmin" data-testid={`option-role-superadmin-${adminUser.id}`}>Superadmin</option>
                               </select>
@@ -1594,11 +1598,15 @@ export default function AdminPanel() {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                variant={adminUser.role === 'superadmin' ? 'default' : 'secondary'}
+                                variant={adminUser.role === 'superadmin' ? 'default' : adminUser.role === 'admin' ? 'secondary' : 'outline'}
                                 data-testid={`badge-role-${adminUser.id}`}
                               >
                                 {adminUser.role === 'superadmin' && <Shield className="w-3 h-3 mr-1" />}
-                                {adminUser.role}
+                                {adminUser.role === 'moderator' ? 'Moderador' : 
+                                 adminUser.role === 'support' ? 'Soporte' : 
+                                 adminUser.role === 'admin' ? 'Admin' : 
+                                 adminUser.role === 'superadmin' ? 'Superadmin' : 
+                                 adminUser.role === 'supplier' ? 'Proveedor' : 'Cliente'}
                               </Badge>
                             </TableCell>
                           </TableRow>
@@ -1618,6 +1626,8 @@ export default function AdminPanel() {
                       <ul className="text-sm text-blue-800 mt-2 space-y-1" data-testid="list-permissions">
                         <li data-testid="text-permission-superadmin"><strong>Superadmin:</strong> Control total de la plataforma</li>
                         <li data-testid="text-permission-admin"><strong>Admin:</strong> Gestión de proveedores y contenido</li>
+                        <li data-testid="text-permission-moderator"><strong>Moderador:</strong> Aprobaciones y gestión de cotizaciones</li>
+                        <li data-testid="text-permission-support"><strong>Soporte:</strong> Solo lectura para asistencia</li>
                         <li data-testid="text-permission-supplier"><strong>Proveedor:</strong> Gestión de productos y cotizaciones</li>
                         <li data-testid="text-permission-client"><strong>Cliente:</strong> Acceso básico a la plataforma</li>
                       </ul>
