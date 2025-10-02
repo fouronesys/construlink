@@ -723,6 +723,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get featured suppliers banners (public endpoint for carousel)
+  app.get('/api/suppliers/featured/banners', async (req, res) => {
+    try {
+      const banners = await storage.getActiveFeaturedBanners();
+      res.json(banners);
+    } catch (error) {
+      console.error("Error fetching featured banners:", error);
+      res.status(500).json({ message: "Failed to fetch featured banners" });
+    }
+  });
+
   // Get suppliers (public endpoint with filters)
   app.get('/api/suppliers', async (req, res) => {
     try {
@@ -1238,6 +1249,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching pending suppliers:", error);
       res.status(500).json({ message: "Failed to fetch pending suppliers" });
+    }
+  });
+
+  // Admin toggle featured status
+  app.post('/api/admin/suppliers/:id/featured', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { isFeatured } = req.body;
+
+      const supplier = await storage.getSupplier(id);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      if (supplier.status !== 'approved') {
+        return res.status(400).json({ message: "Only approved suppliers can be featured" });
+      }
+
+      const updatedSupplier = await storage.toggleFeaturedStatus(id, isFeatured);
+      res.json(updatedSupplier);
+    } catch (error) {
+      console.error("Error toggling featured status:", error);
+      res.status(500).json({ message: "Failed to update featured status" });
+    }
+  });
+
+  // Admin get featured suppliers
+  app.get('/api/admin/suppliers/featured', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const featuredSuppliers = await storage.getFeaturedSuppliers();
+      res.json(featuredSuppliers);
+    } catch (error) {
+      console.error("Error fetching featured suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch featured suppliers" });
+    }
+  });
+
+  // Admin get supplier banners
+  app.get('/api/admin/suppliers/:id/banners', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const banners = await storage.getBannersBySupplierId(id);
+      res.json(banners);
+    } catch (error) {
+      console.error("Error fetching banners:", error);
+      res.status(500).json({ message: "Failed to fetch banners" });
+    }
+  });
+
+  // Admin create banner
+  app.post('/api/admin/suppliers/:id/banner', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const supplier = await storage.getSupplier(id);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      if (!supplier.isFeatured) {
+        return res.status(400).json({ message: "Supplier must be featured to add banners" });
+      }
+
+      const bannerData = {
+        ...req.body,
+        supplierId: id,
+      };
+
+      const banner = await storage.createBanner(bannerData);
+      res.json(banner);
+    } catch (error) {
+      console.error("Error creating banner:", error);
+      res.status(500).json({ message: "Failed to create banner" });
+    }
+  });
+
+  // Admin update banner
+  app.put('/api/admin/suppliers/:id/banner/:bannerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { bannerId } = req.params;
+      const banner = await storage.getBanner(bannerId);
+      
+      if (!banner) {
+        return res.status(404).json({ message: "Banner not found" });
+      }
+
+      const updatedBanner = await storage.updateBanner(bannerId, req.body);
+      res.json(updatedBanner);
+    } catch (error) {
+      console.error("Error updating banner:", error);
+      res.status(500).json({ message: "Failed to update banner" });
+    }
+  });
+
+  // Admin delete banner
+  app.delete('/api/admin/suppliers/:id/banner/:bannerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { bannerId } = req.params;
+      const banner = await storage.getBanner(bannerId);
+      
+      if (!banner) {
+        return res.status(404).json({ message: "Banner not found" });
+      }
+
+      await storage.deleteBanner(bannerId);
+      res.json({ message: "Banner deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting banner:", error);
+      res.status(500).json({ message: "Failed to delete banner" });
     }
   });
 
