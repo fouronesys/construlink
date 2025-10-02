@@ -133,6 +133,38 @@ export const payments = pgTable("payments", {
   paymentDate: timestamp("payment_date").defaultNow(),
 });
 
+// Refunds (Reembolsos)
+export const refunds = pgTable("refunds", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "cascade" }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  reason: text("reason"),
+  status: varchar("status", { enum: ["pending", "approved", "rejected", "completed"] }).default("pending"),
+  processedBy: varchar("processed_by").references(() => users.id),
+  verifoneRefundId: varchar("verifone_refund_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+});
+
+// Invoices (Facturas)
+export const invoices = pgTable("invoices", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "cascade" }).notNull(),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  invoiceNumber: varchar("invoice_number", { length: 50 }).unique().notNull(),
+  ncf: varchar("ncf", { length: 19 }), // NCF format: B0100000001 (11 chars) or E310000000001 (13 chars)
+  ncfSequence: varchar("ncf_sequence", { length: 20 }), // Serie autorizada por DGII
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  itbis: decimal("itbis", { precision: 10, scale: 2 }).default("0"), // 18% tax in DR
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("DOP"),
+  dueDate: timestamp("due_date"),
+  paidDate: timestamp("paid_date"),
+  status: varchar("status", { enum: ["draft", "sent", "paid", "cancelled"] }).default("draft"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Products
 export const products = pgTable("products", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -249,6 +281,7 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   verifications: many(verifications),
   reviews: many(reviews),
   planUsage: many(planUsage),
+  invoices: many(invoices),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
@@ -259,10 +292,34 @@ export const subscriptionsRelations = relations(subscriptions, ({ one, many }) =
   payments: many(payments),
 }));
 
-export const paymentsRelations = relations(payments, ({ one }) => ({
+export const paymentsRelations = relations(payments, ({ one, many }) => ({
   subscription: one(subscriptions, {
     fields: [payments.subscriptionId],
     references: [subscriptions.id],
+  }),
+  refunds: many(refunds),
+  invoices: many(invoices),
+}));
+
+export const refundsRelations = relations(refunds, ({ one }) => ({
+  payment: one(payments, {
+    fields: [refunds.paymentId],
+    references: [payments.id],
+  }),
+  processor: one(users, {
+    fields: [refunds.processedBy],
+    references: [users.id],
+  }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+  payment: one(payments, {
+    fields: [invoices.paymentId],
+    references: [payments.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [invoices.supplierId],
+    references: [suppliers.id],
   }),
 }));
 
@@ -391,6 +448,17 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({
   paymentDate: true,
 });
 
+export const insertRefundSchema = createInsertSchema(refunds).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertServiceSchema = createInsertSchema(services).omit({
   id: true,
   createdAt: true,
@@ -475,6 +543,25 @@ export const updatePlatformConfigSchema = z.object({
   description: z.string().optional(),
 });
 
+// Refund and Invoice schemas
+export const createRefundSchema = z.object({
+  paymentId: z.string().uuid("Payment ID must be a valid UUID"),
+  amount: z.number().positive("Amount must be positive"),
+  reason: z.string().min(10, "Reason must be at least 10 characters"),
+});
+
+export const processRefundSchema = z.object({
+  status: z.enum(["approved", "rejected"]),
+  verifoneRefundId: z.string().optional(),
+});
+
+export const createInvoiceSchema = z.object({
+  paymentId: z.string().uuid("Payment ID must be a valid UUID"),
+  supplierId: z.string().uuid("Supplier ID must be a valid UUID"),
+  ncfSequence: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
@@ -483,6 +570,8 @@ export type SupplierDocument = typeof supplierDocuments.$inferSelect;
 export type SupplierBanner = typeof supplierBanners.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type Refund = typeof refunds.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type QuoteRequest = typeof quoteRequests.$inferSelect;
@@ -502,6 +591,8 @@ export type InsertSupplierDocument = z.infer<typeof insertSupplierDocumentSchema
 export type InsertSupplierBanner = z.infer<typeof insertSupplierBannerSchema>;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertRefund = z.infer<typeof insertRefundSchema>;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type InsertVerification = z.infer<typeof insertVerificationSchema>;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
