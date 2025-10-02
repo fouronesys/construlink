@@ -10,6 +10,7 @@ import {
   verifications,
   reviews,
   supplierDocuments,
+  supplierBanners,
   planUsage,
   type User,
   type UpsertUser,
@@ -17,6 +18,8 @@ import {
   type InsertSupplier,
   type SupplierSpecialty,
   type InsertSupplierSpecialty,
+  type SupplierBanner,
+  type InsertSupplierBanner,
   type Subscription,
   type InsertSubscription,
   type Payment,
@@ -67,6 +70,18 @@ export interface IStorage {
   // Supplier documents
   addSupplierDocument(document: InsertSupplierDocument): Promise<SupplierDocument>;
   getSupplierDocuments(supplierId: string): Promise<SupplierDocument[]>;
+  
+  // Featured suppliers
+  toggleFeaturedStatus(supplierId: string, isFeatured: boolean): Promise<Supplier>;
+  getFeaturedSuppliers(): Promise<Supplier[]>;
+  
+  // Supplier banners
+  createBanner(banner: InsertSupplierBanner): Promise<SupplierBanner>;
+  getBannersBySupplierId(supplierId: string): Promise<SupplierBanner[]>;
+  getBanner(id: string): Promise<SupplierBanner | undefined>;
+  updateBanner(id: string, updates: Partial<SupplierBanner>): Promise<SupplierBanner>;
+  deleteBanner(id: string): Promise<void>;
+  getActiveFeaturedBanners(): Promise<SupplierBanner[]>;
   
   // Subscription operations
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
@@ -277,6 +292,77 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(supplierDocuments)
       .where(eq(supplierDocuments.supplierId, supplierId));
+  }
+
+  // Featured suppliers
+  async toggleFeaturedStatus(supplierId: string, isFeatured: boolean): Promise<Supplier> {
+    const [updatedSupplier] = await db
+      .update(suppliers)
+      .set({ 
+        isFeatured,
+        featuredSince: isFeatured ? new Date() : null,
+        updatedAt: new Date() 
+      })
+      .where(eq(suppliers.id, supplierId))
+      .returning();
+    return updatedSupplier;
+  }
+
+  async getFeaturedSuppliers(): Promise<Supplier[]> {
+    return await db
+      .select()
+      .from(suppliers)
+      .where(and(eq(suppliers.isFeatured, true), eq(suppliers.status, 'approved')))
+      .orderBy(desc(suppliers.featuredSince));
+  }
+
+  // Supplier banners
+  async createBanner(banner: InsertSupplierBanner): Promise<SupplierBanner> {
+    const [newBanner] = await db.insert(supplierBanners).values(banner).returning();
+    return newBanner;
+  }
+
+  async getBannersBySupplierId(supplierId: string): Promise<SupplierBanner[]> {
+    return await db
+      .select()
+      .from(supplierBanners)
+      .where(eq(supplierBanners.supplierId, supplierId))
+      .orderBy(asc(supplierBanners.displayOrder));
+  }
+
+  async getBanner(id: string): Promise<SupplierBanner | undefined> {
+    const [banner] = await db
+      .select()
+      .from(supplierBanners)
+      .where(eq(supplierBanners.id, id));
+    return banner;
+  }
+
+  async updateBanner(id: string, updates: Partial<SupplierBanner>): Promise<SupplierBanner> {
+    const [updatedBanner] = await db
+      .update(supplierBanners)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(supplierBanners.id, id))
+      .returning();
+    return updatedBanner;
+  }
+
+  async deleteBanner(id: string): Promise<void> {
+    await db.delete(supplierBanners).where(eq(supplierBanners.id, id));
+  }
+
+  async getActiveFeaturedBanners(): Promise<SupplierBanner[]> {
+    return await db
+      .select()
+      .from(supplierBanners)
+      .innerJoin(suppliers, eq(supplierBanners.supplierId, suppliers.id))
+      .where(and(
+        eq(supplierBanners.isActive, true),
+        eq(suppliers.isFeatured, true),
+        eq(suppliers.status, 'approved')
+      ))
+      .orderBy(asc(supplierBanners.displayOrder))
+      .then(results => results.map(r => r.supplier_banners));
   }
 
   // Subscription operations
