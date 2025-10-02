@@ -100,6 +100,7 @@ export interface IStorage {
   
   // Subscription operations
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  getSubscription(id: string): Promise<Subscription | null>;
   getSubscriptionBySupplierId(supplierId: string): Promise<Subscription | undefined>;
   getSubscriptionByVerifoneId(verifoneId: string): Promise<Subscription | undefined>;
   updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription>;
@@ -848,7 +849,7 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptions)
       .where(eq(subscriptions.id, id))
       .limit(1);
-    return subscription || null;
+    return subscription ?? null;
   }
 
   async updateSubscriptionStatus(id: string, status: "active" | "inactive" | "cancelled" | "trialing"): Promise<Subscription> {

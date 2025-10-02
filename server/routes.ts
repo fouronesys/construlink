@@ -1733,6 +1733,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin get all subscriptions
+  app.get('/api/admin/subscriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, plan, search, page, limit } = req.query;
+      
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedLimit = limit ? parseInt(limit as string) : 10;
+      const parsedOffset = (parsedPage - 1) * parsedLimit;
+      
+      const subscriptions = await storage.getAllSubscriptions({
+        status: status && status !== 'all' ? status as string : undefined,
+        plan: plan && plan !== 'all' ? plan as string : undefined,
+        search: search ? search as string : undefined,
+        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10,
+        offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
+      });
+
+      res.json(subscriptions);
+    } catch (error) {
+      console.error("Error fetching subscriptions:", error);
+      res.status(500).json({ message: "Failed to fetch subscriptions" });
+    }
+  });
+
+  // Admin update subscription status
+  app.patch('/api/admin/subscriptions/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const updateSubscriptionStatusSchema = z.object({
+        status: z.enum(['active', 'inactive', 'cancelled', 'trialing']),
+      });
+
+      const validation = updateSubscriptionStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { status } = validation.data;
+
+      const subscription = await storage.getSubscription(id);
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      const oldStatus = subscription.status;
+      const updatedSubscription = await storage.updateSubscriptionStatus(id, status);
+      
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_subscription_status',
+        entityType: 'subscription',
+        entityId: id,
+        details: { oldStatus, newStatus: status },
+      });
+
+      res.json(updatedSubscription);
+    } catch (error) {
+      console.error("Error updating subscription status:", error);
+      res.status(500).json({ message: "Failed to update subscription status" });
+    }
+  });
+
   // Admin get all refunds
   app.get('/api/admin/refunds', isAuthenticated, async (req: any, res) => {
     try {
