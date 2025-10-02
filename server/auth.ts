@@ -4,6 +4,26 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { users } from "@shared/schema";
 
+// Environment-based admin credentials
+const ENV_ADMINS = [
+  {
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
+    role: 'admin',
+    firstName: 'Admin',
+    lastName: 'User',
+    id: 'env-admin'
+  },
+  {
+    email: process.env.SUPERADMIN_EMAIL,
+    password: process.env.SUPERADMIN_PASSWORD,
+    role: 'superadmin',
+    firstName: 'Super',
+    lastName: 'Admin',
+    id: 'env-superadmin'
+  }
+].filter(admin => admin.email && admin.password);
+
 // Middleware to check if user is authenticated
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.session?.userId) {
@@ -11,7 +31,21 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
   }
 
   try {
-    // Fetch user data and attach to request
+    // Check if it's an environment-based admin user
+    const envAdmin = ENV_ADMINS.find(admin => admin.id === req.session.userId);
+    if (envAdmin) {
+      (req as any).user = {
+        id: envAdmin.id,
+        email: envAdmin.email,
+        firstName: envAdmin.firstName,
+        lastName: envAdmin.lastName,
+        role: envAdmin.role,
+        isActive: true
+      };
+      return next();
+    }
+
+    // Fetch user data from database
     const [user] = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
     
     if (!user) {
@@ -57,6 +91,22 @@ export const hashPassword = async (password: string): Promise<string> => {
 // Compare password
 export const comparePassword = async (password: string, hashedPassword: string): Promise<boolean> => {
   return bcrypt.compare(password, hashedPassword);
+};
+
+// Check environment-based admin credentials
+export const checkEnvAdminCredentials = (email: string, password: string) => {
+  const admin = ENV_ADMINS.find(a => a.email === email);
+  if (admin && admin.password === password) {
+    return {
+      id: admin.id,
+      email: admin.email,
+      firstName: admin.firstName,
+      lastName: admin.lastName,
+      role: admin.role,
+      isActive: true
+    };
+  }
+  return null;
 };
 
 // Set up session types

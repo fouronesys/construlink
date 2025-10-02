@@ -29,7 +29,7 @@ import {
   type PlanUsage
 } from "@shared/schema";
 import { z } from "zod";
-import { isAuthenticated, hasRole, hashPassword, comparePassword } from "./auth";
+import { isAuthenticated, hasRole, hashPassword, comparePassword, checkEnvAdminCredentials } from "./auth";
 import { storage } from "./storage";
 import { upload } from "./upload";
 
@@ -137,7 +137,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = loginSchema.parse(req.body);
       
-      // Find user
+      // Check environment-based admin credentials first
+      const envAdmin = checkEnvAdminCredentials(validatedData.email, validatedData.password);
+      if (envAdmin) {
+        req.session.userId = envAdmin.id;
+        
+        return res.json({ 
+          message: "Login exitoso",
+          user: { 
+            id: envAdmin.id, 
+            email: envAdmin.email, 
+            firstName: envAdmin.firstName,
+            lastName: envAdmin.lastName,
+            role: envAdmin.role,
+            supplier: null
+          }
+        });
+      }
+
+      // Find user in database
       const user = await db.select().from(users).where(eq(users.email, validatedData.email)).limit(1);
       if (!user.length) {
         return res.status(401).json({ message: "Credenciales inválidas" });
