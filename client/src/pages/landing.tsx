@@ -261,53 +261,15 @@ export default function Landing() {
                       <img
                         src={supplier.bannerImageUrl}
                         alt={supplier.legalName}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         data-testid={`img-banner-${supplier.id}`}
                       />
                     ) : (
                       <div 
-                        className="w-full h-full bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 transition-all duration-500 group-hover:from-blue-700 group-hover:via-blue-800 group-hover:to-purple-800"
+                        className="w-full h-full bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700"
                         data-testid={`bg-gradient-${supplier.id}`}
                       />
                     )}
-                    
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
-                    
-                    <div className="absolute inset-0 flex items-center px-4 sm:px-8 md:px-16">
-                      <div className="max-w-2xl">
-                        <h2 
-                          className="text-sm sm:text-xl md:text-3xl font-bold text-white mb-1 sm:mb-2"
-                          data-testid={`text-supplier-name-${supplier.id}`}
-                        >
-                          {supplier.legalName}
-                        </h2>
-                        
-                        {supplier.location && (
-                          <div 
-                            className="hidden sm:flex items-center gap-1 md:gap-2 text-blue-100 mb-1"
-                            data-testid={`text-location-${supplier.id}`}
-                          >
-                            <MapPin className="w-3 h-3 md:w-4 md:h-4" />
-                            <span className="text-xs md:text-sm">{supplier.location}</span>
-                          </div>
-                        )}
-                        
-                        {supplier.specialties && supplier.specialties.length > 0 && (
-                          <div className="flex flex-wrap gap-1 md:gap-2">
-                            {supplier.specialties.slice(0, 3).map((specialty, idx) => (
-                              <Badge 
-                                key={idx} 
-                                variant="secondary" 
-                                className="bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs md:text-sm px-2 py-0.5"
-                                data-testid={`badge-specialty-${supplier.id}-${idx}`}
-                              >
-                                {specialty}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </CarouselItem>
               ))}
