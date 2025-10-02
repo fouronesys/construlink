@@ -40,7 +40,10 @@ import {
   Monitor,
   Tablet,
   Smartphone,
+  TrendingDown,
+  MousePointerClick,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 interface Supplier {
   id: string;
@@ -76,6 +79,24 @@ interface Banner {
   displayOrder: number;
   isActive: boolean;
   createdAt: string;
+  clickCount?: number;
+  impressionCount?: number;
+}
+
+interface BannerStats {
+  totalBanners: number;
+  totalClicks: number;
+  totalImpressions: number;
+  averageCTR: number;
+  bannerDetails: Array<{
+    id: string;
+    supplierId: string;
+    supplierName: string;
+    deviceType: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+  }>;
 }
 
 export default function AdminPanel() {
@@ -154,6 +175,13 @@ export default function AdminPanel() {
   const { data: supplierBanners = [] } = useQuery<Banner[]>({
     queryKey: ["/api/admin/suppliers", selectedBannerSupplier?.id, "banners"],
     enabled: !!selectedBannerSupplier?.id,
+    retry: false,
+  });
+
+  // Fetch banner statistics
+  const { data: bannerStats } = useQuery<BannerStats>({
+    queryKey: ["/api/admin/banners/stats"],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
 
@@ -485,7 +513,7 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Aprobaciones
@@ -499,6 +527,10 @@ export default function AdminPanel() {
             <TabsTrigger value="featured" data-testid="tab-featured">
               <Star className="w-4 h-4 mr-1" />
               Destacados
+            </TabsTrigger>
+            <TabsTrigger value="analytics" data-testid="tab-analytics">
+              <BarChart3 className="w-4 h-4 mr-1" />
+              Analytics
             </TabsTrigger>
             <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
           </TabsList>
@@ -836,6 +868,257 @@ export default function AdminPanel() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Analytics de Banners</h2>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!bannerStats || !bannerStats.bannerDetails.length) {
+                    toast({
+                      title: "No hay datos",
+                      description: "No hay estadísticas de banners para exportar",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  const csvContent = [
+                    ['Proveedor', 'Dispositivo', 'Clicks', 'Impresiones', 'CTR (%)'].join(','),
+                    ...bannerStats.bannerDetails.map(banner => 
+                      [
+                        banner.supplierName,
+                        banner.deviceType,
+                        banner.clicks,
+                        banner.impressions,
+                        banner.ctr.toFixed(2)
+                      ].join(',')
+                    )
+                  ].join('\n');
+                  
+                  const blob = new Blob([csvContent], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `banner-stats-${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                  
+                  toast({
+                    title: "Exportado",
+                    description: "Estadísticas exportadas exitosamente",
+                  });
+                }}
+                data-testid="button-export-banner-stats"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar CSV
+              </Button>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">Total Banners</p>
+                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-total-banners">
+                        {bannerStats?.totalBanners || 0}
+                      </p>
+                    </div>
+                    <ImageIcon className="w-8 h-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">Total Clicks</p>
+                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-total-clicks">
+                        {bannerStats?.totalClicks || 0}
+                      </p>
+                    </div>
+                    <MousePointerClick className="w-8 h-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">Total Impresiones</p>
+                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-total-impressions">
+                        {bannerStats?.totalImpressions || 0}
+                      </p>
+                    </div>
+                    <Eye className="w-8 h-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">CTR Promedio</p>
+                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-average-ctr">
+                        {bannerStats?.averageCTR ? `${bannerStats.averageCTR.toFixed(2)}%` : '0%'}
+                      </p>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Charts */}
+            {bannerStats && bannerStats.bannerDetails.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Clicks Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Clicks por Banner</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={bannerStats.bannerDetails}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="supplierName"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Impressions Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Impresiones por Banner</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={bannerStats.bannerDetails}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="supplierName"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="impressions" fill="#10b981" name="Impresiones" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* CTR Chart */}
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>CTR por Banner (%)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={bannerStats.bannerDetails}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="supplierName"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="ctr" fill="#f59e0b" name="CTR (%)" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Detailed Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detalles por Banner</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Proveedor</TableHead>
+                          <TableHead>Dispositivo</TableHead>
+                          <TableHead className="text-right">Clicks</TableHead>
+                          <TableHead className="text-right">Impresiones</TableHead>
+                          <TableHead className="text-right">CTR (%)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bannerStats.bannerDetails.map((banner) => (
+                          <TableRow key={banner.id}>
+                            <TableCell className="font-medium">{banner.supplierName}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                {getDeviceIcon(banner.deviceType)}
+                                <span className="capitalize">{banner.deviceType}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right" data-testid={`banner-clicks-${banner.id}`}>
+                              {banner.clicks}
+                            </TableCell>
+                            <TableCell className="text-right" data-testid={`banner-impressions-${banner.id}`}>
+                              {banner.impressions}
+                            </TableCell>
+                            <TableCell className="text-right" data-testid={`banner-ctr-${banner.id}`}>
+                              <Badge variant={banner.ctr > 5 ? "default" : "secondary"}>
+                                {banner.ctr.toFixed(2)}%
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="p-12">
+                  <div className="text-center">
+                    <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No hay datos de analytics
+                    </h3>
+                    <p className="text-gray-600">
+                      Crea y activa banners para comenzar a ver estadísticas de rendimiento.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Quotes Tab */}
