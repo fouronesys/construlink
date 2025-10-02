@@ -550,17 +550,17 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (filters?.plan) {
-      whereConditions.push(eq(subscriptions.plan, filters.plan));
+      whereConditions.push(eq(subscriptions.plan, filters.plan as any));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
       whereConditions.push(
         sql`(
-          ${users.name} ILIKE ${searchTerm} OR
+          ${users.firstName} ILIKE ${searchTerm} OR
           ${users.email} ILIKE ${searchTerm} OR
           ${payments.id} ILIKE ${searchTerm} OR
-          ${payments.transactionId} ILIKE ${searchTerm}
+          ${payments.verifoneTransactionId} ILIKE ${searchTerm}
         )`
       );
     }
@@ -594,17 +594,9 @@ export class DatabaseStorage implements IStorage {
       .offset(filters?.offset || 0);
     
     const paymentsData = results.map(r => ({
-      id: r.payment.id,
-      userId: r.user?.id || '',
-      userName: r.user?.name || undefined,
+      ...r.payment,
+      userName: r.user ? `${r.user.firstName} ${r.user.lastName}` : undefined,
       userEmail: r.user?.email || undefined,
-      planType: r.subscription?.plan || 'Unknown',
-      amount: parseFloat(r.payment.amount || '0'),
-      currency: r.payment.currency || 'DOP',
-      status: r.payment.status || 'pending',
-      paymentMethod: 'Verifone',
-      transactionId: r.payment.verifoneTransactionId || undefined,
-      createdAt: r.payment.paymentDate?.toISOString() || new Date().toISOString(),
     }));
 
     return { payments: paymentsData, total };
