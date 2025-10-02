@@ -19,6 +19,9 @@ import {
   updateUserRoleSchema,
   updateUserStatusSchema,
   updatePlatformConfigSchema,
+  createRefundSchema,
+  processRefundSchema,
+  createInvoiceSchema,
   type InsertSupplier,
   type Supplier,
   type RegisterData,
@@ -1727,6 +1730,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching payment stats:", error);
       res.status(500).json({ message: "Failed to fetch payment statistics" });
+    }
+  });
+
+  // Admin get all refunds
+  app.get('/api/admin/refunds', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, search, page, limit } = req.query;
+      
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedLimit = limit ? parseInt(limit as string) : 10;
+      const parsedOffset = (parsedPage - 1) * parsedLimit;
+      
+      const refunds = await storage.getAllRefunds({
+        status: status && status !== 'all' ? status as string : undefined,
+        search: search ? search as string : undefined,
+        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10,
+        offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
+      });
+
+      res.json(refunds);
+    } catch (error) {
+      console.error("Error fetching refunds:", error);
+      res.status(500).json({ message: "Failed to fetch refunds" });
+    }
+  });
+
+  // Admin create refund
+  app.post('/api/admin/refunds', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const validation = createRefundSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { paymentId, amount, reason } = validation.data;
+
+      const refund = await storage.createRefund({
+        paymentId,
+        amount: amount.toString(),
+        reason,
+        status: 'pending',
+      });
+
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'create_refund',
+        entityType: 'refund',
+        entityId: refund.id,
+        details: { paymentId, amount, reason },
+      });
+
+      res.json(refund);
+    } catch (error) {
+      console.error("Error creating refund:", error);
+      res.status(500).json({ message: "Failed to create refund" });
+    }
+  });
+
+  // Admin process refund (approve/reject)
+  app.patch('/api/admin/refunds/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const validation = processRefundSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { status, verifoneRefundId } = validation.data;
+
+      const refund = await storage.processRefund(id, {
+        status,
+        processedBy: user.id,
+        verifoneRefundId,
+      });
+
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'process_refund',
+        entityType: 'refund',
+        entityId: id,
+        details: { status, verifoneRefundId },
+      });
+
+      res.json(refund);
+    } catch (error) {
+      console.error("Error processing refund:", error);
+      res.status(500).json({ message: "Failed to process refund" });
+    }
+  });
+
+  // Admin get all invoices
+  app.get('/api/admin/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, supplierId, search, page, limit } = req.query;
+      
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedLimit = limit ? parseInt(limit as string) : 10;
+      const parsedOffset = (parsedPage - 1) * parsedLimit;
+      
+      const invoices = await storage.getAllInvoices({
+        status: status && status !== 'all' ? status as string : undefined,
+        supplierId: supplierId as string | undefined,
+        search: search ? search as string : undefined,
+        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10,
+        offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
+      });
+
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  // Admin create invoice
+  app.post('/api/admin/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const validation = createInvoiceSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { paymentId, supplierId, ncfSequence, notes } = validation.data;
+
+      // Get payment to calculate invoice details
+      const payment = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
+      
+      if (!payment.length) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      const invoiceNumber = await storage.getNextInvoiceNumber();
+      const amount = Number(payment[0].amount);
+      const itbis = amount * 0.18; // 18% ITBIS tax in DR
+      const total = amount + itbis;
+
+      let ncf: string | undefined = undefined;
+      if (ncfSequence) {
+        ncf = await storage.getNextNCF(ncfSequence);
+      }
+
+      const invoice = await storage.createInvoice({
+        paymentId,
+        supplierId,
+        invoiceNumber,
+        ncf,
+        ncfSequence,
+        subtotal: amount.toString(),
+        itbis: itbis.toString(),
+        total: total.toString(),
+        currency: payment[0].currency || 'DOP',
+        status: 'draft',
+        notes,
+      });
+
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'create_invoice',
+        entityType: 'invoice',
+        entityId: invoice.id,
+        details: { invoiceNumber, ncf, total },
+      });
+
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  // Admin update invoice
+  app.patch('/api/admin/invoices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { status, paidDate } = req.body;
+
+      const invoice = await storage.updateInvoice(id, {
+        status,
+        paidDate: paidDate ? new Date(paidDate) : undefined,
+      });
+
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_invoice',
+        entityType: 'invoice',
+        entityId: id,
+        details: { status, paidDate },
+      });
+
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      res.status(500).json({ message: "Failed to update invoice" });
     }
   });
 

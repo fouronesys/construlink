@@ -4,6 +4,8 @@ import {
   supplierSpecialties,
   subscriptions,
   payments,
+  refunds,
+  invoices,
   products,
   services,
   quoteRequests,
@@ -26,6 +28,10 @@ import {
   type InsertSubscription,
   type Payment,
   type InsertPayment,
+  type Refund,
+  type InsertRefund,
+  type Invoice,
+  type InsertInvoice,
   type Product,
   type InsertProduct,
   type Service,
@@ -128,6 +134,44 @@ export interface IStorage {
       count: number;
     }>;
   }>;
+  
+  // Refund operations
+  createRefund(refund: InsertRefund): Promise<Refund>;
+  getRefundsByPaymentId(paymentId: string): Promise<Refund[]>;
+  getRefund(id: string): Promise<Refund | undefined>;
+  getAllRefunds(filters?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ 
+    refunds: Array<Refund & { 
+      paymentAmount?: number;
+      supplierName?: string;
+    }>; 
+    total: number;
+  }>;
+  processRefund(id: string, updates: { status: "approved" | "rejected" | "completed"; processedBy: string; verifoneRefundId?: string; }): Promise<Refund>;
+  
+  // Invoice operations
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  getInvoicesByPaymentId(paymentId: string): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  getAllInvoices(filters?: {
+    status?: string;
+    supplierId?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ 
+    invoices: Array<Invoice & { 
+      supplierName?: string;
+    }>; 
+    total: number;
+  }>;
+  updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice>;
+  getNextInvoiceNumber(): Promise<string>;
+  getNextNCF(sequence: string): Promise<string>;
   
   // Product operations
   createProduct(product: InsertProduct): Promise<Product>;
@@ -1075,6 +1119,243 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // Refund operations
+  async createRefund(refund: InsertRefund): Promise<Refund> {
+    const [newRefund] = await db.insert(refunds).values(refund).returning();
+    return newRefund;
+  }
+
+  async getRefundsByPaymentId(paymentId: string): Promise<Refund[]> {
+    return await db
+      .select()
+      .from(refunds)
+      .where(eq(refunds.paymentId, paymentId))
+      .orderBy(desc(refunds.createdAt));
+  }
+
+  async getRefund(id: string): Promise<Refund | undefined> {
+    const [refund] = await db.select().from(refunds).where(eq(refunds.id, id));
+    return refund;
+  }
+
+  async getAllRefunds(filters?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ 
+    refunds: Array<Refund & { 
+      paymentAmount?: number;
+      supplierName?: string;
+    }>; 
+    total: number;
+  }> {
+    const whereConditions = [];
+    
+    if (filters?.status && filters.status !== 'all') {
+      whereConditions.push(eq(refunds.status, filters.status as any));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      whereConditions.push(
+        sql`(
+          ${refunds.id} ILIKE ${searchTerm} OR
+          ${refunds.reason} ILIKE ${searchTerm} OR
+          ${suppliers.legalName} ILIKE ${searchTerm}
+        )`
+      );
+    }
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(refunds)
+      .leftJoin(payments, eq(refunds.paymentId, payments.id))
+      .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+    const total = Number(countResult[0]?.count || 0);
+
+    // Get paginated results
+    const results = await db
+      .select({
+        refund: refunds,
+        payment: payments,
+        supplier: suppliers,
+      })
+      .from(refunds)
+      .leftJoin(payments, eq(refunds.paymentId, payments.id))
+      .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(refunds.createdAt))
+      .limit(filters?.limit || 10)
+      .offset(filters?.offset || 0);
+    
+    const refundsData = results.map(r => ({
+      ...r.refund,
+      paymentAmount: r.payment ? Number(r.payment.amount) : undefined,
+      supplierName: r.supplier?.legalName || undefined,
+    }));
+
+    return { refunds: refundsData, total };
+  }
+
+  async processRefund(id: string, updates: { 
+    status: "approved" | "rejected" | "completed"; 
+    processedBy: string; 
+    verifoneRefundId?: string; 
+  }): Promise<Refund> {
+    const [updatedRefund] = await db
+      .update(refunds)
+      .set({
+        status: updates.status,
+        processedBy: updates.processedBy,
+        verifoneRefundId: updates.verifoneRefundId,
+        processedAt: new Date(),
+      })
+      .where(eq(refunds.id, id))
+      .returning();
+    return updatedRefund;
+  }
+
+  // Invoice operations
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
+    return newInvoice;
+  }
+
+  async getInvoicesByPaymentId(paymentId: string): Promise<Invoice[]> {
+    return await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.paymentId, paymentId))
+      .orderBy(desc(invoices.createdAt));
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    return invoice;
+  }
+
+  async getAllInvoices(filters?: {
+    status?: string;
+    supplierId?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ 
+    invoices: Array<Invoice & { 
+      supplierName?: string;
+    }>; 
+    total: number;
+  }> {
+    const whereConditions = [];
+    
+    if (filters?.status && filters.status !== 'all') {
+      whereConditions.push(eq(invoices.status, filters.status as any));
+    }
+
+    if (filters?.supplierId) {
+      whereConditions.push(eq(invoices.supplierId, filters.supplierId));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      whereConditions.push(
+        sql`(
+          ${invoices.invoiceNumber} ILIKE ${searchTerm} OR
+          ${invoices.ncf} ILIKE ${searchTerm} OR
+          ${suppliers.legalName} ILIKE ${searchTerm}
+        )`
+      );
+    }
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(invoices)
+      .leftJoin(suppliers, eq(invoices.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+    const total = Number(countResult[0]?.count || 0);
+
+    // Get paginated results
+    const results = await db
+      .select({
+        invoice: invoices,
+        supplier: suppliers,
+      })
+      .from(invoices)
+      .leftJoin(suppliers, eq(invoices.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(invoices.createdAt))
+      .limit(filters?.limit || 10)
+      .offset(filters?.offset || 0);
+    
+    const invoicesData = results.map(r => ({
+      ...r.invoice,
+      supplierName: r.supplier?.legalName || undefined,
+    }));
+
+    return { invoices: invoicesData, total };
+  }
+
+  async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice> {
+    const [updatedInvoice] = await db
+      .update(invoices)
+      .set(updates)
+      .where(eq(invoices.id, id))
+      .returning();
+    return updatedInvoice;
+  }
+
+  async getNextInvoiceNumber(): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const prefix = `INV-${currentYear}-`;
+    
+    const result = await db
+      .select({ invoiceNumber: invoices.invoiceNumber })
+      .from(invoices)
+      .where(sql`${invoices.invoiceNumber} LIKE ${prefix + '%'}`)
+      .orderBy(desc(invoices.invoiceNumber))
+      .limit(1);
+
+    if (result.length === 0) {
+      return `${prefix}00001`;
+    }
+
+    const lastNumber = result[0].invoiceNumber;
+    const numberPart = parseInt(lastNumber.split('-').pop() || '0');
+    const nextNumber = (numberPart + 1).toString().padStart(5, '0');
+    return `${prefix}${nextNumber}`;
+  }
+
+  async getNextNCF(sequence: string): Promise<string> {
+    const result = await db
+      .select({ ncf: invoices.ncf })
+      .from(invoices)
+      .where(
+        and(
+          sql`${invoices.ncf} IS NOT NULL`,
+          eq(invoices.ncfSequence, sequence)
+        )
+      )
+      .orderBy(desc(invoices.ncf))
+      .limit(1);
+
+    if (result.length === 0) {
+      return `${sequence}00000001`;
+    }
+
+    const lastNCF = result[0].ncf || '';
+    const numberPart = parseInt(lastNCF.slice(-8));
+    const nextNumber = (numberPart + 1).toString().padStart(8, '0');
+    return `${sequence}${nextNumber}`;
   }
 }
 
