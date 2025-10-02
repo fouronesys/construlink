@@ -104,20 +104,29 @@ export interface IStorage {
   getAllPayments(filters?: {
     status?: string;
     supplierId?: string;
+    plan?: string;
+    search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<Array<Payment & { 
-    subscription?: Subscription; 
-    supplier?: { id: string; legalName: string; plan: string; }; 
-  }>>;
+  }): Promise<{ 
+    payments: Array<Payment & { 
+      userName?: string;
+      userEmail?: string;
+    }>; 
+    total: number;
+  }>;
   getPaymentStats(): Promise<{
+    totalRevenue: number;
     totalPayments: number;
-    completedPayments: number;
+    successfulPayments: number;
     failedPayments: number;
     pendingPayments: number;
-    totalRevenue: number;
-    monthlyRevenue: number;
-    recentPayments: Array<Payment & { supplierName: string; plan: string; }>;
+    averageAmount: number;
+    revenueByPlan: Array<{
+      planType: string;
+      totalRevenue: number;
+      count: number;
+    }>;
   }>;
   
   // Product operations
@@ -519,12 +528,17 @@ export class DatabaseStorage implements IStorage {
   async getAllPayments(filters?: {
     status?: string;
     supplierId?: string;
+    plan?: string;
+    search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<Array<Payment & { 
-    subscription?: Subscription; 
-    supplier?: { id: string; legalName: string; plan: string; }; 
-  }>> {
+  }): Promise<{ 
+    payments: Array<Payment & { 
+      userName?: string;
+      userEmail?: string;
+    }>; 
+    total: number;
+  }> {
     const whereConditions = [];
     
     if (filters?.status) {
@@ -535,53 +549,91 @@ export class DatabaseStorage implements IStorage {
       whereConditions.push(eq(suppliers.id, filters.supplierId));
     }
 
+    if (filters?.plan) {
+      whereConditions.push(eq(subscriptions.plan, filters.plan));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      whereConditions.push(
+        sql`(
+          ${users.name} ILIKE ${searchTerm} OR
+          ${users.email} ILIKE ${searchTerm} OR
+          ${payments.id} ILIKE ${searchTerm} OR
+          ${payments.transactionId} ILIKE ${searchTerm}
+        )`
+      );
+    }
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(payments)
+      .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .leftJoin(users, eq(suppliers.userId, users.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+    const total = Number(countResult[0]?.count || 0);
+
+    // Get paginated results
     const results = await db
       .select({
         payment: payments,
         subscription: subscriptions,
         supplier: suppliers,
+        user: users,
       })
       .from(payments)
       .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
       .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .leftJoin(users, eq(suppliers.userId, users.id))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(payments.paymentDate))
-      .limit(filters?.limit || 100)
+      .limit(filters?.limit || 10)
       .offset(filters?.offset || 0);
     
-    return results.map(r => ({
-      ...r.payment,
-      subscription: r.subscription || undefined,
-      supplier: r.supplier ? {
-        id: r.supplier.id,
-        legalName: r.supplier.legalName,
-        plan: r.subscription?.plan || 'N/A',
-      } : undefined,
+    const paymentsData = results.map(r => ({
+      id: r.payment.id,
+      userId: r.user?.id || '',
+      userName: r.user?.name || undefined,
+      userEmail: r.user?.email || undefined,
+      planType: r.subscription?.plan || 'Unknown',
+      amount: parseFloat(r.payment.amount || '0'),
+      currency: r.payment.currency || 'DOP',
+      status: r.payment.status || 'pending',
+      paymentMethod: 'Verifone',
+      transactionId: r.payment.verifoneTransactionId || undefined,
+      createdAt: r.payment.paymentDate?.toISOString() || new Date().toISOString(),
     }));
+
+    return { payments: paymentsData, total };
   }
 
   async getPaymentStats(): Promise<{
+    totalRevenue: number;
     totalPayments: number;
-    completedPayments: number;
+    successfulPayments: number;
     failedPayments: number;
     pendingPayments: number;
-    totalRevenue: number;
-    monthlyRevenue: number;
-    recentPayments: Array<Payment & { supplierName: string; plan: string; }>;
+    averageAmount: number;
+    revenueByPlan: Array<{
+      planType: string;
+      totalRevenue: number;
+      count: number;
+    }>;
   }> {
     const allPayments = await db
       .select({
         payment: payments,
         subscription: subscriptions,
-        supplier: suppliers,
       })
       .from(payments)
       .leftJoin(subscriptions, eq(payments.subscriptionId, subscriptions.id))
-      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
       .orderBy(desc(payments.paymentDate));
 
     const totalPayments = allPayments.length;
-    const completedPayments = allPayments.filter(p => p.payment.status === 'completed').length;
+    const successfulPayments = allPayments.filter(p => p.payment.status === 'completed').length;
     const failedPayments = allPayments.filter(p => p.payment.status === 'failed').length;
     const pendingPayments = allPayments.filter(p => p.payment.status === 'pending').length;
 
@@ -589,31 +641,46 @@ export class DatabaseStorage implements IStorage {
       .filter(p => p.payment.status === 'completed')
       .reduce((sum, p) => sum + parseFloat(p.payment.amount || '0'), 0);
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const monthlyRevenue = allPayments
-      .filter(p => 
-        p.payment.status === 'completed' && 
-        p.payment.paymentDate && 
-        p.payment.paymentDate.toISOString().slice(0, 7) === currentMonth
-      )
-      .reduce((sum, p) => sum + parseFloat(p.payment.amount || '0'), 0);
+    const averageAmount = successfulPayments > 0 
+      ? totalRevenue / successfulPayments 
+      : 0;
 
-    const recentPayments = allPayments
-      .slice(0, 10)
-      .map(r => ({
-        ...r.payment,
-        supplierName: r.supplier?.legalName || 'N/A',
-        plan: r.subscription?.plan || 'N/A',
-      }));
+    // Calculate revenue by plan
+    const revenueByPlanMap = new Map<string, { totalRevenue: number; count: number }>();
+    
+    allPayments
+      .filter(p => p.payment.status === 'completed')
+      .forEach(p => {
+        const planType = p.subscription?.plan || 'Unknown';
+        const amount = parseFloat(p.payment.amount || '0');
+        
+        if (revenueByPlanMap.has(planType)) {
+          const existing = revenueByPlanMap.get(planType)!;
+          revenueByPlanMap.set(planType, {
+            totalRevenue: existing.totalRevenue + amount,
+            count: existing.count + 1,
+          });
+        } else {
+          revenueByPlanMap.set(planType, {
+            totalRevenue: amount,
+            count: 1,
+          });
+        }
+      });
+
+    const revenueByPlan = Array.from(revenueByPlanMap.entries()).map(([planType, data]) => ({
+      planType,
+      ...data,
+    }));
 
     return {
+      totalRevenue,
       totalPayments,
-      completedPayments,
+      successfulPayments,
       failedPayments,
       pendingPayments,
-      totalRevenue,
-      monthlyRevenue,
-      recentPayments,
+      averageAmount,
+      revenueByPlan,
     };
   }
 

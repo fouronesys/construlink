@@ -1675,15 +1675,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const { status, supplierId, limit, offset } = req.query;
+      const { status, plan, search, page, limit } = req.query;
       
-      const parsedLimit = limit ? parseInt(limit as string) : 100;
-      const parsedOffset = offset ? parseInt(offset as string) : 0;
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedLimit = limit ? parseInt(limit as string) : 10;
+      const parsedOffset = (parsedPage - 1) * parsedLimit;
       
       const payments = await storage.getAllPayments({
-        status: status as string,
-        supplierId: supplierId as string,
-        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 100,
+        status: status && status !== 'all' ? status as string : undefined,
+        plan: plan && plan !== 'all' ? plan as string : undefined,
+        search: search ? search as string : undefined,
+        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10,
         offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
       });
 

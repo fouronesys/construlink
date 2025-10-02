@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
@@ -119,6 +119,42 @@ interface AdminAction {
   createdAt: string;
 }
 
+interface Payment {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  planType: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentMethod: string;
+  transactionId?: string;
+  createdAt: string;
+}
+
+interface PaymentStats {
+  totalRevenue: number;
+  totalPayments: number;
+  successfulPayments: number;
+  failedPayments: number;
+  pendingPayments: number;
+  averageAmount: number;
+  revenueByPlan: Array<{
+    planType: string;
+    totalRevenue: number;
+    count: number;
+  }>;
+}
+
+interface PlatformConfig {
+  configKey: string;
+  configValue: any;
+  description?: string;
+  updatedBy?: string;
+  updatedAt: string;
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -142,6 +178,29 @@ export default function AdminPanel() {
   const [logSearch, setLogSearch] = useState("");
   const [logActionFilter, setLogActionFilter] = useState("all");
   const [logEntityFilter, setLogEntityFilter] = useState("all");
+
+  // Payment filters
+  const [paymentSearch, setPaymentSearch] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+  const [paymentPlanFilter, setPaymentPlanFilter] = useState("all");
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [paymentLimit, setPaymentLimit] = useState(10);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPaymentPage(1);
+  }, [paymentSearch, paymentStatusFilter, paymentPlanFilter, paymentLimit]);
+
+  // Plan configuration states
+  const [basicPrice, setBasicPrice] = useState(1000);
+  const [basicProducts, setBasicProducts] = useState(10);
+  const [basicImages, setBasicImages] = useState(50);
+  const [professionalPrice, setProfessionalPrice] = useState(2500);
+  const [professionalProducts, setProfessionalProducts] = useState(50);
+  const [professionalImages, setProfessionalImages] = useState(200);
+  const [enterprisePrice, setEnterprisePrice] = useState(5000);
+  const [enterpriseProducts, setEnterpriseProducts] = useState(-1);
+  const [enterpriseImages, setEnterpriseImages] = useState(-1);
 
   // Access control
   if (!authLoading && user && !['admin', 'superadmin'].includes(user.role)) {
@@ -223,6 +282,75 @@ export default function AdminPanel() {
     enabled: !!user && user.role === 'superadmin',
     retry: false,
   });
+
+  // Fetch payments
+  const { data: paymentsData, isLoading: paymentsLoading } = useQuery<{ payments: Payment[]; total: number }>({
+    queryKey: [`/api/admin/payments?page=${paymentPage}&limit=${paymentLimit}&status=${paymentStatusFilter}&plan=${paymentPlanFilter}&search=${paymentSearch}`],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Fetch payment statistics
+  const { data: paymentStats } = useQuery<PaymentStats>({
+    queryKey: ["/api/admin/payments/stats"],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Fetch platform configurations (superadmin only)
+  const { data: platformConfigs = [] } = useQuery<PlatformConfig[]>({
+    queryKey: ["/api/admin/config"],
+    enabled: !!user && user.role === 'superadmin',
+    retry: false,
+  });
+
+  // Load platform configurations into state when data is fetched
+  useEffect(() => {
+    if (platformConfigs && platformConfigs.length > 0) {
+      platformConfigs.forEach((config) => {
+        // Parse value safely - handle numbers, strings that can be numbers, and defaults
+        let value: number;
+        if (typeof config.configValue === 'number') {
+          value = config.configValue;
+        } else if (typeof config.configValue === 'string' && !isNaN(Number(config.configValue))) {
+          value = Number(config.configValue);
+        } else {
+          // If it's not a valid number, skip this config
+          return;
+        }
+        
+        switch (config.configKey) {
+          case 'plan_basic_price':
+            setBasicPrice(value);
+            break;
+          case 'plan_basic_products':
+            setBasicProducts(value);
+            break;
+          case 'plan_basic_images':
+            setBasicImages(value);
+            break;
+          case 'plan_professional_price':
+            setProfessionalPrice(value);
+            break;
+          case 'plan_professional_products':
+            setProfessionalProducts(value);
+            break;
+          case 'plan_professional_images':
+            setProfessionalImages(value);
+            break;
+          case 'plan_enterprise_price':
+            setEnterprisePrice(value);
+            break;
+          case 'plan_enterprise_products':
+            setEnterpriseProducts(value);
+            break;
+          case 'plan_enterprise_images':
+            setEnterpriseImages(value);
+            break;
+        }
+      });
+    }
+  }, [platformConfigs]);
 
   // Supplier approval mutation
   const approveSupplierMutation = useMutation({
@@ -424,6 +552,29 @@ export default function AdminPanel() {
     },
   });
 
+  // Update platform configuration mutation (superadmin only)
+  const updatePlatformConfigMutation = useMutation({
+    mutationFn: async ({ key, configValue, description }: { key: string; configValue: any; description?: string }) => {
+      const response = await apiRequest("PUT", `/api/admin/config/${key}`, { configValue, description });
+      if (!response.ok) throw new Error("Failed to update configuration");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/config"] });
+      toast({
+        title: "Éxito",
+        description: "Configuración actualizada correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la configuración",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApprovalAction = (supplier: Supplier, action: 'approve' | 'reject') => {
     setSelectedSupplier(supplier);
     setApprovalAction(action);
@@ -454,6 +605,73 @@ export default function AdminPanel() {
       id: supplier.id,
       isFeatured: !supplier.isFeatured,
     });
+  };
+
+  const handleSavePlatformConfig = async () => {
+    try {
+      // Save all plan configurations
+      await Promise.all([
+        // Basic plan
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_basic_price',
+          configValue: basicPrice,
+          description: 'Precio mensual del plan Basic en RD$'
+        }),
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_basic_products',
+          configValue: basicProducts,
+          description: 'Límite de productos del plan Basic'
+        }),
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_basic_images',
+          configValue: basicImages,
+          description: 'Límite de imágenes del plan Basic'
+        }),
+        // Professional plan
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_professional_price',
+          configValue: professionalPrice,
+          description: 'Precio mensual del plan Professional en RD$'
+        }),
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_professional_products',
+          configValue: professionalProducts,
+          description: 'Límite de productos del plan Professional'
+        }),
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_professional_images',
+          configValue: professionalImages,
+          description: 'Límite de imágenes del plan Professional'
+        }),
+        // Enterprise plan
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_enterprise_price',
+          configValue: enterprisePrice,
+          description: 'Precio mensual del plan Enterprise en RD$'
+        }),
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_enterprise_products',
+          configValue: enterpriseProducts,
+          description: 'Límite de productos del plan Enterprise (-1 = ilimitado)'
+        }),
+        updatePlatformConfigMutation.mutateAsync({
+          key: 'plan_enterprise_images',
+          configValue: enterpriseImages,
+          description: 'Límite de imágenes del plan Enterprise (-1 = ilimitado)'
+        }),
+      ]);
+      
+      toast({
+        title: "Configuración Guardada",
+        description: "Todas las configuraciones de planes se han actualizado correctamente",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Hubo un error al guardar las configuraciones",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleManageBanner = (supplier: Supplier) => {
@@ -598,7 +816,7 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Aprobaciones
@@ -618,8 +836,16 @@ export default function AdminPanel() {
               Analytics
             </TabsTrigger>
             <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
+            <TabsTrigger value="payments" data-testid="tab-payments">
+              <DollarSign className="w-4 h-4 mr-1" />
+              Pagos
+            </TabsTrigger>
             {user?.role === 'superadmin' && (
               <>
+                <TabsTrigger value="config" data-testid="tab-config">
+                  <Settings className="w-4 h-4 mr-1" />
+                  Config
+                </TabsTrigger>
                 <TabsTrigger value="admins" data-testid="tab-admins">
                   <Shield className="w-4 h-4 mr-1" />
                   Administradores
@@ -1553,6 +1779,451 @@ export default function AdminPanel() {
                         Este registro muestra las últimas 50 acciones administrativas realizadas en la plataforma. 
                         Todas las acciones críticas como cambios de rol, aprobaciones de proveedores y modificaciones 
                         de suscripciones quedan registradas para auditoría.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Payments Tab */}
+          <TabsContent value="payments" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold" data-testid="heading-payments">Gestión de Pagos</h2>
+                <p className="text-sm text-gray-600 mt-1" data-testid="text-payments-description">Administra y monitorea todos los pagos de la plataforma</p>
+              </div>
+            </div>
+
+            {/* Payment Statistics */}
+            {paymentStats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">Ingresos Totales</p>
+                        <p className="text-2xl font-bold text-gray-900" data-testid="stat-total-revenue">
+                          RD${paymentStats.totalRevenue.toLocaleString()}
+                        </p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">Pagos Exitosos</p>
+                        <p className="text-2xl font-bold text-gray-900" data-testid="stat-successful-payments">
+                          {paymentStats.successfulPayments}
+                        </p>
+                      </div>
+                      <CheckCircle className="w-8 h-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">Pagos Fallidos</p>
+                        <p className="text-2xl font-bold text-gray-900" data-testid="stat-failed-payments">
+                          {paymentStats.failedPayments}
+                        </p>
+                      </div>
+                      <XCircle className="w-8 h-8 text-red-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">Monto Promedio</p>
+                        <p className="text-2xl font-bold text-gray-900" data-testid="stat-average-amount">
+                          RD${paymentStats.averageAmount.toLocaleString()}
+                        </p>
+                      </div>
+                      <TrendingUp className="w-8 h-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Revenue by Plan Chart */}
+            {paymentStats && paymentStats.revenueByPlan.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle data-testid="heading-revenue-chart">Ingresos por Plan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={paymentStats.revenueByPlan}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="planType" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="totalRevenue" name="Ingresos" fill="#3b82f6" />
+                      <Bar dataKey="count" name="Cantidad" fill="#10b981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Filters */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="payment-search">Buscar</Label>
+                    <Input
+                      id="payment-search"
+                      placeholder="Buscar por nombre, email, ID..."
+                      value={paymentSearch}
+                      onChange={(e) => setPaymentSearch(e.target.value)}
+                      data-testid="input-payment-search"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="status-filter">Estado</Label>
+                    <select
+                      id="status-filter"
+                      value={paymentStatusFilter}
+                      onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-status-filter"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="completed">Completado</option>
+                      <option value="failed">Fallido</option>
+                      <option value="pending">Pendiente</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="plan-filter">Plan</Label>
+                    <select
+                      id="plan-filter"
+                      value={paymentPlanFilter}
+                      onChange={(e) => setPaymentPlanFilter(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-plan-filter"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="basic">Basic</option>
+                      <option value="professional">Professional</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="limit">Resultados por página</Label>
+                    <select
+                      id="limit"
+                      value={paymentLimit}
+                      onChange={(e) => setPaymentLimit(Number(e.target.value))}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-limit"
+                    >
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payments Table */}
+            <Card>
+              <CardContent className="p-6">
+                {paymentsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Usuario</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Monto</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>ID Transacción</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paymentsData?.payments.map((payment: Payment) => (
+                          <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                            <TableCell data-testid={`text-payment-date-${payment.id}`}>
+                              {new Date(payment.createdAt).toLocaleString('es-DO', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </TableCell>
+                            <TableCell data-testid={`text-payment-user-${payment.id}`}>
+                              <div>
+                                <p className="font-medium">{payment.userName || 'N/A'}</p>
+                                <p className="text-sm text-gray-500">{payment.userEmail}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`text-payment-plan-${payment.id}`}>
+                              <Badge variant="outline">{payment.planType}</Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-payment-amount-${payment.id}`}>
+                              <span className="font-medium">
+                                {payment.currency} ${payment.amount.toLocaleString()}
+                              </span>
+                            </TableCell>
+                            <TableCell data-testid={`text-payment-method-${payment.id}`}>
+                              {payment.paymentMethod}
+                            </TableCell>
+                            <TableCell data-testid={`text-payment-status-${payment.id}`}>
+                              <Badge className={
+                                payment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                payment.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }>
+                                {payment.status === 'completed' ? 'Completado' :
+                                 payment.status === 'failed' ? 'Fallido' : 'Pendiente'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-payment-transaction-${payment.id}`}>
+                              <span className="text-sm font-mono text-gray-600">
+                                {payment.transactionId || 'N/A'}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!paymentsData || paymentsData.payments.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-gray-500 py-8" data-testid="text-no-payments">
+                              No hay pagos registrados
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {paymentsData && paymentsData.total > 0 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <p className="text-sm text-gray-600" data-testid="text-payment-count">
+                          Mostrando {paymentsData.payments.length} de {paymentsData.total} pagos
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPaymentPage(Math.max(1, paymentPage - 1))}
+                            disabled={paymentPage === 1}
+                            data-testid="button-prev-page"
+                          >
+                            Anterior
+                          </Button>
+                          <span className="px-3 py-2 text-sm" data-testid="text-current-page">
+                            Página {paymentPage}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPaymentPage(paymentPage + 1)}
+                            disabled={paymentsData.payments.length < paymentLimit}
+                            data-testid="button-next-page"
+                          >
+                            Siguiente
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Platform Configuration Tab (Superadmin Only) */}
+          {user?.role === 'superadmin' && (
+            <TabsContent value="config" className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold" data-testid="heading-config">Configuración de Plataforma</h2>
+                  <p className="text-sm text-gray-600 mt-1" data-testid="text-config-description">Administra los planes de suscripción y límites de la plataforma</p>
+                </div>
+              </div>
+
+              {/* Plan Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle data-testid="heading-plan-config">Configuración de Planes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Basic Plan */}
+                    <div className="border rounded-lg p-4 space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">Plan Basic</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="basic-price">Precio Mensual (RD$)</Label>
+                            <Input
+                              id="basic-price"
+                              type="number"
+                              value={basicPrice}
+                              onChange={(e) => setBasicPrice(Number(e.target.value))}
+                              data-testid="input-basic-price"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="basic-products">Límite de Productos</Label>
+                            <Input
+                              id="basic-products"
+                              type="number"
+                              value={basicProducts}
+                              onChange={(e) => setBasicProducts(Number(e.target.value))}
+                              data-testid="input-basic-products"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="basic-images">Límite de Imágenes</Label>
+                            <Input
+                              id="basic-images"
+                              type="number"
+                              value={basicImages}
+                              onChange={(e) => setBasicImages(Number(e.target.value))}
+                              data-testid="input-basic-images"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Professional Plan */}
+                    <div className="border rounded-lg p-4 space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">Plan Professional</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="professional-price">Precio Mensual (RD$)</Label>
+                            <Input
+                              id="professional-price"
+                              type="number"
+                              value={professionalPrice}
+                              onChange={(e) => setProfessionalPrice(Number(e.target.value))}
+                              data-testid="input-professional-price"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="professional-products">Límite de Productos</Label>
+                            <Input
+                              id="professional-products"
+                              type="number"
+                              value={professionalProducts}
+                              onChange={(e) => setProfessionalProducts(Number(e.target.value))}
+                              data-testid="input-professional-products"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="professional-images">Límite de Imágenes</Label>
+                            <Input
+                              id="professional-images"
+                              type="number"
+                              value={professionalImages}
+                              onChange={(e) => setProfessionalImages(Number(e.target.value))}
+                              data-testid="input-professional-images"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enterprise Plan */}
+                    <div className="border rounded-lg p-4 space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">Plan Enterprise</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="enterprise-price">Precio Mensual (RD$)</Label>
+                            <Input
+                              id="enterprise-price"
+                              type="number"
+                              value={enterprisePrice}
+                              onChange={(e) => setEnterprisePrice(Number(e.target.value))}
+                              data-testid="input-enterprise-price"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="enterprise-products">Límite de Productos</Label>
+                            <Input
+                              id="enterprise-products"
+                              type="number"
+                              value={enterpriseProducts}
+                              onChange={(e) => setEnterpriseProducts(Number(e.target.value))}
+                              placeholder="Ilimitado"
+                              data-testid="input-enterprise-products"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="enterprise-images">Límite de Imágenes</Label>
+                            <Input
+                              id="enterprise-images"
+                              type="number"
+                              value={enterpriseImages}
+                              onChange={(e) => setEnterpriseImages(Number(e.target.value))}
+                              placeholder="Ilimitado"
+                              data-testid="input-enterprise-images"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={handleSavePlatformConfig}
+                      disabled={updatePlatformConfigMutation.isPending}
+                      data-testid="button-save-config"
+                    >
+                      {updatePlatformConfigMutation.isPending ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Guardar Configuración
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-yellow-50 border-yellow-200" data-testid="card-config-warning">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-900" data-testid="heading-config-warning">Precaución</h4>
+                      <p className="text-sm text-yellow-800 mt-1" data-testid="text-config-warning">
+                        Los cambios en la configuración de planes afectarán a todos los proveedores actuales y futuros. 
+                        Asegúrate de revisar cuidadosamente antes de guardar.
                       </p>
                     </div>
                   </div>
