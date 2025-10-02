@@ -48,6 +48,9 @@ export const users = pgTable("users", {
 // Supplier status enum
 export const supplierStatusEnum = pgEnum("supplier_status", ["pending", "approved", "suspended", "rejected"]);
 
+// Banner device type enum
+export const deviceTypeEnum = pgEnum("device_type", ["desktop", "tablet", "mobile"]);
+
 // Suppliers table
 export const suppliers = pgTable("suppliers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -64,6 +67,7 @@ export const suppliers = pgTable("suppliers", {
   profileImageUrl: varchar("profile_image_url"),
   bannerImageUrl: varchar("banner_image_url"),
   isFeatured: boolean("is_featured").default(false),
+  featuredSince: timestamp("featured_since"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -84,6 +88,21 @@ export const supplierDocuments = pgTable("supplier_documents", {
   fileUrl: varchar("file_url", { length: 500 }).notNull(),
   expiryDate: date("expiry_date"),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
+// Supplier banners
+export const supplierBanners = pgTable("supplier_banners", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  deviceType: deviceTypeEnum("device_type").notNull(),
+  imageUrl: text("image_url").notNull(),
+  title: text("title"),
+  description: text("description"),
+  linkUrl: text("link_url"),
+  displayOrder: decimal("display_order", { precision: 10, scale: 0 }).default("0"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Subscriptions
@@ -199,6 +218,7 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   }),
   specialties: many(supplierSpecialties),
   documents: many(supplierDocuments),
+  banners: many(supplierBanners),
   subscriptions: many(subscriptions),
   products: many(products),
   services: many(services),
@@ -269,6 +289,13 @@ export const planUsageRelations = relations(planUsage, ({ one }) => ({
   }),
 }));
 
+export const supplierBannersRelations = relations(supplierBanners, ({ one }) => ({
+  supplier: one(suppliers, {
+    fields: [supplierBanners.supplierId],
+    references: [suppliers.id],
+  }),
+}));
+
 // Insert schemas for forms
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -308,6 +335,12 @@ export const insertSupplierSpecialtySchema = createInsertSchema(supplierSpecialt
 export const insertSupplierDocumentSchema = createInsertSchema(supplierDocuments).omit({
   id: true,
   uploadedAt: true,
+});
+
+export const insertSupplierBannerSchema = createInsertSchema(supplierBanners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
@@ -379,6 +412,7 @@ export type User = typeof users.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
 export type SupplierSpecialty = typeof supplierSpecialties.$inferSelect;
 export type SupplierDocument = typeof supplierDocuments.$inferSelect;
+export type SupplierBanner = typeof supplierBanners.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Product = typeof products.$inferSelect;
@@ -395,6 +429,7 @@ export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertSupplierSpecialty = z.infer<typeof insertSupplierSpecialtySchema>;
 export type InsertSupplierDocument = z.infer<typeof insertSupplierDocumentSchema>;
+export type InsertSupplierBanner = z.infer<typeof insertSupplierBannerSchema>;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type InsertService = z.infer<typeof insertServiceSchema>;
