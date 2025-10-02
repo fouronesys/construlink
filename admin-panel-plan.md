@@ -305,10 +305,11 @@ CREATE TABLE admin_actions (
 6. ✅ Implementar gestión de orden de banners
 
 ### Sprint 2 (Semana 3): Analytics Básico
-1. ⏳ Implementar tracking de clicks en banners
-2. ⏳ Dashboard con métricas básicas
-3. ⏳ Gráficos de uso
-4. ⏳ Exportación de reportes
+1. ✅ Implementar tracking de clicks en banners
+2. ✅ Implementar tracking de impresiones en banners
+3. ⏳ Dashboard con métricas básicas
+4. ⏳ Gráficos de uso
+5. ⏳ Exportación de reportes
 
 ### Sprint 3 (Semana 4): Gestión Avanzada
 1. ⏳ Sistema de roles y permisos
@@ -507,5 +508,53 @@ CREATE TABLE admin_actions (
 **Archivos Modificados:**
 - `client/src/pages/admin-panel.tsx` (actualizado con nueva funcionalidad completa)
 
+### SPRINT 2 - Analytics de Banners (PARCIALMENTE COMPLETADO ✅)
+
+#### Backend Implementado (Octubre 2, 2025)
+
+**✅ Tarea 1: Campos de Tracking en DB**
+- Agregados campos `clickCount` y `impressionCount` tipo decimal a `supplier_banners`
+- Valores por defecto: 0
+- Conversión automática a números en queries
+- Migración ejecutada con `npm run db:push`
+
+**✅ Tarea 2: Storage Methods para Tracking**
+- `incrementBannerClicks(bannerId)` - Incrementa clicks y valida existencia
+- `incrementBannerImpressions(bannerId)` - Incrementa impresiones y valida existencia  
+- `getBannerStats()` - Obtiene estadísticas agregadas de banners
+- Métodos devuelven `boolean` para indicar si el banner existe
+
+**✅ Tarea 3: Endpoints de Tracking**
+- POST `/api/banners/:id/click` - Registra click (público)
+- POST `/api/banners/:id/impression` - Registra impresión (público)
+- GET `/api/admin/banners/stats` - Obtiene estadísticas (admin only)
+- Validación: retorna 404 si el banner no existe
+- Validación: retorna 400 si falta el ID
+
+**✅ Tarea 4: Endpoint Featured Actualizado**
+- Modificado `/api/suppliers/featured` para incluir `bannerId`
+- Frontend puede asociar banners con tracking
+
+#### Frontend Implementado (Octubre 2, 2025)
+
+**✅ Tarea 5: Integración de Tracking en Landing**
+- Actualizada interface `FeaturedSupplier` con campo `bannerId`
+- Función `trackImpression()` - Solo registra una vez por banner usando Set
+- Función `trackClick()` - Registra clicks al navegar
+- Tracking automático con Embla Carousel API
+- Hook `useEffect` para rastrear cambios de slide
+- Tracking inicial del primer banner al montar
+
+**✅ Tarea 6: Manejo de Clicks**
+- Handler `handleBannerClick()` registra click antes de navegar
+- Integrado con carousel onClick
+- Navegación a directorio con supplier ID
+
+**Archivos Modificados:**
+- `shared/schema.ts` (campos de tracking)
+- `server/storage.ts` (métodos de tracking con validación)
+- `server/routes.ts` (endpoints de tracking con validación)
+- `client/src/pages/landing.tsx` (tracking automático)
+
 **Próximo Paso:**
-Sprint 2 - Analytics Básico (tracking de clicks, dashboard mejorado, exportación de reportes)
+Sprint 2 (continuación) - Dashboard con métricas visuales, gráficos de uso, exportación de reportes
