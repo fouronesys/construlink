@@ -103,6 +103,21 @@ export interface IStorage {
   getSubscriptionBySupplierId(supplierId: string): Promise<Subscription | undefined>;
   getSubscriptionByVerifoneId(verifoneId: string): Promise<Subscription | undefined>;
   updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription>;
+  updateSubscriptionStatus(id: string, status: "active" | "inactive" | "cancelled" | "trialing"): Promise<Subscription>;
+  getActiveSubscriptions(): Promise<Subscription[]>;
+  getAllSubscriptions(filters?: {
+    status?: string;
+    plan?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    subscriptions: Array<Subscription & {
+      supplierName?: string;
+      supplierEmail?: string;
+    }>;
+    total: number;
+  }>;
   
   // Payment operations
   createPayment(payment: InsertPayment): Promise<Payment>;
@@ -850,6 +865,69 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.status, 'active'));
+  }
+
+  async getAllSubscriptions(filters?: {
+    status?: string;
+    plan?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    subscriptions: Array<Subscription & {
+      supplierName?: string;
+      supplierEmail?: string;
+    }>;
+    total: number;
+  }> {
+    const whereConditions = [];
+
+    if (filters?.status && filters.status !== 'all') {
+      whereConditions.push(eq(subscriptions.status, filters.status as any));
+    }
+
+    if (filters?.plan && filters.plan !== 'all') {
+      whereConditions.push(eq(subscriptions.plan, filters.plan as any));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      whereConditions.push(
+        sql`(
+          ${suppliers.legalName} ILIKE ${searchTerm} OR
+          ${suppliers.email} ILIKE ${searchTerm} OR
+          ${subscriptions.verifoneSubscriptionId} ILIKE ${searchTerm}
+        )`
+      );
+    }
+
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(subscriptions)
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+    const total = Number(countResult[0]?.count || 0);
+
+    const results = await db
+      .select({
+        subscription: subscriptions,
+        supplier: suppliers,
+      })
+      .from(subscriptions)
+      .leftJoin(suppliers, eq(subscriptions.supplierId, suppliers.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(filters?.limit || 10)
+      .offset(filters?.offset || 0);
+
+    const subscriptionsData = results.map(r => ({
+      ...r.subscription,
+      supplierName: r.supplier?.legalName || undefined,
+      supplierEmail: r.supplier?.email || undefined,
+    }));
+
+    return { subscriptions: subscriptionsData, total };
   }
 
   // Analytics
