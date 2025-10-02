@@ -108,6 +108,17 @@ interface AdminUser {
   createdAt: string;
 }
 
+interface AdminAction {
+  id: string;
+  adminId: string;
+  adminEmail?: string;
+  actionType: string;
+  entityType?: string;
+  entityId?: string;
+  details?: Record<string, any>;
+  createdAt: string;
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -126,6 +137,11 @@ export default function AdminPanel() {
   const [bannerTitle, setBannerTitle] = useState("");
   const [bannerDescription, setBannerDescription] = useState("");
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+
+  // Log filters
+  const [logSearch, setLogSearch] = useState("");
+  const [logActionFilter, setLogActionFilter] = useState("all");
+  const [logEntityFilter, setLogEntityFilter] = useState("all");
 
   // Access control
   if (!authLoading && user && !['admin', 'superadmin'].includes(user.role)) {
@@ -197,6 +213,13 @@ export default function AdminPanel() {
   // Fetch admin users (superadmin only)
   const { data: adminUsers = [] } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
+    enabled: !!user && user.role === 'superadmin',
+    retry: false,
+  });
+
+  // Fetch admin action logs (superadmin only)
+  const { data: adminActions = [] } = useQuery<AdminAction[]>({
+    queryKey: ["/api/admin/actions"],
     enabled: !!user && user.role === 'superadmin',
     retry: false,
   });
@@ -575,7 +598,7 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Aprobaciones
@@ -596,10 +619,16 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
             {user?.role === 'superadmin' && (
-              <TabsTrigger value="admins" data-testid="tab-admins">
-                <Shield className="w-4 h-4 mr-1" />
-                Administradores
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="admins" data-testid="tab-admins">
+                  <Shield className="w-4 h-4 mr-1" />
+                  Administradores
+                </TabsTrigger>
+                <TabsTrigger value="logs" data-testid="tab-logs">
+                  <Activity className="w-4 h-4 mr-1" />
+                  Logs
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -1366,6 +1395,165 @@ export default function AdminPanel() {
                         <li data-testid="text-permission-supplier"><strong>Proveedor:</strong> Gestión de productos y cotizaciones</li>
                         <li data-testid="text-permission-client"><strong>Cliente:</strong> Acceso básico a la plataforma</li>
                       </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Admin Action Logs Tab (Superadmin Only) */}
+          {user?.role === 'superadmin' && (
+            <TabsContent value="logs" className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold" data-testid="heading-admin-logs">Registro de Acciones Administrativas</h2>
+                  <p className="text-sm text-gray-600 mt-1" data-testid="text-logs-description">Historial completo de acciones realizadas por administradores</p>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="log-search">Buscar</Label>
+                      <Input
+                        id="log-search"
+                        placeholder="Buscar por email o entidad..."
+                        value={logSearch}
+                        onChange={(e) => setLogSearch(e.target.value)}
+                        data-testid="input-log-search"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="action-filter">Tipo de Acción</Label>
+                      <select
+                        id="action-filter"
+                        value={logActionFilter}
+                        onChange={(e) => setLogActionFilter(e.target.value)}
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        data-testid="select-action-filter"
+                      >
+                        <option value="all">Todas</option>
+                        <option value="update_user_role">Cambio de Rol</option>
+                        <option value="update_user_status">Cambio de Estado</option>
+                        <option value="approve_supplier">Aprobar Proveedor</option>
+                        <option value="reject_supplier">Rechazar Proveedor</option>
+                        <option value="suspend_subscription">Suspender Suscripción</option>
+                        <option value="reactivate_subscription">Reactivar Suscripción</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="entity-filter">Tipo de Entidad</Label>
+                      <select
+                        id="entity-filter"
+                        value={logEntityFilter}
+                        onChange={(e) => setLogEntityFilter(e.target.value)}
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        data-testid="select-entity-filter"
+                      >
+                        <option value="all">Todas</option>
+                        <option value="user">Usuario</option>
+                        <option value="supplier">Proveedor</option>
+                        <option value="subscription">Suscripción</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Logs Table */}
+              <Card>
+                <CardContent className="p-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Admin</TableHead>
+                        <TableHead>Acción</TableHead>
+                        <TableHead>Entidad</TableHead>
+                        <TableHead>Detalles</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {adminActions
+                        .filter((action) => {
+                          const matchesSearch = !logSearch || 
+                            action.adminEmail?.toLowerCase().includes(logSearch.toLowerCase()) ||
+                            action.entityId?.toLowerCase().includes(logSearch.toLowerCase());
+                          const matchesAction = logActionFilter === 'all' || action.actionType === logActionFilter;
+                          const matchesEntity = logEntityFilter === 'all' || action.entityType === logEntityFilter;
+                          return matchesSearch && matchesAction && matchesEntity;
+                        })
+                        .slice(0, 50)
+                        .map((action: AdminAction) => (
+                          <TableRow key={action.id} data-testid={`row-log-${action.id}`}>
+                            <TableCell data-testid={`text-log-date-${action.id}`}>
+                              {new Date(action.createdAt).toLocaleString('es-DO', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </TableCell>
+                            <TableCell data-testid={`text-log-admin-${action.id}`}>
+                              {action.adminEmail || 'N/A'}
+                            </TableCell>
+                            <TableCell data-testid={`text-log-action-${action.id}`}>
+                              <Badge variant="outline">
+                                {action.actionType.replace(/_/g, ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-log-entity-${action.id}`}>
+                              {action.entityType ? (
+                                <span className="text-sm">
+                                  {action.entityType}
+                                  {action.entityId && (
+                                    <span className="text-gray-500 ml-1">
+                                      ({action.entityId.substring(0, 8)}...)
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                'N/A'
+                              )}
+                            </TableCell>
+                            <TableCell data-testid={`text-log-details-${action.id}`}>
+                              {action.details ? (
+                                <pre className="text-xs bg-gray-50 p-2 rounded max-w-md overflow-x-auto">
+                                  {JSON.stringify(action.details, null, 2)}
+                                </pre>
+                              ) : (
+                                'N/A'
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      {adminActions.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-gray-500 py-8" data-testid="text-no-logs">
+                            No hay acciones registradas
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-50 border-gray-200" data-testid="card-logs-info">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <Activity className="w-5 h-5 text-gray-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900" data-testid="heading-logs-info">Información del Registro</h4>
+                      <p className="text-sm text-gray-700 mt-1" data-testid="text-logs-info">
+                        Este registro muestra las últimas 50 acciones administrativas realizadas en la plataforma. 
+                        Todas las acciones críticas como cambios de rol, aprobaciones de proveedores y modificaciones 
+                        de suscripciones quedan registradas para auditoría.
+                      </p>
                     </div>
                   </div>
                 </CardContent>
