@@ -136,6 +136,28 @@
       max-width: calc(100vw - 8px) !important;
       max-height: 90vh !important;
     }
+
+    /* Make tables scrollable on mobile */
+    table {
+      font-size: 0.875rem;
+    }
+    
+    th, td {
+      padding: 0.5rem !important;
+    }
+
+    /* Ensure inputs and textareas are properly sized */
+    input, textarea, select {
+      font-size: 16px !important; /* Prevents zoom on focus in iOS */
+    }
+  }
+
+  /* Tablet responsive adjustments */
+  @media (max-width: 768px) {
+    /* Ensure cards have appropriate padding */
+    .p-6 {
+      padding: 1rem !important;
+    }
   }
 
   @keyframes fade-in-left {

@@ -1413,10 +1413,10 @@ export default function AdminPanel() {
 
           {/* Approvals Tab */}
           <TabsContent value="approvals" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Solicitudes de Aprobación</h2>
-              <Button variant="outline" data-testid="button-export-approvals">
-                <Download className="w-4 h-4 mr-2" />
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold">Solicitudes de Aprobación</h2>
+              <Button variant="outline" data-testid="button-export-approvals" className="text-xs sm:text-sm">
+                <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 Exportar
               </Button>
             </div>
@@ -1488,15 +1488,15 @@ export default function AdminPanel() {
 
           {/* Suppliers Tab */}
           <TabsContent value="suppliers" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Todos los Proveedores</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline" data-testid="button-filter-suppliers">
-                  <Filter className="w-4 h-4 mr-2" />
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold">Todos los Proveedores</h2>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" data-testid="button-filter-suppliers" className="text-xs sm:text-sm">
+                  <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Filtrar
                 </Button>
-                <Button variant="outline" data-testid="button-export-suppliers">
-                  <Download className="w-4 h-4 mr-2" />
+                <Button variant="outline" data-testid="button-export-suppliers" className="text-xs sm:text-sm">
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Exportar
                 </Button>
               </div>
@@ -1573,13 +1573,11 @@ export default function AdminPanel() {
 
           {/* Featured Suppliers Tab */}
           <TabsContent value="featured" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold">Proveedores Destacados</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Gestiona qué proveedores aparecen en el carrusel de la homepage
-                </p>
-              </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold">Proveedores Destacados</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                Gestiona qué proveedores aparecen en el carrusel de la homepage
+              </p>
             </div>
 
             <Card>
@@ -1646,10 +1644,11 @@ export default function AdminPanel() {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Analytics de Banners</h2>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold">Analytics de Banners</h2>
               <Button
                 variant="outline"
+                className="text-xs sm:text-sm"
                 onClick={() => {
                   if (!bannerStats || !bannerStats.bannerDetails.length) {
                     toast({
@@ -3461,7 +3460,7 @@ export default function AdminPanel() {
                 {/* Device Type Selection */}
                 <div>
                   <Label>Tipo de Dispositivo</Label>
-                  <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                     {(['desktop', 'tablet', 'mobile'] as const).map((device) => (
                       <button
                         key={device}
@@ -3538,11 +3537,12 @@ export default function AdminPanel() {
                 </div>
 
                 {/* Upload Button */}
-                <div className="flex justify-end space-x-2">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                   <Button
                     variant="outline"
                     onClick={resetBannerForm}
                     data-testid="button-cancel-banner"
+                    className="w-full sm:w-auto"
                   >
                     Cancelar
                   </Button>
@@ -3550,6 +3550,7 @@ export default function AdminPanel() {
                     onClick={handleUploadBanner}
                     disabled={!bannerFile || uploadBannerMutation.isPending}
                     data-testid="button-upload-banner"
+                    className="w-full sm:w-auto"
                   >
                     {uploadBannerMutation.isPending ? (
                       <>
