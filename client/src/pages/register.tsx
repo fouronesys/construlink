@@ -137,7 +137,7 @@ export default function Register() {
               Crear Cuenta
             </CardTitle>
             <p className="text-gray-600 text-sm sm:text-base">
-              Únete a la red de Proveedores RD
+              Únete a la red de Construlink
             </p>
           </CardHeader>
           

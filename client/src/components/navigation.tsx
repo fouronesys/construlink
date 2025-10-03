@@ -97,8 +97,7 @@ export default function Navigation() {
             <Link href="/" className="flex items-center space-x-2">
               <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
               <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                <span className="hidden sm:inline">Proveedores RD</span>
-                <span className="sm:hidden">PRD</span>
+                Construlink
               </span>
             </Link>
           </div>

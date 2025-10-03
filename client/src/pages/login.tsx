@@ -88,7 +88,7 @@ export default function Login() {
               Iniciar Sesión
             </CardTitle>
             <p className="text-gray-600 text-sm sm:text-base">
-              Accede a tu cuenta de Proveedores RD
+              Accede a tu cuenta de Construlink
             </p>
           </CardHeader>
           

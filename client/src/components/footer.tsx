@@ -10,7 +10,7 @@ export default function Footer() {
           <div className="md:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
               <Building2 className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold">Proveedores RD</span>
+              <span className="text-xl font-bold">Construlink</span>
             </div>
             <p className="text-gray-300 mb-4">
               Conectando proveedores verificados de construcción con clientes en República Dominicana.
@@ -18,7 +18,7 @@ export default function Footer() {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-gray-300">
                 <Mail className="h-4 w-4" />
-                <span>info@proveedoresrd.com</span>
+                <span>info@construlink.com</span>
               </div>
               <div className="flex items-center space-x-2 text-gray-300">
                 <Phone className="h-4 w-4" />
@@ -111,7 +111,7 @@ export default function Footer() {
         <div className="border-t border-gray-700 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © {new Date().getFullYear()} Proveedores RD. Todos los derechos reservados.
+              © {new Date().getFullYear()} Construlink. Todos los derechos reservados.
             </p>
             <p className="text-gray-400 text-sm mt-2 md:mt-0">
               Plataforma de directorio B2B para la industria de la construcción

@@ -14,7 +14,7 @@ export default function Terms() {
             Términos y Condiciones
           </h1>
           <p className="text-lg text-gray-600">
-            Proveedores RD - Plataforma de Directorio de Proveedores de Construcción
+            Construlink - Plataforma de Directorio de Proveedores de Construcción
           </p>
         </div>
 
@@ -31,7 +31,7 @@ export default function Terms() {
             </CardHeader>
             <CardContent className="text-orange-800">
               <p className="text-lg font-semibold mb-4">
-                IMPORTANTE: Proveedores RD actúa únicamente como facilitador de información.
+                IMPORTANTE: Construlink actúa únicamente como facilitador de información.
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>
@@ -63,7 +63,7 @@ export default function Terms() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p>
-                Proveedores RD es una plataforma digital que conecta a proveedores de materiales y servicios de construcción verificados con clientes potenciales en la República Dominicana.
+                Construlink es una plataforma digital que conecta a proveedores de materiales y servicios de construcción verificados con clientes potenciales en la República Dominicana.
               </p>
               <p>
                 Nuestro servicio incluye:
@@ -157,8 +157,8 @@ export default function Terms() {
                 Para consultas sobre estos términos y condiciones, contacte a:
               </p>
               <p className="mt-2">
-                <strong>Proveedores RD</strong><br />
-                Email: legal@proveedoresrd.com<br />
+                <strong>Construlink</strong><br />
+                Email: legal@construlink.com<br />
                 Teléfono: +1 (809) 123-4567
               </p>
             </CardContent>

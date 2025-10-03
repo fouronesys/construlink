@@ -583,7 +583,7 @@ export default function Landing() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              ¿Por qué elegir Proveedores RD?
+              ¿Por qué elegir Construlink?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               La plataforma más confiable para conectar con los mejores proveedores
