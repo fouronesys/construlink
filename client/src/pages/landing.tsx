@@ -187,6 +187,34 @@ export default function Landing() {
     queryKey: ['/api/suppliers/featured'],
   });
 
+  const { data: exchangeRates } = useQuery<{
+    date: string;
+    rates: {
+      usd_to_dop: number;
+      eur_to_dop: number;
+    };
+  }>({
+    queryKey: ['/api/exchange-rates'],
+    refetchInterval: 3600000, // Refetch every hour
+  });
+
+  const { data: fuelPrices } = useQuery<{
+    fecha_vigencia: string;
+    precios: {
+      gasolina_premium: number;
+      gasolina_regular: number;
+      gasoil_optimo: number;
+      gasoil_regular: number;
+      glp: number;
+      gas_natural: number;
+    };
+    moneda: string;
+    unidad: string;
+  }>({
+    queryKey: ['/api/fuel-prices'],
+    refetchInterval: 3600000, // Refetch every hour
+  });
+
   // Track banner impression
   const trackImpression = async (bannerId: string) => {
     if (!bannerId || viewedBanners.has(bannerId)) return;
@@ -302,6 +330,60 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <Navigation />
+      
+      {/* Info Bar - Exchange Rates & Fuel Prices */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-2 sticky top-0 z-40 shadow-md" data-testid="info-bar">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm">
+            {/* Exchange Rates */}
+            <div className="flex items-center gap-4" data-testid="exchange-rates-section">
+              <span className="font-semibold text-blue-200">Tasas:</span>
+              {exchangeRates ? (
+                <>
+                  <div className="flex items-center gap-2" data-testid="usd-rate">
+                    <span className="font-medium">USD:</span>
+                    <span className="text-yellow-300 font-bold">${exchangeRates.rates.usd_to_dop}</span>
+                    <span className="text-blue-200 text-xs">DOP</span>
+                  </div>
+                  <div className="flex items-center gap-2" data-testid="eur-rate">
+                    <span className="font-medium">EUR:</span>
+                    <span className="text-yellow-300 font-bold">${exchangeRates.rates.eur_to_dop}</span>
+                    <span className="text-blue-200 text-xs">DOP</span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-blue-300 text-xs">Cargando...</span>
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className="hidden sm:block w-px h-6 bg-blue-600"></div>
+
+            {/* Fuel Prices */}
+            <div className="flex items-center gap-4" data-testid="fuel-prices-section">
+              <span className="font-semibold text-blue-200">Combustibles:</span>
+              {fuelPrices ? (
+                <>
+                  <div className="flex items-center gap-2" data-testid="gasolina-premium">
+                    <span className="font-medium">Premium:</span>
+                    <span className="text-green-300 font-bold">RD${fuelPrices.precios.gasolina_premium}</span>
+                  </div>
+                  <div className="flex items-center gap-2" data-testid="gasolina-regular">
+                    <span className="font-medium">Regular:</span>
+                    <span className="text-green-300 font-bold">RD${fuelPrices.precios.gasolina_regular}</span>
+                  </div>
+                  <div className="flex items-center gap-2" data-testid="gasoil-regular">
+                    <span className="font-medium">Gasoil:</span>
+                    <span className="text-green-300 font-bold">RD${fuelPrices.precios.gasoil_regular}</span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-blue-300 text-xs">Cargando...</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
       
       {/* Horizontal Banner Carousel */}
       {isFeaturedLoading ? (

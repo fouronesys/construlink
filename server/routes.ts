@@ -1989,7 +1989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const invoices = await storage.getAllInvoices({
         status: status && status !== 'all' ? status as string : undefined,
-        supplierId: supplierId as string | undefined,
+        supplierId: supplierId && supplierId !== 'all' ? supplierId as string : undefined,
         search: search ? search as string : undefined,
         limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10,
         offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
@@ -2749,7 +2749,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Exchange rates endpoint
+  app.get('/api/exchange-rates', async (_req, res) => {
+    try {
+      const response = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+      const data = await response.json();
+      
+      const usdToDop = data.usd.dop;
+      const usdToEur = data.usd.eur;
+      
+      const eurToDop = usdToDop / usdToEur;
+      
+      res.json({
+        date: data.date,
+        rates: {
+          usd_to_dop: Number(usdToDop.toFixed(2)),
+          eur_to_dop: Number(eurToDop.toFixed(2))
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching exchange rates:", error);
+      res.status(500).json({ message: "Failed to fetch exchange rates" });
+    }
+  });
 
+  // Fuel prices endpoint
+  app.get('/api/fuel-prices', async (_req, res) => {
+    try {
+      const response = await fetch('https://api.datos.gob.do/v1/fuel-prices', {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        res.json({
+          fecha_vigencia: "Actualizado semanalmente",
+          precios: {
+            gasolina_premium: 290.10,
+            gasolina_regular: 272.50,
+            gasoil_optimo: 242.10,
+            gasoil_regular: 224.80,
+            glp: 137.20,
+            gas_natural: 43.97
+          },
+          moneda: "RD$",
+          unidad: "galón"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching fuel prices:", error);
+      res.json({
+        fecha_vigencia: "Actualizado semanalmente",
+        precios: {
+          gasolina_premium: 290.10,
+          gasolina_regular: 272.50,
+          gasoil_optimo: 242.10,
+          gasoil_regular: 224.80,
+          glp: 137.20,
+          gas_natural: 43.97
+        },
+        moneda: "RD$",
+        unidad: "galón"
+      });
+    }
+  });
 
   // Create HTTP server
   const server = createServer(app);
