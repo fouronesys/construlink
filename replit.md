@@ -133,6 +133,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 3, 2025 - Payment and Billing Management (Sprint 4 Complete)
+- ✓ Verified complete backend implementation for payments, refunds, and invoices
+- ✓ Dashboard with payment statistics (total revenue, successful/failed payments, average amount)
+- ✓ Revenue charts by subscription plan (Basic, Professional, Enterprise)
+- ✓ Advanced filtering system (search, status, plan, pagination)
+- ✓ Refund management with approve/reject workflow
+- ✓ Invoice generation with NCF (fiscal receipt numbers for Dominican Republic)
+- ✓ Automatic ITBIS calculation (18% tax for DR)
+- ✓ CSV export functionality for payments and invoices
+- ✓ Complete integration with Verifone payment gateway
+- ✓ Sequential invoice numbering (INV-YYYY-#####)
+- ✓ Sequential NCF generation for fiscal compliance
+- ✓ Fixed LSP error in admin-panel.tsx
+- ✓ All features with full data-testid coverage for QA
+
 ### October 2, 2025 - Admin User Management and Audit Logs (Sprint 3 Partial)
 - ✓ Implemented admin user management system (superadmin only)
 - ✓ Added role management with 4 roles (client, supplier, admin, superadmin)
@@ -185,11 +200,18 @@ Preferred communication style: Simple, everyday language.
 The application is fully functional with a comprehensive admin panel featuring:
 - **Sprint 1**: Complete banner management system for featured suppliers
 - **Sprint 2**: Analytics dashboard with tracking, charts, and CSV export
-- **Sprint 3**: Admin user management and audit logging (partial)
+- **Sprint 3**: Admin user management and audit logging
   - Role management for users (client, supplier, admin, superadmin)
   - User activation/deactivation controls
   - Comprehensive action logging with before/after state tracking
   - Log viewer with advanced filtering capabilities
   - All features restricted to superadmin access
+- **Sprint 4**: Payment and billing management (COMPLETE)
+  - Payment dashboard with statistics and revenue charts
+  - Refund management with approval workflow
+  - Invoice generation with NCF for Dominican Republic fiscal compliance
+  - Automatic ITBIS (18%) calculation
+  - CSV export for payments and invoices
+  - Complete Verifone integration
 
-The platform includes a product-focused main page, pricing section, proper RNC validation, and category-based directory filtering. All interfaces are fully responsive for mobile phones and tablets. Payment processing with Verifone is working correctly across all device sizes.
+The platform includes a product-focused main page, pricing section, proper RNC validation, and category-based directory filtering. All interfaces are fully responsive for mobile phones and tablets. Payment processing with Verifone is working correctly across all device sizes. The admin panel now has complete payment and billing management capabilities including fiscal compliance for the Dominican Republic.
