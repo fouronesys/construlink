@@ -1754,7 +1754,7 @@ export default function AdminPanel() {
             </div>
 
             {/* Charts */}
-            {bannerStats?.bannerDetails?.length > 0 ? (
+            {bannerStats?.bannerDetails && bannerStats.bannerDetails.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Clicks Chart */}
