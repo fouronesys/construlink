@@ -91,17 +91,21 @@ export function ProviderProfileModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
             <div>
-              <DialogTitle className="text-2xl">{provider.legalName}</DialogTitle>
-              <DialogDescription className="flex items-center mt-2">
-                <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+              <DialogTitle className="text-xl sm:text-2xl">{provider.legalName}</DialogTitle>
+              <DialogDescription className="flex items-center mt-2 text-xs sm:text-sm">
+                <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0" />
                 Proveedor Verificado • RNC: {provider.rnc}
               </DialogDescription>
             </div>
-            <Button onClick={() => onRequestQuote(provider.id)}>
+            <Button 
+              onClick={() => onRequestQuote(provider.id)}
+              className="w-full sm:w-auto text-sm"
+              size="sm"
+            >
               <MessageSquare className="w-4 h-4 mr-2" />
               Solicitar Cotización
             </Button>
@@ -110,17 +114,17 @@ export function ProviderProfileModal({
 
         <div className="space-y-6">
           {/* Rating and Location */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
               <div className="flex items-center">
                 {renderStars(Math.floor(provider.averageRating))}
               </div>
-              <span className="text-sm text-gray-600">
+              <span className="text-xs sm:text-sm text-gray-600">
                 {provider.averageRating} ({provider.totalReviews} reseñas)
               </span>
             </div>
-            <div className="flex items-center text-gray-600">
-              <MapPin className="w-4 h-4 mr-1" />
+            <div className="flex items-center text-gray-600 text-sm">
+              <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
               {provider.location}
             </div>
           </div>
@@ -206,11 +210,11 @@ export function ProviderProfileModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:space-x-2 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cerrar
             </Button>
-            <Button onClick={() => onRequestQuote(provider.id)}>
+            <Button onClick={() => onRequestQuote(provider.id)} className="w-full sm:w-auto">
               <MessageSquare className="w-4 h-4 mr-2" />
               Solicitar Cotización
             </Button>
