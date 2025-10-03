@@ -123,23 +123,8 @@
     }
   }
 
-  /* Mobile dialog positioning */
+  /* Mobile responsive adjustments */
   @media (max-width: 640px) {
-    /* Force centered dialog positioning on mobile (only for centered dialogs, not drawers/sheets) */
-    /* Exclude sheet components that have inset positioning */
-    [data-radix-dialog-content][data-state]:not([class*="inset-y-0"]):not([class*="inset-x-0"]) {
-      position: fixed !important;
-      left: 50% !important;
-      top: 50% !important;
-      right: auto !important;
-      bottom: auto !important;
-      transform: translate(-50%, -50%) !important;
-      width: calc(100vw - 16px) !important;
-      max-width: calc(100vw - 16px) !important;
-      max-height: 90vh !important;
-      margin: 0 !important;
-    }
-
     /* Make tables scrollable on mobile */
     table {
       font-size: 0.875rem;
