@@ -413,9 +413,9 @@ export default function SupplierDashboard() {
                     Agregar Producto
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                   <DialogHeader>
-                    <DialogTitle>Nuevo Producto</DialogTitle>
+                    <DialogTitle className="text-lg sm:text-xl">Nuevo Producto</DialogTitle>
                   </DialogHeader>
                   <Form {...productForm}>
                     <form onSubmit={productForm.handleSubmit((data) => createProductMutation.mutate(data))} className="space-y-4">
@@ -572,9 +572,9 @@ export default function SupplierDashboard() {
                     Editar Perfil
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                   <DialogHeader>
-                    <DialogTitle>Editar Perfil</DialogTitle>
+                    <DialogTitle className="text-lg sm:text-xl">Editar Perfil</DialogTitle>
                   </DialogHeader>
                   <Form {...profileForm}>
                     <form onSubmit={profileForm.handleSubmit((data) => updateProfileMutation.mutate(data))} className="space-y-4">
