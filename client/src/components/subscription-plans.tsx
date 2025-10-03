@@ -374,9 +374,9 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
 
 
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="dialog-mobile sm:max-w-2xl w-full max-h-[95vh] overflow-y-auto p-3 sm:p-4 lg:p-6">
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto p-3 sm:p-4 lg:p-6">
           <DialogHeader className="space-y-2 pb-2 sm:pb-4">
-            <DialogTitle className="text-sm sm:text-base lg:text-lg font-semibold">
+            <DialogTitle className="text-base sm:text-lg lg:text-xl font-semibold">
               Procesar Pago - {subscriptionData?.plan}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm text-gray-600">
