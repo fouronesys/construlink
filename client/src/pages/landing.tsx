@@ -332,53 +332,56 @@ export default function Landing() {
       <Navigation />
       
       {/* Info Bar - Exchange Rates & Fuel Prices */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-2 sticky top-0 z-40 shadow-md" data-testid="info-bar">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm">
+      <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-2 sticky top-0 z-40 shadow-md overflow-x-auto" data-testid="info-bar">
+        <div className="container mx-auto px-2 sm:px-4">
+          <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm whitespace-nowrap min-w-max sm:min-w-0">
             {/* Exchange Rates */}
-            <div className="flex items-center gap-4" data-testid="exchange-rates-section">
-              <span className="font-semibold text-blue-200">Tasas:</span>
+            <div className="flex items-center gap-1.5 sm:gap-3" data-testid="exchange-rates-section">
+              <span className="font-semibold text-blue-200 hidden sm:inline">Tasas:</span>
+              <span className="font-semibold text-blue-200 sm:hidden">💱</span>
               {exchangeRates ? (
                 <>
-                  <div className="flex items-center gap-2" data-testid="usd-rate">
+                  <div className="flex items-center gap-1" data-testid="usd-rate">
                     <span className="font-medium">USD:</span>
                     <span className="text-yellow-300 font-bold">${exchangeRates.rates.usd_to_dop}</span>
-                    <span className="text-blue-200 text-xs">DOP</span>
                   </div>
-                  <div className="flex items-center gap-2" data-testid="eur-rate">
+                  <div className="flex items-center gap-1" data-testid="eur-rate">
                     <span className="font-medium">EUR:</span>
                     <span className="text-yellow-300 font-bold">${exchangeRates.rates.eur_to_dop}</span>
-                    <span className="text-blue-200 text-xs">DOP</span>
                   </div>
                 </>
               ) : (
-                <span className="text-blue-300 text-xs">Cargando...</span>
+                <span className="text-blue-300 text-xs">...</span>
               )}
             </div>
 
             {/* Separator */}
-            <div className="hidden sm:block w-px h-6 bg-blue-600"></div>
+            <div className="w-px h-4 sm:h-6 bg-blue-600"></div>
 
             {/* Fuel Prices */}
-            <div className="flex items-center gap-4" data-testid="fuel-prices-section">
-              <span className="font-semibold text-blue-200">Combustibles:</span>
+            <div className="flex items-center gap-1.5 sm:gap-3" data-testid="fuel-prices-section">
+              <span className="font-semibold text-blue-200 hidden sm:inline">Combustibles:</span>
+              <span className="font-semibold text-blue-200 sm:hidden">⛽</span>
               {fuelPrices ? (
                 <>
-                  <div className="flex items-center gap-2" data-testid="gasolina-premium">
-                    <span className="font-medium">Premium:</span>
-                    <span className="text-green-300 font-bold">RD${fuelPrices.precios.gasolina_premium}</span>
+                  <div className="flex items-center gap-1" data-testid="gasolina-premium">
+                    <span className="font-medium hidden sm:inline">Premium:</span>
+                    <span className="font-medium sm:hidden">P:</span>
+                    <span className="text-green-300 font-bold">{fuelPrices.precios.gasolina_premium}</span>
                   </div>
-                  <div className="flex items-center gap-2" data-testid="gasolina-regular">
-                    <span className="font-medium">Regular:</span>
-                    <span className="text-green-300 font-bold">RD${fuelPrices.precios.gasolina_regular}</span>
+                  <div className="flex items-center gap-1" data-testid="gasolina-regular">
+                    <span className="font-medium hidden sm:inline">Regular:</span>
+                    <span className="font-medium sm:hidden">R:</span>
+                    <span className="text-green-300 font-bold">{fuelPrices.precios.gasolina_regular}</span>
                   </div>
-                  <div className="flex items-center gap-2" data-testid="gasoil-regular">
-                    <span className="font-medium">Gasoil:</span>
-                    <span className="text-green-300 font-bold">RD${fuelPrices.precios.gasoil_regular}</span>
+                  <div className="flex items-center gap-1" data-testid="gasoil-regular">
+                    <span className="font-medium hidden sm:inline">Gasoil:</span>
+                    <span className="font-medium sm:hidden">G:</span>
+                    <span className="text-green-300 font-bold">{fuelPrices.precios.gasoil_regular}</span>
                   </div>
                 </>
               ) : (
-                <span className="text-blue-300 text-xs">Cargando...</span>
+                <span className="text-blue-300 text-xs">...</span>
               )}
             </div>
           </div>
