@@ -96,16 +96,16 @@ export function QuoteModal({ isOpen, onClose, providerId, providerName }: QuoteM
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Solicitar Cotización</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Solicitar Cotización</DialogTitle>
+          <DialogDescription className="text-sm">
             Envía una solicitud de cotización a {providerName}
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="name">Nombre Completo *</Label>
               <Input
@@ -125,7 +125,7 @@ export function QuoteModal({ isOpen, onClose, providerId, providerName }: QuoteM
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="email">Correo Electrónico *</Label>
               <Input
@@ -159,7 +159,7 @@ export function QuoteModal({ isOpen, onClose, providerId, providerName }: QuoteM
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="budget">Presupuesto Estimado</Label>
               <Input
@@ -180,11 +180,11 @@ export function QuoteModal({ isOpen, onClose, providerId, providerName }: QuoteM
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
