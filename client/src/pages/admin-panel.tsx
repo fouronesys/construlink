@@ -2757,7 +2757,7 @@ export default function AdminPanel() {
             {/* Subscription Details Modal */}
             {selectedSubscription && (
               <Dialog open={showSubscriptionDetailsModal} onOpenChange={setShowSubscriptionDetailsModal}>
-                <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                   <DialogHeader>
                     <DialogTitle data-testid="heading-subscription-details" className="text-base sm:text-lg">Detalles de Suscripción</DialogTitle>
                   </DialogHeader>
@@ -3326,7 +3326,7 @@ export default function AdminPanel() {
 
       {/* Approval Modal */}
       <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
-        <DialogContent className="max-w-[95vw] sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">
               {approvalAction === 'approve' ? 'Aprobar Proveedor' : 'Rechazar Proveedor'}
@@ -3403,7 +3403,7 @@ export default function AdminPanel() {
       <Dialog open={showBannerModal} onOpenChange={(open) => {
         if (!open) resetBannerForm();
       }}>
-        <DialogContent className="w-[calc(100%-16px)] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">
               Gestionar Banners - {selectedBannerSupplier?.legalName}
