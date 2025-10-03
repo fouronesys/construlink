@@ -1239,14 +1239,14 @@ export default function AdminPanel() {
 
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Panel de Administración</h1>
-              <p className="text-gray-600 mt-1">Gestión de proveedores y plataforma</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Panel de Administración</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Gestión de proveedores y plataforma</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="text-blue-600">
+            <div className="flex items-center">
+              <Badge variant="outline" className="text-blue-600 text-xs sm:text-sm">
                 <Shield className="w-3 h-3 mr-1" />
                 {user?.role === 'superadmin' ? 'Super Admin' : 'Admin'}
               </Badge>
@@ -1257,55 +1257,57 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-12">
-            <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="approvals" data-testid="tab-approvals">
-              Aprobaciones
-              {pendingSuppliers.length > 0 && (
-                <Badge className="ml-2 bg-red-500 text-white">
-                  {pendingSuppliers.length}
-                </Badge>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-auto flex-nowrap sm:flex-wrap justify-start p-1 gap-1">
+              <TabsTrigger value="dashboard" data-testid="tab-dashboard" className="text-xs sm:text-sm whitespace-nowrap">Dashboard</TabsTrigger>
+              <TabsTrigger value="approvals" data-testid="tab-approvals" className="text-xs sm:text-sm whitespace-nowrap">
+                Aprobaciones
+                {pendingSuppliers.length > 0 && (
+                  <Badge className="ml-1 sm:ml-2 bg-red-500 text-white text-xs">
+                    {pendingSuppliers.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="suppliers" data-testid="tab-suppliers" className="text-xs sm:text-sm whitespace-nowrap">Proveedores</TabsTrigger>
+              <TabsTrigger value="featured" data-testid="tab-featured" className="text-xs sm:text-sm whitespace-nowrap">
+                <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Destacados
+              </TabsTrigger>
+              <TabsTrigger value="analytics" data-testid="tab-analytics" className="text-xs sm:text-sm whitespace-nowrap">
+                <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="quotes" data-testid="tab-quotes" className="text-xs sm:text-sm whitespace-nowrap">Cotizaciones</TabsTrigger>
+              <TabsTrigger value="payments" data-testid="tab-payments" className="text-xs sm:text-sm whitespace-nowrap">
+                <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Pagos
+              </TabsTrigger>
+              <TabsTrigger value="refunds" data-testid="tab-refunds" className="text-xs sm:text-sm whitespace-nowrap">
+                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Reembolsos
+              </TabsTrigger>
+              <TabsTrigger value="invoices" data-testid="tab-invoices" className="text-xs sm:text-sm whitespace-nowrap">
+                <Receipt className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Facturas
+              </TabsTrigger>
+              {user?.role === 'superadmin' && (
+                <>
+                  <TabsTrigger value="config" data-testid="tab-config" className="text-xs sm:text-sm whitespace-nowrap">
+                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    Config
+                  </TabsTrigger>
+                  <TabsTrigger value="admins" data-testid="tab-admins" className="text-xs sm:text-sm whitespace-nowrap">
+                    <Shield className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    Administradores
+                  </TabsTrigger>
+                  <TabsTrigger value="logs" data-testid="tab-logs" className="text-xs sm:text-sm whitespace-nowrap">
+                    <Activity className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    Logs
+                  </TabsTrigger>
+                </>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="suppliers" data-testid="tab-suppliers">Proveedores</TabsTrigger>
-            <TabsTrigger value="featured" data-testid="tab-featured">
-              <Star className="w-4 h-4 mr-1" />
-              Destacados
-            </TabsTrigger>
-            <TabsTrigger value="analytics" data-testid="tab-analytics">
-              <BarChart3 className="w-4 h-4 mr-1" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
-            <TabsTrigger value="payments" data-testid="tab-payments">
-              <DollarSign className="w-4 h-4 mr-1" />
-              Pagos
-            </TabsTrigger>
-            <TabsTrigger value="refunds" data-testid="tab-refunds">
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Reembolsos
-            </TabsTrigger>
-            <TabsTrigger value="invoices" data-testid="tab-invoices">
-              <Receipt className="w-4 h-4 mr-1" />
-              Facturas
-            </TabsTrigger>
-            {user?.role === 'superadmin' && (
-              <>
-                <TabsTrigger value="config" data-testid="tab-config">
-                  <Settings className="w-4 h-4 mr-1" />
-                  Config
-                </TabsTrigger>
-                <TabsTrigger value="admins" data-testid="tab-admins">
-                  <Shield className="w-4 h-4 mr-1" />
-                  Administradores
-                </TabsTrigger>
-                <TabsTrigger value="logs" data-testid="tab-logs">
-                  <Activity className="w-4 h-4 mr-1" />
-                  Logs
-                </TabsTrigger>
-              </>
-            )}
-          </TabsList>
+            </TabsList>
+          </div>
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
@@ -2756,12 +2758,12 @@ export default function AdminPanel() {
             {/* Subscription Details Modal */}
             {selectedSubscription && (
               <Dialog open={showSubscriptionDetailsModal} onOpenChange={setShowSubscriptionDetailsModal}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle data-testid="heading-subscription-details">Detalles de Suscripción</DialogTitle>
+                    <DialogTitle data-testid="heading-subscription-details" className="text-base sm:text-lg">Detalles de Suscripción</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-gray-600">Proveedor</Label>
                         <p className="font-medium" data-testid="text-modal-supplier-name">{selectedSubscription.supplier?.legalName || 'N/A'}</p>
@@ -3325,18 +3327,18 @@ export default function AdminPanel() {
 
       {/* Approval Modal */}
       <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               {approvalAction === 'approve' ? 'Aprobar Proveedor' : 'Rechazar Proveedor'}
             </DialogTitle>
           </DialogHeader>
           
           {selectedSupplier && (
             <div className="space-y-4">
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <h4 className="font-medium mb-2">{selectedSupplier.legalName}</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="border rounded-lg p-3 sm:p-4 bg-gray-50">
+                <h4 className="font-medium mb-2 text-sm sm:text-base">{selectedSupplier.legalName}</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                   <div>
                     <span className="text-gray-600">RNC:</span> {selectedSupplier.rnc}
                   </div>
@@ -3367,22 +3369,23 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:space-x-2">
                 <Button
                   variant="outline"
                   onClick={() => setShowApprovalModal(false)}
                   data-testid="button-cancel-approval"
+                  className="w-full sm:w-auto"
                 >
                   Cancelar
                 </Button>
                 <Button
                   onClick={confirmApproval}
                   disabled={approveSupplierMutation.isPending || (approvalAction === 'reject' && !rejectionReason.trim())}
-                  className={
+                  className={`w-full sm:w-auto ${
                     approvalAction === 'approve'
                       ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-red-600 hover:bg-red-700'
-                  }
+                  }`}
                   data-testid="button-confirm-approval"
                 >
                   {approveSupplierMutation.isPending
@@ -3401,9 +3404,9 @@ export default function AdminPanel() {
       <Dialog open={showBannerModal} onOpenChange={(open) => {
         if (!open) resetBannerForm();
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               Gestionar Banners - {selectedBannerSupplier?.legalName}
             </DialogTitle>
           </DialogHeader>
