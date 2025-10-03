@@ -105,12 +105,12 @@ export default function PlanUpgradeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">
+          <DialogTitle className="text-xl sm:text-2xl font-bold text-center">
             Actualiza tu Plan de Suscripción
           </DialogTitle>
-          <DialogDescription className="text-center text-lg">
+          <DialogDescription className="text-center text-sm sm:text-lg">
             {limitMessage}
           </DialogDescription>
         </DialogHeader>
@@ -188,7 +188,11 @@ export default function PlanUpgradeDialog({
           </div>
 
           <div className="mt-6 text-center">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
               Continuar con Plan Actual
             </Button>
           </div>
