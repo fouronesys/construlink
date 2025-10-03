@@ -3403,7 +3403,7 @@ export default function AdminPanel() {
       <Dialog open={showBannerModal} onOpenChange={(open) => {
         if (!open) resetBannerForm();
       }}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-16px)] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">
               Gestionar Banners - {selectedBannerSupplier?.legalName}
@@ -3417,21 +3417,21 @@ export default function AdminPanel() {
                 <h3 className="font-medium mb-3">Banners Existentes</h3>
                 <div className="space-y-3">
                   {supplierBanners.map((banner) => (
-                    <div key={banner.id} className="border rounded-lg p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden">
+                    <div key={banner.id} className="border rounded-lg p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                           <img
                             src={banner.imageUrl}
                             alt={banner.title || 'Banner'}
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-2">
                             {getDeviceIcon(banner.deviceType)}
-                            <span className="font-medium capitalize">{banner.deviceType}</span>
+                            <span className="font-medium capitalize text-sm sm:text-base">{banner.deviceType}</span>
                           </div>
-                          {banner.title && <p className="text-sm text-gray-600">{banner.title}</p>}
+                          {banner.title && <p className="text-xs sm:text-sm text-gray-600 truncate">{banner.title}</p>}
                           <Badge className={banner.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
                             {banner.isActive ? 'Activo' : 'Inactivo'}
                           </Badge>
@@ -3441,10 +3441,11 @@ export default function AdminPanel() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteBanner(banner.id)}
-                        className="text-red-600"
+                        className="text-red-600 w-full sm:w-auto"
                         data-testid={`button-delete-banner-${banner.id}`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 sm:mr-0" />
+                        <span className="sm:hidden ml-2">Eliminar</span>
                       </Button>
                     </div>
                   ))}
