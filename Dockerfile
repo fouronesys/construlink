@@ -25,7 +25,8 @@ COPY --from=builder /app/attached_assets ./attached_assets
 RUN mkdir -p public/uploads/banners
 
 ENV NODE_ENV=production
+ENV PORT=80
 
-EXPOSE 5000
+EXPOSE 80
 
 CMD ["node", "dist/index.js"]
