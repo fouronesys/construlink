@@ -771,7 +771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             legalName: supplier.legalName,
             location: supplier.location,
             description: supplier.description,
-            bannerImageUrl: supplier.bannerImageUrl,
+            bannerImageUrl: desktopBanner?.imageUrl || supplier.bannerImageUrl,
             specialties: specialties.map(s => s.specialty),
             bannerId: desktopBanner?.id, // Include banner ID for tracking
           };
