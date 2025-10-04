@@ -90,11 +90,15 @@ export default function Footer() {
                   Términos y Condiciones
                 </Link>
               </li>
-              <li className="text-gray-300">
-                Política de Privacidad
+              <li>
+                <Link href="/privacy-policy" className="text-gray-300 hover:text-blue-400 transition-colors">
+                  Política de Privacidad
+                </Link>
               </li>
-              <li className="text-gray-300">
-                Política de Cookies
+              <li>
+                <Link href="/cookie-policy" className="text-gray-300 hover:text-blue-400 transition-colors">
+                  Política de Cookies
+                </Link>
               </li>
             </ul>
             
