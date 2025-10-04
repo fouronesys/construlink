@@ -10,9 +10,11 @@ import {
   payments, 
   reviews, 
   verifications,
+  supplierClaims,
   insertSupplierSchema,
   insertQuoteRequestSchema,
   insertProductSchema,
+  insertSupplierClaimSchema,
   registerSchema, 
   loginSchema,
   logAdminActionSchema,
@@ -923,6 +925,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if supplier can be claimed
+  app.get('/api/suppliers/:id/claim-status', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const supplier = await storage.getSupplier(id);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Check if supplier is already claimed
+      const canBeClaimed = !supplier.isClaimed;
+      
+      // Check if there's already a pending claim for this supplier
+      const pendingClaims = await db
+        .select()
+        .from(supplierClaims)
+        .where(
+          and(
+            eq(supplierClaims.supplierId, id),
+            eq(supplierClaims.status, 'pending')
+          )
+        );
+
+      res.json({
+        canBeClaimed,
+        hasPendingClaim: pendingClaims.length > 0,
+        supplier: {
+          id: supplier.id,
+          legalName: supplier.legalName,
+          rnc: supplier.rnc,
+          location: supplier.location,
+        }
+      });
+    } catch (error) {
+      console.error("Error checking claim status:", error);
+      res.status(500).json({ message: "Failed to check claim status" });
+    }
+  });
+
+  // Submit supplier claim request
+  app.post('/api/suppliers/:id/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const supplier = await storage.getSupplier(id);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Check if supplier can be claimed
+      if (supplier.isClaimed) {
+        return res.status(400).json({ message: "Esta empresa ya ha sido reclamada" });
+      }
+
+      // Check if user already has a pending claim for this supplier
+      const existingClaim = await db
+        .select()
+        .from(supplierClaims)
+        .where(
+          and(
+            eq(supplierClaims.supplierId, id),
+            eq(supplierClaims.userId, userId),
+            eq(supplierClaims.status, 'pending')
+          )
+        );
+
+      if (existingClaim.length > 0) {
+        return res.status(400).json({ message: "Ya tienes una solicitud de reclamación pendiente para esta empresa" });
+      }
+
+      // Validate claim data
+      const claimData = insertSupplierClaimSchema.parse({
+        supplierId: id,
+        userId,
+        message: req.body.message,
+        documentUrls: req.body.documentUrls || [],
+      });
+
+      // Create claim request
+      const claim = await db.insert(supplierClaims).values(claimData).returning();
+
+      res.status(201).json({
+        message: "Solicitud de reclamación enviada exitosamente",
+        claim: claim[0]
+      });
+    } catch (error) {
+      console.error("Error creating claim request:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al crear solicitud de reclamación" });
+    }
+  });
+
   // Create quote request
   app.post('/api/quote-requests', async (req, res) => {
     try {
@@ -1415,6 +1518,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching featured suppliers:", error);
       res.status(500).json({ message: "Failed to fetch featured suppliers" });
+    }
+  });
+
+  // Admin get all supplier claims
+  app.get('/api/admin/claims', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const claims = await db
+        .select({
+          id: supplierClaims.id,
+          supplierId: supplierClaims.supplierId,
+          userId: supplierClaims.userId,
+          status: supplierClaims.status,
+          message: supplierClaims.message,
+          documentUrls: supplierClaims.documentUrls,
+          reviewNotes: supplierClaims.reviewNotes,
+          reviewedAt: supplierClaims.reviewedAt,
+          createdAt: supplierClaims.createdAt,
+          supplierName: suppliers.legalName,
+          supplierRnc: suppliers.rnc,
+          userEmail: users.email,
+          userName: users.firstName,
+        })
+        .from(supplierClaims)
+        .leftJoin(suppliers, eq(supplierClaims.supplierId, suppliers.id))
+        .leftJoin(users, eq(supplierClaims.userId, users.id))
+        .orderBy(desc(supplierClaims.createdAt));
+
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching claims:", error);
+      res.status(500).json({ message: "Failed to fetch claims" });
+    }
+  });
+
+  // Admin approve/reject supplier claim
+  app.patch('/api/admin/claims/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { status, reviewNotes } = req.body;
+
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Status must be 'approved' or 'rejected'" });
+      }
+
+      // Get the claim
+      const claim = await db
+        .select()
+        .from(supplierClaims)
+        .where(eq(supplierClaims.id, id))
+        .limit(1);
+
+      if (claim.length === 0) {
+        return res.status(404).json({ message: "Claim not found" });
+      }
+
+      if (claim[0].status !== 'pending') {
+        return res.status(400).json({ message: "This claim has already been reviewed" });
+      }
+
+      // Update claim status
+      const updatedClaim = await db
+        .update(supplierClaims)
+        .set({
+          status,
+          reviewNotes,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+        })
+        .where(eq(supplierClaims.id, id))
+        .returning();
+
+      // If approved, update the supplier to be claimed
+      if (status === 'approved') {
+        await db
+          .update(suppliers)
+          .set({
+            userId: claim[0].userId,
+            isClaimed: true,
+            claimedAt: new Date(),
+          })
+          .where(eq(suppliers.id, claim[0].supplierId));
+
+        // Also update the user's role to supplier if they're not already
+        const claimUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, claim[0].userId))
+          .limit(1);
+
+        if (claimUser[0] && claimUser[0].role === 'client') {
+          await db
+            .update(users)
+            .set({ role: 'supplier' })
+            .where(eq(users.id, claim[0].userId));
+        }
+      }
+
+      res.json({
+        message: `Claim ${status} successfully`,
+        claim: updatedClaim[0]
+      });
+    } catch (error) {
+      console.error("Error processing claim:", error);
+      res.status(500).json({ message: "Failed to process claim" });
     }
   });
 
