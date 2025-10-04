@@ -84,10 +84,10 @@ export function ProviderProfileModal({
       if (!provider?.id || !onClaimBusiness) return;
       
       try {
-        const response = await fetch(`/api/supplier-claims/check/${provider.id}`);
+        const response = await fetch(`/api/suppliers/${provider.id}/claim-status`);
         if (!response.ok) return;
         const data = await response.json();
-        setCanClaim(data.canClaim);
+        setCanClaim(data.canBeClaimed);
       } catch (error) {
         console.error("Error checking claim status:", error);
       }
