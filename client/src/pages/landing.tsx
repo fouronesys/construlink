@@ -12,7 +12,7 @@ import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { QuoteModal } from "@/components/quote-modal";
 import { ProviderProfileModal } from "@/components/provider-profile-modal";
-import placeholderBanner from "@assets/generated_images/Construction_supplier_advertising_banner_232bf875.png";
+import placeholderBanner from "@assets/generated_images/ConstruLink_supplier_advertising_banner_1a673ba0.png";
 import { 
   Shield, 
   Star, 
