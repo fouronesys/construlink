@@ -16,7 +16,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --production --ignore-scripts
+RUN npm ci --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
