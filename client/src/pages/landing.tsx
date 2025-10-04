@@ -268,6 +268,25 @@ export default function Landing() {
   }, [carouselApi, featuredSuppliers]);
 
   const handleBannerClick = async (supplier: FeaturedSupplier) => {
+    // Check if this is a valid custom banner or placeholder
+    const isValidBannerUrl = (url: string | null | undefined) => {
+      if (!url) return false;
+      if (url.startsWith('/uploads/')) return false;
+      return true;
+    };
+    
+    const hasValidCustomBanner = 
+      isValidBannerUrl(supplier.bannerImageUrl) || 
+      isValidBannerUrl(supplier.bannerImageUrlTablet) || 
+      isValidBannerUrl(supplier.bannerImageUrlMobile);
+    
+    // If it's a placeholder banner, redirect to registration
+    if (!hasValidCustomBanner) {
+      setLocation('/register');
+      return;
+    }
+    
+    // Otherwise, track click and go to directory
     if (supplier.bannerId) {
       await trackClick(supplier.bannerId);
     }
