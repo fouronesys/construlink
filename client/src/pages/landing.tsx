@@ -464,7 +464,7 @@ export default function Landing() {
             </h1>
             
             <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-              Conecta con proveedores verificados de construcción en República Dominicana
+              Tu directorio de proveedores de construcción en República Dominicana
             </p>
 
             {/* Prominent Search Bar */}
