@@ -4,6 +4,7 @@ import Navigation from "@/components/navigation";
 import { ProviderCard } from "@/components/provider-card";
 import { QuoteModal } from "@/components/quote-modal";
 import { ProviderProfileModal } from "@/components/provider-profile-modal";
+import { ClaimBusinessModal } from "@/components/claim-business-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -101,6 +102,13 @@ export default function Directory() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [selectedProviderName, setSelectedProviderName] = useState<string>("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [selectedClaimSupplier, setSelectedClaimSupplier] = useState<{
+    id: string;
+    legalName: string;
+    rnc: string;
+    location?: string;
+  } | null>(null);
 
   // Parse URL parameters for search, category, and supplier id
   useEffect(() => {
@@ -163,6 +171,23 @@ export default function Directory() {
     setSelectedProviderId(supplierId);
     setSelectedProviderName(supplierName || "");
     setShowQuoteModal(true);
+  };
+
+  const handleClaimBusiness = async (supplierId: string) => {
+    try {
+      const response = await fetch(`/api/suppliers/${supplierId}`);
+      if (!response.ok) throw new Error("Failed to fetch supplier details");
+      const supplier = await response.json();
+      setSelectedClaimSupplier({
+        id: supplier.id,
+        legalName: supplier.legalName,
+        rnc: supplier.rnc,
+        location: supplier.location,
+      });
+      setShowClaimModal(true);
+    } catch (error) {
+      console.error("Error fetching supplier for claim:", error);
+    }
   };
 
   const locations = [
@@ -304,6 +329,7 @@ export default function Directory() {
                       provider={supplier}
                       onViewProfile={() => handleViewProfile(supplier.id)}
                       onRequestQuote={() => handleRequestQuote(supplier.id, supplier.legalName)}
+                      onClaimBusiness={handleClaimBusiness}
                     />
                   ))}
                 </div>
@@ -362,6 +388,16 @@ export default function Directory() {
           setSelectedProvider(null);
           handleRequestQuote(providerId, providerName);
         }}
+      />
+
+      {/* Claim Business Modal */}
+      <ClaimBusinessModal
+        isOpen={showClaimModal}
+        onClose={() => {
+          setShowClaimModal(false);
+          setSelectedClaimSupplier(null);
+        }}
+        supplier={selectedClaimSupplier}
       />
     </div>
   );

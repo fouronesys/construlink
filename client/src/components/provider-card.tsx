@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, MapPin, MessageSquare, Eye, CheckCircle } from "lucide-react";
+import { Star, MapPin, MessageSquare, Eye, CheckCircle, Building2 } from "lucide-react";
 
 interface Provider {
   id: string;
@@ -12,15 +12,17 @@ interface Provider {
   description: string;
   averageRating: number;
   totalReviews: number;
+  isClaimed?: boolean;
 }
 
 interface ProviderCardProps {
   provider: Provider;
   onViewProfile: (provider: Provider) => void;
   onRequestQuote: (providerId: string) => void;
+  onClaimBusiness?: (providerId: string) => void;
 }
 
-export function ProviderCard({ provider, onViewProfile, onRequestQuote }: ProviderCardProps) {
+export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimBusiness }: ProviderCardProps) {
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -47,6 +49,21 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote }: Provid
               RNC: {provider.rnc}
             </div>
           </div>
+          {!provider.isClaimed && onClaimBusiness && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClaimBusiness(provider.id);
+              }}
+              className="text-xs text-gray-500 hover:text-blue-600 h-7 px-2 ml-2"
+              data-testid={`button-claim-${provider.id}`}
+            >
+              <Building2 className="w-3 h-3 mr-1" />
+              <span className="hidden sm:inline">¿Es tu empresa?</span>
+            </Button>
+          )}
         </div>
         
         <div className="flex flex-col sm:flex-row sm:items-center mt-3 gap-1 sm:gap-0">
