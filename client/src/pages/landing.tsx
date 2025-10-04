@@ -89,6 +89,12 @@ const categories = [
   { name: "Eléctricos", icon: Zap, color: "bg-yellow-100 text-yellow-800" },
   { name: "Plomería", icon: Hammer, color: "bg-purple-100 text-purple-800" },
   { name: "Pinturas", icon: PaintBucket, color: "bg-pink-100 text-pink-800" },
+  { name: "Ebanistería", icon: Layers, color: "bg-amber-100 text-amber-800" },
+  { name: "Pisos", icon: Layers, color: "bg-slate-100 text-slate-800" },
+  { name: "Aluminio y PVC", icon: Layers, color: "bg-cyan-100 text-cyan-800" },
+  { name: "Vidriería", icon: Eye, color: "bg-indigo-100 text-indigo-800" },
+  { name: "Cerrajería", icon: Shield, color: "bg-red-100 text-red-800" },
+  { name: "Aire Acondicionado", icon: Filter, color: "bg-sky-100 text-sky-800" },
 ];
 
 const subscriptionPlans = [
