@@ -49,6 +49,12 @@ Preferred communication style: Simple, everyday language.
 - **Verification System**: Admin approval workflow with document review
 - **Status Management**: Pending, approved, suspended, rejected states
 - **Subscription Integration**: Verifone recurring billing with tiered pricing
+- **Business Claim System**: Allows users to claim manually added companies
+  - Discrete "¿Es tu empresa?" button in search results and company details
+  - Claim submission with justification message
+  - Admin review and approval workflow
+  - Automatic ownership transfer upon approval
+  - User role upgrade from client to supplier when claim is approved
 
 ### Payment System
 - **Provider**: Verifone with webhook integration
@@ -84,6 +90,17 @@ Preferred communication style: Simple, everyday language.
 2. Automatic suspension for failed payments
 3. Renewal notifications and grace periods
 4. Admin override capabilities for special cases
+
+### Business Claim Process
+1. User browses directory and finds their manually added company
+2. User clicks discrete "¿Es tu empresa?" button (if company is not yet claimed)
+3. User fills out claim form with justification message
+4. Claim is submitted and enters pending review status
+5. Admin reviews claim in "Reclamaciones" tab of admin panel
+6. Admin approves or rejects claim with optional notes
+7. Upon approval, company ownership is transferred to the user
+8. User's role is upgraded to supplier if they were a client
+9. User can now manage the company profile and subscription
 
 ## External Dependencies
 
@@ -139,6 +156,19 @@ Preferred communication style: Simple, everyday language.
 - **Image Management**: Banner images copied from builder stage to ensure availability in production
 
 ## Recent Changes
+
+### October 4, 2025 - Business Claim System Implementation
+- ✓ Implemented complete business claim system for manually added companies
+- ✓ Added supplierClaims table to database schema with status tracking
+- ✓ Created backend API endpoints for claim submission, status checking, and admin management
+- ✓ Built ClaimBusinessModal component with validation and proper UX
+- ✓ Added discrete "¿Es tu empresa?" button in ProviderCard (search results)
+- ✓ Added discrete "¿Es tu empresa?" button in ProviderProfileModal (company details)
+- ✓ Integrated claim modal in directory page with proper state management
+- ✓ Added "Reclamaciones" tab to admin panel for claim review
+- ✓ Implemented approve/reject workflow with automatic supplier ownership transfer
+- ✓ All features with full data-testid coverage for QA
+- ✓ Verified end-to-end flow by architect review
 
 ### October 4, 2025 - CapRover Deployment Fix
 - ✓ Fixed banner images not displaying in CapRover deployment
@@ -226,5 +256,11 @@ The application is fully functional with a comprehensive admin panel featuring:
   - Automatic ITBIS (18%) calculation
   - CSV export for payments and invoices
   - Complete Verifone integration
+- **Business Claim System**: (COMPLETE)
+  - Allows users to claim ownership of manually added companies
+  - Discrete claim buttons in search results and company details
+  - Admin review panel for claim approval/rejection
+  - Automatic ownership transfer and role upgrade upon approval
+  - Full integration with existing supplier management system
 
-The platform includes a product-focused main page, pricing section, proper RNC validation, and category-based directory filtering. All interfaces are fully responsive for mobile phones and tablets. Payment processing with Verifone is working correctly across all device sizes. The admin panel now has complete payment and billing management capabilities including fiscal compliance for the Dominican Republic.
+The platform includes a product-focused main page, pricing section, proper RNC validation, category-based directory filtering, and business claim functionality. All interfaces are fully responsive for mobile phones and tablets. Payment processing with Verifone is working correctly across all device sizes. The admin panel now has complete payment and billing management capabilities including fiscal compliance for the Dominican Republic, plus a comprehensive claim management system for business ownership transfers.
