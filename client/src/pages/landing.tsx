@@ -83,12 +83,12 @@ interface SupplierBanner {
 
 
 const categories = [
-  { name: "Construcción General", icon: Building2, count: 245, color: "bg-blue-100 text-blue-800" },
-  { name: "Materiales", icon: Truck, count: 189, color: "bg-green-100 text-green-800" },
-  { name: "Herramientas", icon: Wrench, count: 134, color: "bg-orange-100 text-orange-800" },
-  { name: "Eléctricos", icon: Zap, count: 98, color: "bg-yellow-100 text-yellow-800" },
-  { name: "Plomería", icon: Hammer, count: 76, color: "bg-purple-100 text-purple-800" },
-  { name: "Pinturas", icon: PaintBucket, count: 63, color: "bg-pink-100 text-pink-800" },
+  { name: "Construcción General", icon: Building2, color: "bg-blue-100 text-blue-800" },
+  { name: "Materiales", icon: Truck, color: "bg-green-100 text-green-800" },
+  { name: "Herramientas", icon: Wrench, color: "bg-orange-100 text-orange-800" },
+  { name: "Eléctricos", icon: Zap, color: "bg-yellow-100 text-yellow-800" },
+  { name: "Plomería", icon: Hammer, color: "bg-purple-100 text-purple-800" },
+  { name: "Pinturas", icon: PaintBucket, color: "bg-pink-100 text-pink-800" },
 ];
 
 const subscriptionPlans = [
@@ -504,25 +504,6 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">500+</div>
-                <div className="text-sm text-blue-200">Proveedores Verificados</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">2,500+</div>
-                <div className="text-sm text-blue-200">Productos Disponibles</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">1,200+</div>
-                <div className="text-sm text-blue-200">Proyectos Completados</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">98%</div>
-                <div className="text-sm text-blue-200">Satisfacción</div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -553,7 +534,6 @@ export default function Landing() {
                     <Icon className="w-6 h-6" />
                   </div>
                   <h3 className="font-semibold text-gray-900 text-sm mb-1">{category.name}</h3>
-                  <p className="text-xs text-gray-500">{category.count} productos</p>
                 </button>
               );
             })}
@@ -592,7 +572,6 @@ export default function Landing() {
                     <category.icon className="w-8 h-8" />
                   </div>
                   <h3 className="font-semibold mb-2 text-gray-900">{category.name}</h3>
-                  <p className="text-sm text-gray-600">{category.count} proveedores</p>
                 </CardContent>
               </Card>
             ))}
