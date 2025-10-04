@@ -52,7 +52,7 @@ import {
   type InsertPlatformConfig,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, ilike, sql, inArray } from "drizzle-orm";
+import { eq, and, or, desc, asc, ilike, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -350,8 +350,6 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Supplier[]> {
-    let query = db.select().from(suppliers);
-    
     const conditions = [];
     
     if (filters?.status) {
@@ -362,9 +360,50 @@ export class DatabaseStorage implements IStorage {
       conditions.push(ilike(suppliers.location, `%${filters.location}%`));
     }
     
+    // Enhanced search: search in supplier name, specialties, products (name, description, category)
     if (filters?.search) {
-      conditions.push(ilike(suppliers.legalName, `%${filters.search}%`));
+      const searchTerm = `%${filters.search}%`;
+      
+      // Find supplier IDs that match in name
+      const suppliersByName = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(ilike(suppliers.legalName, searchTerm));
+      
+      // Find supplier IDs that match in specialties
+      const suppliersBySpecialty = await db
+        .select({ id: supplierSpecialties.supplierId })
+        .from(supplierSpecialties)
+        .where(ilike(supplierSpecialties.specialty, searchTerm));
+      
+      // Find supplier IDs that match in products (name, description, or category)
+      const suppliersByProducts = await db
+        .select({ id: products.supplierId })
+        .from(products)
+        .where(
+          or(
+            ilike(products.name, searchTerm),
+            ilike(products.description, searchTerm),
+            ilike(products.category, searchTerm)
+          )
+        );
+      
+      // Combine all matching supplier IDs
+      const matchingSupplierIds = new Set([
+        ...suppliersByName.map(s => s.id),
+        ...suppliersBySpecialty.map(s => s.id),
+        ...suppliersByProducts.map(s => s.id)
+      ]);
+      
+      if (matchingSupplierIds.size > 0) {
+        conditions.push(inArray(suppliers.id, Array.from(matchingSupplierIds)));
+      } else {
+        // No matches found, return empty array
+        return [];
+      }
     }
+    
+    let query = db.select().from(suppliers);
     
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
