@@ -61,7 +61,7 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimB
               data-testid={`button-claim-${provider.id}`}
             >
               <Building2 className="w-3 h-3 mr-1" />
-              <span className="hidden sm:inline">¿Es tu empresa?</span>
+              ¿Es tu empresa?
             </Button>
           )}
         </div>
