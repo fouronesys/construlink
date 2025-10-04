@@ -1006,6 +1006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const claimData = insertSupplierClaimSchema.parse({
         supplierId: id,
         userId,
+        email: req.body.email,
         message: req.body.message,
         documentUrls: req.body.documentUrls || [],
       });
@@ -1535,6 +1536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: supplierClaims.id,
           supplierId: supplierClaims.supplierId,
           userId: supplierClaims.userId,
+          email: supplierClaims.email,
           status: supplierClaims.status,
           message: supplierClaims.message,
           documentUrls: supplierClaims.documentUrls,

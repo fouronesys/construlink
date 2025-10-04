@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +21,7 @@ interface ClaimBusinessModalProps {
 }
 
 export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: ClaimBusinessModalProps) {
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -28,6 +30,25 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
     e.preventDefault();
     
     if (!supplier) return;
+
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa tu correo electrónico",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa un correo electrónico válido",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!message.trim()) {
       toast({
@@ -42,6 +63,7 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
 
     try {
       const response = await apiRequest("POST", `/api/suppliers/${supplier.id}/claim`, {
+        email: email.trim(),
         message: message.trim(),
         documentUrls: [],
       });
@@ -53,9 +75,10 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
 
       toast({
         title: "Solicitud Enviada",
-        description: "Tu solicitud de reclamación ha sido enviada. Recibirás una respuesta pronto.",
+        description: "Tu solicitud de reclamación ha sido enviada. Recibirás una respuesta por correo electrónico.",
       });
 
+      setEmail("");
       setMessage("");
       onSuccess?.();
       onClose();
@@ -101,13 +124,32 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
                   <ul className="list-disc list-inside space-y-1 text-blue-800">
                     <li>Tu solicitud será revisada por nuestro equipo</li>
                     <li>Podríamos solicitar documentación adicional</li>
-                    <li>Recibirás una notificación con la decisión</li>
+                    <li>Te enviaremos el estado de tu solicitud por correo electrónico</li>
                   </ul>
                 </div>
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="email">
+                  Correo Electrónico <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  className="mt-2"
+                  required
+                  data-testid="input-claim-email"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Usaremos este correo para notificarte sobre el estado de tu solicitud
+                </p>
+              </div>
+
               <div>
                 <Label htmlFor="message">
                   Explica por qué esta empresa te pertenece <span className="text-red-500">*</span>

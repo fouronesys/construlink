@@ -234,6 +234,7 @@ interface SupplierClaim {
   id: string;
   supplierId: string;
   userId: string;
+  email: string;
   status: 'pending' | 'approved' | 'rejected';
   message?: string;
   documentUrls?: string;
@@ -1590,7 +1591,7 @@ export default function AdminPanel() {
                           <TableCell>
                             <div>
                               <div className="font-medium">{claim.userName || 'N/A'}</div>
-                              <div className="text-sm text-gray-500">{claim.userEmail || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{claim.email}</div>
                             </div>
                           </TableCell>
                           <TableCell>

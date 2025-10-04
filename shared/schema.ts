@@ -80,6 +80,7 @@ export const supplierClaims = pgTable("supplier_claims", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
   status: varchar("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
   message: text("message"),
   documentUrls: text("document_urls").array(),
