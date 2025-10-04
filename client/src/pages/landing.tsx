@@ -312,9 +312,21 @@ export default function Landing() {
 
   const BannerImage = ({ supplier }: { supplier: FeaturedSupplier }) => {
     const [imageError, setImageError] = useState(false);
-    const hasCustomBanner = supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile;
+    
+    // Check if supplier has valid custom banners (not /uploads paths which don't exist)
+    const isValidBannerUrl = (url: string | null | undefined) => {
+      if (!url) return false;
+      // If it's an /uploads path, consider it invalid since uploads folder doesn't exist
+      if (url.startsWith('/uploads/')) return false;
+      return true;
+    };
+    
+    const hasValidCustomBanner = 
+      isValidBannerUrl(supplier.bannerImageUrl) || 
+      isValidBannerUrl(supplier.bannerImageUrlTablet) || 
+      isValidBannerUrl(supplier.bannerImageUrlMobile);
 
-    if (!hasCustomBanner || imageError) {
+    if (!hasValidCustomBanner || imageError) {
       return (
         <img
           src={placeholderBanner}
@@ -328,17 +340,17 @@ export default function Landing() {
     return (
       <picture>
         {/* Mobile: 640x200px */}
-        {supplier.bannerImageUrlMobile && (
+        {isValidBannerUrl(supplier.bannerImageUrlMobile) && (
           <source 
             media="(max-width: 639px)" 
-            srcSet={supplier.bannerImageUrlMobile}
+            srcSet={supplier.bannerImageUrlMobile!}
           />
         )}
         {/* Tablet: 1024x300px */}
-        {supplier.bannerImageUrlTablet && (
+        {isValidBannerUrl(supplier.bannerImageUrlTablet) && (
           <source 
             media="(min-width: 640px) and (max-width: 1023px)" 
-            srcSet={supplier.bannerImageUrlTablet}
+            srcSet={supplier.bannerImageUrlTablet!}
           />
         )}
         {/* Desktop: 1920x400px */}
