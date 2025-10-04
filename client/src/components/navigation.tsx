@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import logoPath from "@assets/ConstructLink_20251004_013258_0000_1759557121076.png";
 
 export default function Navigation() {
   const [location, setLocation] = useLocation();
@@ -95,9 +96,9 @@ export default function Navigation() {
           {/* Logo and brand */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              <img src={logoPath} alt="ConstructLink" className="h-8 w-8 sm:h-10 sm:w-10" />
               <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                Construlink
+                ConstructLink
               </span>
             </Link>
           </div>
