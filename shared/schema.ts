@@ -54,7 +54,7 @@ export const deviceTypeEnum = pgEnum("device_type", ["desktop", "tablet", "mobil
 // Suppliers table
 export const suppliers = pgTable("suppliers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
+  userId: varchar("user_id").references(() => users.id),
   legalName: varchar("legal_name", { length: 255 }).notNull(),
   rnc: varchar("rnc", { length: 50 }).unique().notNull(),
   phone: varchar("phone", { length: 50 }).notNull(),
@@ -68,8 +68,25 @@ export const suppliers = pgTable("suppliers", {
   bannerImageUrl: varchar("banner_image_url"),
   isFeatured: boolean("is_featured").default(false),
   featuredSince: timestamp("featured_since"),
+  isClaimed: boolean("is_claimed").default(true),
+  claimedAt: timestamp("claimed_at"),
+  addedByAdmin: boolean("added_by_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Supplier claim requests
+export const supplierClaims = pgTable("supplier_claims", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  status: varchar("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
+  message: text("message"),
+  documentUrls: text("document_urls").array(),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewNotes: text("review_notes"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Supplier specialties
@@ -271,6 +288,7 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
     fields: [suppliers.userId],
     references: [users.id],
   }),
+  claims: many(supplierClaims),
   specialties: many(supplierSpecialties),
   documents: many(supplierDocuments),
   banners: many(supplierBanners),
@@ -282,6 +300,21 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   reviews: many(reviews),
   planUsage: many(planUsage),
   invoices: many(invoices),
+}));
+
+export const supplierClaimsRelations = relations(supplierClaims, ({ one }) => ({
+  supplier: one(suppliers, {
+    fields: [supplierClaims.supplierId],
+    references: [suppliers.id],
+  }),
+  user: one(users, {
+    fields: [supplierClaims.userId],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [supplierClaims.reviewedBy],
+    references: [users.id],
+  }),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
@@ -491,6 +524,15 @@ export const insertPlatformConfigSchema = createInsertSchema(platformConfig).omi
   updatedAt: true,
 });
 
+export const insertSupplierClaimSchema = createInsertSchema(supplierClaims).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewNotes: true,
+  reviewedAt: true,
+  createdAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -565,6 +607,7 @@ export const createInvoiceSchema = z.object({
 // Types
 export type User = typeof users.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
+export type SupplierClaim = typeof supplierClaims.$inferSelect;
 export type SupplierSpecialty = typeof supplierSpecialties.$inferSelect;
 export type SupplierDocument = typeof supplierDocuments.$inferSelect;
 export type SupplierBanner = typeof supplierBanners.$inferSelect;
@@ -584,6 +627,7 @@ export type PlatformConfig = typeof platformConfig.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type InsertSupplierClaim = z.infer<typeof insertSupplierClaimSchema>;
 export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertSupplierSpecialty = z.infer<typeof insertSupplierSpecialtySchema>;
