@@ -43,7 +43,19 @@ import {
   ShoppingCart,
   Layers,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Home,
+  TreePine,
+  Waves,
+  Paintbrush,
+  Package,
+  Grid3x3,
+  Gem,
+  Cog,
+  Sun,
+  Camera,
+  DoorClosed,
+  Lock
 } from "lucide-react";
 
 interface Provider {
@@ -89,12 +101,25 @@ const categories = [
   { name: "Eléctricos", icon: Zap, color: "bg-yellow-100 text-yellow-800" },
   { name: "Plomería", icon: Hammer, color: "bg-purple-100 text-purple-800" },
   { name: "Pinturas", icon: PaintBucket, color: "bg-pink-100 text-pink-800" },
+  { name: "Ferretería", icon: ShoppingCart, color: "bg-rose-100 text-rose-800" },
+  { name: "Seguridad", icon: Lock, color: "bg-gray-100 text-gray-800" },
   { name: "Ebanistería", icon: Layers, color: "bg-amber-100 text-amber-800" },
-  { name: "Pisos", icon: Layers, color: "bg-slate-100 text-slate-800" },
+  { name: "Pisos", icon: Grid3x3, color: "bg-slate-100 text-slate-800" },
   { name: "Aluminio y PVC", icon: Layers, color: "bg-cyan-100 text-cyan-800" },
   { name: "Vidriería", icon: Eye, color: "bg-indigo-100 text-indigo-800" },
   { name: "Cerrajería", icon: Shield, color: "bg-red-100 text-red-800" },
   { name: "Aire Acondicionado", icon: Filter, color: "bg-sky-100 text-sky-800" },
+  { name: "Techado", icon: Home, color: "bg-teal-100 text-teal-800" },
+  { name: "Jardinería", icon: TreePine, color: "bg-lime-100 text-lime-800" },
+  { name: "Piscinas", icon: Waves, color: "bg-blue-100 text-blue-800" },
+  { name: "Acabados", icon: Paintbrush, color: "bg-fuchsia-100 text-fuchsia-800" },
+  { name: "Cemento", icon: Package, color: "bg-stone-100 text-stone-800" },
+  { name: "Estructuras Metálicas", icon: Grid3x3, color: "bg-zinc-100 text-zinc-800" },
+  { name: "Mármol y Granito", icon: Gem, color: "bg-violet-100 text-violet-800" },
+  { name: "Maquinaria", icon: Cog, color: "bg-orange-100 text-orange-800" },
+  { name: "Instalaciones Solares", icon: Sun, color: "bg-yellow-100 text-yellow-800" },
+  { name: "Sistemas de Seguridad", icon: Camera, color: "bg-red-100 text-red-800" },
+  { name: "Puertas y Ventanas", icon: DoorClosed, color: "bg-emerald-100 text-emerald-800" },
 ];
 
 const subscriptionPlans = [
