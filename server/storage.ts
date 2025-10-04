@@ -360,15 +360,32 @@ export class DatabaseStorage implements IStorage {
       conditions.push(ilike(suppliers.location, `%${filters.location}%`));
     }
     
+    // Filter by specialty if provided
+    if (filters?.specialty) {
+      const suppliersWithSpecialty = await db
+        .select({ id: supplierSpecialties.supplierId })
+        .from(supplierSpecialties)
+        .where(ilike(supplierSpecialties.specialty, `%${filters.specialty}%`));
+      
+      const specialtySupplierIds = suppliersWithSpecialty.map(s => s.id);
+      
+      if (specialtySupplierIds.length > 0) {
+        conditions.push(inArray(suppliers.id, specialtySupplierIds));
+      } else {
+        // No suppliers with this specialty found
+        return [];
+      }
+    }
+    
     // Enhanced search: search in supplier name, specialties, products (name, description, category)
+    // When searching, we want to find suppliers where ANY of these match (OR logic within search)
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
       
-      // Find supplier IDs that match in name
-      const suppliersByName = await db
-        .select({ id: suppliers.id })
-        .from(suppliers)
-        .where(ilike(suppliers.legalName, searchTerm));
+      const searchConditions = [
+        // Match in supplier name
+        ilike(suppliers.legalName, searchTerm)
+      ];
       
       // Find supplier IDs that match in specialties
       const suppliersBySpecialty = await db
@@ -388,19 +405,19 @@ export class DatabaseStorage implements IStorage {
           )
         );
       
-      // Combine all matching supplier IDs
+      // Combine specialty and product matches
       const matchingSupplierIds = new Set([
-        ...suppliersByName.map(s => s.id),
         ...suppliersBySpecialty.map(s => s.id),
         ...suppliersByProducts.map(s => s.id)
       ]);
       
+      // Add supplier IDs from specialty/product matches to the OR condition
       if (matchingSupplierIds.size > 0) {
-        conditions.push(inArray(suppliers.id, Array.from(matchingSupplierIds)));
-      } else {
-        // No matches found, return empty array
-        return [];
+        searchConditions.push(inArray(suppliers.id, Array.from(matchingSupplierIds)));
       }
+      
+      // Combine all search conditions with OR
+      conditions.push(or(...searchConditions));
     }
     
     let query = db.select().from(suppliers);
