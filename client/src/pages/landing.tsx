@@ -12,6 +12,7 @@ import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { QuoteModal } from "@/components/quote-modal";
 import { ProviderProfileModal } from "@/components/provider-profile-modal";
+import placeholderBanner from "@assets/generated_images/Construction_supplier_advertising_banner_232bf875.png";
 import { 
   Shield, 
   Star, 
@@ -75,6 +76,8 @@ interface FeaturedSupplier {
   location: string;
   description: string;
   bannerImageUrl: string | null;
+  bannerImageUrlTablet?: string | null;
+  bannerImageUrlMobile?: string | null;
   specialties: string[];
   bannerId?: string;
 }
@@ -462,17 +465,36 @@ export default function Landing() {
                     onClick={() => handleBannerClick(supplier)}
                     data-testid={`banner-click-${supplier.id}`}
                   >
-                    {supplier.bannerImageUrl ? (
-                      <img
-                        src={supplier.bannerImageUrl}
-                        alt={supplier.legalName}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        data-testid={`img-banner-${supplier.id}`}
-                      />
+                    {supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile ? (
+                      <picture>
+                        {/* Mobile: 640x200px */}
+                        {supplier.bannerImageUrlMobile && (
+                          <source 
+                            media="(max-width: 639px)" 
+                            srcSet={supplier.bannerImageUrlMobile}
+                          />
+                        )}
+                        {/* Tablet: 1024x300px */}
+                        {supplier.bannerImageUrlTablet && (
+                          <source 
+                            media="(min-width: 640px) and (max-width: 1023px)" 
+                            srcSet={supplier.bannerImageUrlTablet}
+                          />
+                        )}
+                        {/* Desktop: 1920x400px */}
+                        <img
+                          src={supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile || placeholderBanner}
+                          alt={supplier.legalName}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          data-testid={`img-banner-${supplier.id}`}
+                        />
+                      </picture>
                     ) : (
-                      <div 
-                        className="w-full h-full bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700"
-                        data-testid={`bg-gradient-${supplier.id}`}
+                      <img
+                        src={placeholderBanner}
+                        alt="Anuncia tu empresa aquí"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        data-testid={`img-banner-placeholder-${supplier.id}`}
                       />
                     )}
                   </div>

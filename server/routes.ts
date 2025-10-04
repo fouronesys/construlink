@@ -760,22 +760,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(eq(suppliers.status, 'approved'), eq(suppliers.isFeatured, true)))
         .limit(10);
 
-      // Get specialties and banner for each featured supplier
+      // Get specialties and banners for each featured supplier
       const suppliersWithSpecialties = await Promise.all(
         featuredSuppliers.map(async (supplier) => {
           const specialties = await storage.getSupplierSpecialties(supplier.id);
           const banners = await storage.getBannersBySupplierId(supplier.id);
-          // Get desktop banner for tracking (or first available)
-          const desktopBanner = banners.find(b => b.deviceType === 'desktop' && b.isActive) || banners.find(b => b.isActive);
+          
+          // Get banners for each device type
+          const desktopBanner = banners.find(b => b.deviceType === 'desktop' && b.isActive);
+          const tabletBanner = banners.find(b => b.deviceType === 'tablet' && b.isActive);
+          const mobileBanner = banners.find(b => b.deviceType === 'mobile' && b.isActive);
+          
+          // Fallback to first available active banner if specific type not found
+          const fallbackBanner = banners.find(b => b.isActive);
           
           return {
             id: supplier.id,
             legalName: supplier.legalName,
             location: supplier.location,
             description: supplier.description,
-            bannerImageUrl: desktopBanner?.imageUrl || supplier.bannerImageUrl,
+            bannerImageUrl: desktopBanner?.imageUrl || fallbackBanner?.imageUrl || supplier.bannerImageUrl,
+            bannerImageUrlTablet: tabletBanner?.imageUrl || desktopBanner?.imageUrl || fallbackBanner?.imageUrl || supplier.bannerImageUrl,
+            bannerImageUrlMobile: mobileBanner?.imageUrl || tabletBanner?.imageUrl || fallbackBanner?.imageUrl || supplier.bannerImageUrl,
             specialties: specialties.map(s => s.specialty),
-            bannerId: desktopBanner?.id, // Include banner ID for tracking
+            bannerId: desktopBanner?.id || fallbackBanner?.id, // Include banner ID for tracking (use desktop banner for tracking)
           };
         })
       );
