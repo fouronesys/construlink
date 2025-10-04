@@ -81,38 +81,6 @@ interface SupplierBanner {
   impressionCount: number;
 }
 
-const sampleProviders: Provider[] = [
-  {
-    id: "1",
-    legalName: "Constructora Dominicana S.R.L.",
-    rnc: "1-31-85420-1",
-    specialties: ["Concreto", "Estructura", "Techado"],
-    location: "Santo Domingo, Distrito Nacional",
-    description: "Empresa líder en construcción de edificios residenciales y comerciales con más de 15 años de experiencia en el mercado dominicano.",
-    averageRating: 4.9,
-    totalReviews: 127,
-  },
-  {
-    id: "2",
-    legalName: "Instalaciones Eléctricas Pro",
-    rnc: "1-01-50123-8",
-    specialties: ["Eléctricos", "Iluminación"],
-    location: "Santiago, Santiago",
-    description: "Especialistas en instalaciones eléctricas residenciales e industriales. Certificados por la Comisión Nacional de Energía.",
-    averageRating: 4.7,
-    totalReviews: 89,
-  },
-  {
-    id: "3",
-    legalName: "PlomRD Expertos",
-    rnc: "1-25-67890-3",
-    specialties: ["Plomería", "Sanitarios"],
-    location: "La Vega, La Vega",
-    description: "Especialistas en sistemas de plomería residencial y comercial. Servicio 24/7 con garantía extendida.",
-    averageRating: 4.8,
-    totalReviews: 156,
-  },
-];
 
 const categories = [
   { name: "Construcción General", icon: Building2, count: 245, color: "bg-blue-100 text-blue-800" },
@@ -591,83 +559,6 @@ export default function Landing() {
             })}
           </div>
 
-          {/* Featured Providers */}
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              Proveedores Verificados Destacados
-            </h3>
-            <p className="text-gray-600">
-              Conecta directamente con los mejores proveedores de República Dominicana
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {sampleProviders.map((provider) => (
-              <div key={provider.id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow p-6 border border-gray-100">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h4 className="font-bold text-lg text-gray-900 mb-1">
-                      {provider.legalName}
-                    </h4>
-                    <div className="flex items-center text-sm text-gray-600 mb-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                      RNC: {provider.rnc}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 mb-3">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      {provider.location}
-                    </div>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Verificado</Badge>
-                </div>
-
-                <div className="flex items-center mb-3">
-                  {renderStars(Math.floor(provider.averageRating))}
-                  <span className="text-sm text-gray-600 ml-2">
-                    {provider.averageRating} ({provider.totalReviews} reseñas)
-                  </span>
-                </div>
-
-                <p className="text-gray-700 text-sm mb-4 line-clamp-2">
-                  {provider.description}
-                </p>
-
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {provider.specialties.slice(0, 3).map((specialty, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {specialty}
-                    </Badge>
-                  ))}
-                  {provider.specialties.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{provider.specialties.length - 3} más
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleViewProfile(provider)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    Ver Perfil
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
-                    onClick={() => handleRequestQuote(provider.id)}
-                  >
-                    <MessageSquare className="w-4 h-4 mr-1" />
-                    Cotizar
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
           <div className="text-center">
             <Button 
               size="lg" 
@@ -766,109 +657,13 @@ export default function Landing() {
 
 
 
-      {/* Featured Providers Section */}
-      <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50 animate-on-scroll">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Proveedores Destacados
-            </h2>
-            <p className="text-xl text-gray-600">
-              Conoce algunos de nuestros proveedores verificados más confiables
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sampleProviders.map((provider, index) => (
-              <Card key={provider.id} className="group hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-0 overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-6 group-hover:from-blue-100 group-hover:to-indigo-200 transition-all duration-300">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-gray-900">{provider.legalName}</h3>
-                          <p className="text-sm text-gray-600 flex items-center">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            {provider.location}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 shadow-sm">
-                        <Shield className="w-3 h-3 mr-1" />
-                        Verificado
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="flex items-center">
-                        {renderStars(provider.averageRating)}
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">
-                        ({provider.averageRating}) {provider.totalReviews} reseñas
-                      </span>
-                    </div>
-
-                    <p className="text-gray-700 text-sm mb-4 leading-relaxed">
-                      {provider.description}
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {provider.specialties.slice(0, 2).map((specialty, i) => (
-                        <Badge key={i} className="bg-white/80 text-gray-700 hover:bg-white text-xs px-3 py-1">
-                          {specialty}
-                        </Badge>
-                      ))}
-                      {provider.specialties.length > 2 && (
-                        <Badge className="bg-white/80 text-gray-700 text-xs px-3 py-1">
-                          +{provider.specialties.length - 2} más
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        className="flex-1 bg-white hover:bg-gray-50 border-gray-300 text-gray-700 font-medium"
-                        onClick={() => handleViewProfile(provider)}
-                      >
-                        Ver Perfil
-                      </Button>
-                      <Button
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg"
-                        onClick={() => handleRequestQuote(provider.id)}
-                      >
-                        Cotizar
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="text-center mt-16">
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-2 border-gray-300 hover:border-gray-400 px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
-              onClick={() => setLocation("/directory")}
-            >
-              Ver Todos los Proveedores
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </section>
 
       {/* Quote Modal */}
       <QuoteModal
         isOpen={showQuoteModal}
         onClose={() => setShowQuoteModal(false)}
         providerId={selectedProviderId}
-        providerName={sampleProviders.find(p => p.id === selectedProviderId)?.legalName || "Proveedor"}
+        providerName="Proveedor"
       />
 
       {/* Provider Profile Modal */}
