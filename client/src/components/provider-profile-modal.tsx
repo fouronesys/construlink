@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +40,7 @@ interface ProviderProfileModalProps {
   onClose: () => void;
   provider: Provider | null;
   onRequestQuote: (providerId: string) => void;
+  onClaimBusiness?: (supplierId: string) => void;
 }
 
 const mockReviews = [
@@ -72,8 +74,30 @@ export function ProviderProfileModal({
   isOpen, 
   onClose, 
   provider, 
-  onRequestQuote 
+  onRequestQuote,
+  onClaimBusiness
 }: ProviderProfileModalProps) {
+  const [canClaim, setCanClaim] = useState(false);
+
+  useEffect(() => {
+    const checkClaimStatus = async () => {
+      if (!provider?.id || !onClaimBusiness) return;
+      
+      try {
+        const response = await fetch(`/api/supplier-claims/check/${provider.id}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setCanClaim(data.canClaim);
+      } catch (error) {
+        console.error("Error checking claim status:", error);
+      }
+    };
+
+    if (provider?.id) {
+      checkClaimStatus();
+    }
+  }, [provider?.id, onClaimBusiness]);
+
   if (!provider) return null;
 
   const renderStars = (rating: number) => {
@@ -210,14 +234,30 @@ export function ProviderProfileModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
-              Cerrar
-            </Button>
-            <Button onClick={() => onRequestQuote(provider.id)} className="w-full sm:w-auto">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Solicitar Cotización
-            </Button>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-4 border-t">
+            <div>
+              {canClaim && onClaimBusiness && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => onClaimBusiness(provider.id)}
+                  className="text-gray-600 hover:text-gray-900 px-0"
+                  data-testid="button-claim-business"
+                >
+                  <Building2 className="w-3.5 h-3.5 mr-1.5" />
+                  ¿Es tu empresa?
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+                Cerrar
+              </Button>
+              <Button onClick={() => onRequestQuote(provider.id)} className="w-full sm:w-auto">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Solicitar Cotización
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

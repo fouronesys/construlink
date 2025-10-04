@@ -388,6 +388,7 @@ export default function Directory() {
           setSelectedProvider(null);
           handleRequestQuote(providerId, providerName);
         }}
+        onClaimBusiness={handleClaimBusiness}
       />
 
       {/* Claim Business Modal */}
