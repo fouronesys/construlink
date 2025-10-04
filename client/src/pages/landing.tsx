@@ -337,48 +337,45 @@ export default function Landing() {
           {/* Mobile Layout - Two Rows */}
           <div className="sm:hidden space-y-1">
             {/* Exchange Rates */}
-            <div className="flex items-center justify-between text-xs" data-testid="exchange-rates-section">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-300">💱</span>
-                <span className="text-blue-200 font-medium">Tasas:</span>
-              </div>
+            <div className="flex items-center gap-2 text-xs" data-testid="exchange-rates-section">
+              <span className="text-blue-300">💱</span>
               {exchangeRates ? (
-                <div className="flex items-center gap-3">
+                <>
                   <div data-testid="usd-rate">
                     <span className="text-blue-200">USD </span>
                     <span className="text-yellow-300 font-bold">${exchangeRates.rates.usd_to_dop}</span>
                   </div>
+                  <span className="text-blue-400">|</span>
                   <div data-testid="eur-rate">
                     <span className="text-blue-200">EUR </span>
                     <span className="text-yellow-300 font-bold">${exchangeRates.rates.eur_to_dop}</span>
                   </div>
-                </div>
+                </>
               ) : (
                 <span className="text-blue-300">...</span>
               )}
             </div>
             
             {/* Fuel Prices */}
-            <div className="flex items-center justify-between text-xs" data-testid="fuel-prices-section">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-300">⛽</span>
-                <span className="text-blue-200 font-medium">Combustibles:</span>
-              </div>
+            <div className="flex items-center gap-2 text-xs" data-testid="fuel-prices-section">
+              <span className="text-blue-300">⛽</span>
               {fuelPrices ? (
-                <div className="flex items-center gap-2">
+                <>
                   <div data-testid="gasolina-premium">
-                    <span className="text-blue-200">P </span>
+                    <span className="text-blue-200">Premium </span>
                     <span className="text-green-300 font-bold">{fuelPrices.precios.gasolina_premium}</span>
                   </div>
+                  <span className="text-blue-400">|</span>
                   <div data-testid="gasolina-regular">
-                    <span className="text-blue-200">R </span>
+                    <span className="text-blue-200">Regular </span>
                     <span className="text-green-300 font-bold">{fuelPrices.precios.gasolina_regular}</span>
                   </div>
+                  <span className="text-blue-400">|</span>
                   <div data-testid="gasoil-regular">
-                    <span className="text-blue-200">G </span>
+                    <span className="text-blue-200">Gasoil </span>
                     <span className="text-green-300 font-bold">{fuelPrices.precios.gasoil_regular}</span>
                   </div>
-                </div>
+                </>
               ) : (
                 <span className="text-blue-300">...</span>
               )}
