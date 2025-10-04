@@ -57,7 +57,7 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimB
                 e.stopPropagation();
                 onClaimBusiness(provider.id);
               }}
-              className="text-xs text-gray-500 hover:text-blue-600 h-7 px-2 ml-2"
+              className="text-xs text-gray-500 hover:text-orange h-7 px-2 ml-2"
               data-testid={`button-claim-${provider.id}`}
             >
               <Building2 className="w-3 h-3 mr-1" />

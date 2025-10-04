@@ -152,7 +152,7 @@ const subscriptionPlans = [
       "Badge de proveedor verificado"
     ],
     popular: true,
-    color: "border-blue-500 ring-2 ring-blue-200"
+    color: "border-primary ring-2 ring-primary/20"
   },
   {
     name: "Empresarial",
@@ -405,7 +405,7 @@ export default function Landing() {
             </div>
 
             {/* Separator */}
-            <div className="w-px h-6 bg-blue-600"></div>
+            <div className="w-px h-6 bg-orange"></div>
 
             {/* Fuel Prices */}
             <div className="flex items-center gap-3" data-testid="fuel-prices-section">
