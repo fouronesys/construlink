@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Building2, Mail, Phone, MapPin, Shield, FileText } from "lucide-react";
+import logoPath from "@assets/ConstructLink_20251004_013258_0000_1759557121076.png";
 
 export default function Footer() {
   return (
@@ -9,8 +10,8 @@ export default function Footer() {
           {/* Company Info */}
           <div className="md:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <Building2 className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold">Construlink</span>
+              <img src={logoPath} alt="ConstructLink" className="h-8 w-8" />
+              <span className="text-xl font-bold">ConstructLink</span>
             </div>
             <p className="text-gray-300 mb-4">
               Conectando proveedores verificados de construcción con clientes en República Dominicana.
@@ -36,22 +37,22 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Enlaces Rápidos</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/" className="text-gray-300 hover:text-orange transition-colors">
                   Inicio
                 </Link>
               </li>
               <li>
-                <Link href="/directory" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/directory" className="text-gray-300 hover:text-orange transition-colors">
                   Directorio de Proveedores
                 </Link>
               </li>
               <li>
-                <Link href="/register" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/register" className="text-gray-300 hover:text-orange transition-colors">
                   Registrarse
                 </Link>
               </li>
               <li>
-                <Link href="/register" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/register" className="text-gray-300 hover:text-orange transition-colors">
                   Ser Proveedor
                 </Link>
               </li>
@@ -86,17 +87,17 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Legal</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/terms" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/terms" className="text-gray-300 hover:text-orange transition-colors">
                   Términos y Condiciones
                 </Link>
               </li>
               <li>
-                <Link href="/privacy-policy" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/privacy-policy" className="text-gray-300 hover:text-orange transition-colors">
                   Política de Privacidad
                 </Link>
               </li>
               <li>
-                <Link href="/cookie-policy" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/cookie-policy" className="text-gray-300 hover:text-orange transition-colors">
                   Política de Cookies
                 </Link>
               </li>
@@ -115,7 +116,7 @@ export default function Footer() {
         <div className="border-t border-gray-700 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © {new Date().getFullYear()} Construlink. Todos los derechos reservados.
+              © {new Date().getFullYear()} ConstructLink. Todos los derechos reservados.
             </p>
             <p className="text-gray-400 text-sm mt-2 md:mt-0">
               Plataforma de directorio B2B para la industria de la construcción

@@ -484,13 +484,13 @@ export default function Landing() {
       ) : null}
       
       {/* Search Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 to-blue-800 text-white py-16">
+      <section className="relative bg-gradient-to-br from-primary to-blue-800 text-white py-16">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <h1 className="text-4xl lg:text-6xl font-bold mb-6">
               Encuentra los Mejores 
-              <span className="block text-blue-200">Productos y Servicios</span>
+              <span className="block text-orange">Productos y Servicios</span>
               de Construcción
             </h1>
             
@@ -512,7 +512,7 @@ export default function Landing() {
                   </div>
                   <Button 
                     size="lg" 
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold"
+                    className="bg-orange hover:bg-orange/90 text-white px-8 py-4 rounded-xl font-semibold"
                     onClick={handleSearch}
                   >
                     <Search className="w-5 h-5 mr-2" />
@@ -527,7 +527,7 @@ export default function Landing() {
                   <button
                     key={tag}
                     onClick={() => handleQuickSearch(tag)}
-                    className="bg-blue-500/20 text-blue-100 px-4 py-2 rounded-full text-sm hover:bg-blue-500/30 transition-colors"
+                    className="bg-orange/20 text-white px-4 py-2 rounded-full text-sm hover:bg-orange/30 transition-colors"
                   >
                     {tag}
                   </button>
@@ -559,9 +559,9 @@ export default function Landing() {
                 <button
                   key={index}
                   onClick={() => handleQuickSearch(category.name)}
-                  className="group bg-gray-50 hover:bg-blue-50 rounded-2xl p-6 text-center transition-all duration-200 hover:shadow-lg border-2 border-transparent hover:border-blue-100"
+                  className="group bg-gray-50 hover:bg-blue-50 rounded-2xl p-6 text-center transition-all duration-200 hover:shadow-lg border-2 border-transparent hover:border-primary/20"
                 >
-                  <div className="w-12 h-12 mx-auto mb-3 bg-white rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <div className="w-12 h-12 mx-auto mb-3 bg-white rounded-xl flex items-center justify-center group-hover:bg-orange group-hover:text-white transition-colors">
                     <Icon className="w-6 h-6" />
                   </div>
                   <h3 className="font-semibold text-gray-900 text-sm mb-1">{category.name}</h3>
@@ -574,7 +574,7 @@ export default function Landing() {
             <Button 
               size="lg" 
               onClick={() => setLocation('/directory')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+              className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
             >
               Ver Todos los Proveedores
               <ArrowRight className="w-5 h-5 ml-2" />
@@ -611,11 +611,11 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-100 animate-on-scroll">
+      <section className="py-20 bg-gradient-to-br from-blue-50 to-orange-50 animate-on-scroll">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              ¿Por qué elegir Construlink?
+              ¿Por qué elegir ConstructLink?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               La plataforma más confiable para conectar con los mejores proveedores
