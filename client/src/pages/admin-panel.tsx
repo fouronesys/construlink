@@ -44,6 +44,7 @@ import {
   MousePointerClick,
   Receipt,
   RefreshCw,
+  Building2,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
@@ -227,6 +228,22 @@ interface Subscription {
   };
   payments?: Payment[];
   totalPayments?: number;
+}
+
+interface SupplierClaim {
+  id: string;
+  supplierId: string;
+  userId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  message?: string;
+  documentUrls?: string;
+  reviewNotes?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  supplierName?: string;
+  supplierRnc?: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 export default function AdminPanel() {
@@ -447,6 +464,16 @@ export default function AdminPanel() {
     retry: false,
   });
 
+  // Fetch supplier claims
+  const { data: supplierClaims = [] } = useQuery<SupplierClaim[]>({
+    queryKey: ["/api/admin/claims"],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
+
+  // Get pending claims count
+  const pendingClaimsCount = supplierClaims.filter(claim => claim.status === 'pending').length;
+
   // Fetch platform configurations (superadmin only)
   const { data: platformConfigs = [] } = useQuery<PlatformConfig[]>({
     queryKey: ["/api/admin/config"],
@@ -580,6 +607,33 @@ export default function AdminPanel() {
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Approve/Reject claim mutation
+  const reviewClaimMutation = useMutation({
+    mutationFn: async ({ claimId, action, notes }: { claimId: string; action: 'approve' | 'reject'; notes?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/claims/${claimId}`, {
+        status: action === 'approve' ? 'approved' : 'rejected',
+        reviewNotes: notes,
+      });
+      if (!response.ok) throw new Error(`Failed to ${action} claim`);
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/claims"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
+      toast({
+        title: variables.action === 'approve' ? "Reclamación Aprobada" : "Reclamación Rechazada",
+        description: `La reclamación ha sido ${variables.action === 'approve' ? 'aprobada' : 'rechazada'} exitosamente.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Error al procesar la reclamación.",
         variant: "destructive",
       });
     },
@@ -1268,6 +1322,15 @@ export default function AdminPanel() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="claims" data-testid="tab-claims" className="text-xs sm:text-sm whitespace-nowrap">
+                <Building2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Reclamaciones
+                {pendingClaimsCount > 0 && (
+                  <Badge className="ml-1 sm:ml-2 bg-orange-500 text-white text-xs">
+                    {pendingClaimsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="suppliers" data-testid="tab-suppliers" className="text-xs sm:text-sm whitespace-nowrap">Proveedores</TabsTrigger>
               <TabsTrigger value="featured" data-testid="tab-featured" className="text-xs sm:text-sm whitespace-nowrap">
                 <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -1476,6 +1539,112 @@ export default function AdminPanel() {
                                 <XCircle className="w-4 h-4 text-red-600" />
                               </Button>
                             </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Claims Tab */}
+          <TabsContent value="claims" className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold">Reclamaciones de Empresas</h2>
+              <Button variant="outline" data-testid="button-export-claims" className="text-xs sm:text-sm">
+                <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Exportar
+              </Button>
+            </div>
+
+            <Card>
+              <CardContent className="p-6">
+                {supplierClaims.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No hay reclamaciones pendientes</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Solicitante</TableHead>
+                        <TableHead>Mensaje</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {supplierClaims.map((claim) => (
+                        <TableRow key={claim.id} data-testid={`claim-row-${claim.id}`}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{claim.supplierName || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">RNC: {claim.supplierRnc || 'N/A'}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{claim.userName || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{claim.userEmail || 'N/A'}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {claim.message && (
+                                <div className="text-gray-700 max-w-xs truncate">{claim.message}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                claim.status === 'approved'
+                                  ? 'default'
+                                  : claim.status === 'rejected'
+                                  ? 'destructive'
+                                  : 'secondary'
+                              }
+                              data-testid={`claim-status-${claim.id}`}
+                            >
+                              {claim.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                              {claim.status === 'approved' && <CheckCircle className="w-3 h-3 mr-1" />}
+                              {claim.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
+                              {claim.status === 'pending' ? 'Pendiente' : claim.status === 'approved' ? 'Aprobada' : 'Rechazada'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {new Date(claim.createdAt).toLocaleDateString('es-DO')}
+                          </TableCell>
+                          <TableCell>
+                            {claim.status === 'pending' ? (
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => reviewClaimMutation.mutate({ claimId: claim.id, action: 'approve' })}
+                                  data-testid={`button-approve-claim-${claim.id}`}
+                                >
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => reviewClaimMutation.mutate({ claimId: claim.id, action: 'reject' })}
+                                  data-testid={`button-reject-claim-${claim.id}`}
+                                >
+                                  <XCircle className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500">
+                                {claim.reviewedAt && `Revisada el ${new Date(claim.reviewedAt).toLocaleDateString('es-DO')}`}
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
