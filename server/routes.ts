@@ -856,6 +856,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         offset,
       });
 
+      // Get total count for pagination
+      const allSuppliers = await storage.getSuppliers({
+        status: status as string,
+        specialty: specialty as string,
+        location: location as string,
+        search: search as string,
+      });
+      const total = allSuppliers.length;
+      const totalPages = Math.ceil(total / parseInt(limit as string));
+
       // Get specialties for each supplier
       const suppliersWithSpecialties = await Promise.all(
         suppliers.map(async (supplier) => {
@@ -872,7 +882,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      res.json(suppliersWithSpecialties);
+      res.json({
+        suppliers: suppliersWithSpecialties,
+        total,
+        totalPages,
+      });
     } catch (error) {
       console.error("Error fetching suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
