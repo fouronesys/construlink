@@ -131,7 +131,20 @@ Preferred communication style: Simple, everyday language.
 - WebSocket support required for database connections
 - Static file serving handled by Express middleware
 
+### CapRover Deployment
+- **Dockerfile**: Multi-stage build with Node 20 Alpine
+- **Static Assets**: Public directory (including banner uploads) copied to production container
+- **Persistent Storage**: Banner uploads stored in `/app/public/uploads/banners`
+- **Port Configuration**: Application runs on port 80 in production
+- **Image Management**: Banner images copied from builder stage to ensure availability in production
+
 ## Recent Changes
+
+### October 4, 2025 - CapRover Deployment Fix
+- ✓ Fixed banner images not displaying in CapRover deployment
+- ✓ Updated Dockerfile to copy public directory from builder stage
+- ✓ Ensured static assets (banner uploads) are available in production container
+- ✓ Documented CapRover deployment configuration in project documentation
 
 ### October 3, 2025 - Payment and Billing Management (Sprint 4 Complete)
 - ✓ Verified complete backend implementation for payments, refunds, and invoices
