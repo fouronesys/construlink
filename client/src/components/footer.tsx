@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Building2, Mail, Phone, MapPin, Shield, FileText } from "lucide-react";
-import logoPath from "@assets/ConstructLink_20251004_013258_0000_1759557121076.png";
+import logoPath from "@assets/ConstruLink_20251004_013258_0000_1759557121076.png";
 
 export default function Footer() {
   return (
@@ -10,8 +10,8 @@ export default function Footer() {
           {/* Company Info */}
           <div className="md:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <img src={logoPath} alt="ConstructLink" className="h-8 w-8" />
-              <span className="text-xl font-bold">ConstructLink</span>
+              <img src={logoPath} alt="ConstruLink" className="h-8 w-8" />
+              <span className="text-xl font-bold">ConstruLink</span>
             </div>
             <p className="text-gray-300 mb-4">
               Conectando proveedores verificados de construcción con clientes en República Dominicana.
@@ -116,7 +116,7 @@ export default function Footer() {
         <div className="border-t border-gray-700 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © {new Date().getFullYear()} ConstructLink. Todos los derechos reservados.
+              © {new Date().getFullYear()} ConstruLink. Todos los derechos reservados.
             </p>
             <p className="text-gray-400 text-sm mt-2 md:mt-0">
               Plataforma de directorio B2B para la industria de la construcción

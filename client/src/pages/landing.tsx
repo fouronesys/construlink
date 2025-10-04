@@ -458,48 +458,52 @@ export default function Landing() {
             data-testid="carousel-featured-suppliers"
           >
             <CarouselContent>
-              {featuredSuppliers.map((supplier) => (
-                <CarouselItem key={supplier.id} data-testid={`carousel-item-${supplier.id}`}>
-                  <div 
-                    className="relative w-full h-24 sm:h-32 md:h-40 cursor-pointer overflow-hidden group"
-                    onClick={() => handleBannerClick(supplier)}
-                    data-testid={`banner-click-${supplier.id}`}
-                  >
-                    {supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile ? (
-                      <picture>
-                        {/* Mobile: 640x200px */}
-                        {supplier.bannerImageUrlMobile && (
-                          <source 
-                            media="(max-width: 639px)" 
-                            srcSet={supplier.bannerImageUrlMobile}
+              {featuredSuppliers.map((supplier) => {
+                const hasCustomBanner = supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile;
+                
+                return (
+                  <CarouselItem key={supplier.id} data-testid={`carousel-item-${supplier.id}`}>
+                    <div 
+                      className="relative w-full h-24 sm:h-32 md:h-40 cursor-pointer overflow-hidden group"
+                      onClick={() => handleBannerClick(supplier)}
+                      data-testid={`banner-click-${supplier.id}`}
+                    >
+                      {hasCustomBanner ? (
+                        <picture>
+                          {/* Mobile: 640x200px */}
+                          {supplier.bannerImageUrlMobile && (
+                            <source 
+                              media="(max-width: 639px)" 
+                              srcSet={supplier.bannerImageUrlMobile}
+                            />
+                          )}
+                          {/* Tablet: 1024x300px */}
+                          {supplier.bannerImageUrlTablet && (
+                            <source 
+                              media="(min-width: 640px) and (max-width: 1023px)" 
+                              srcSet={supplier.bannerImageUrlTablet}
+                            />
+                          )}
+                          {/* Desktop: 1920x400px */}
+                          <img
+                            src={supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile || ''}
+                            alt={supplier.legalName}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            data-testid={`img-banner-${supplier.id}`}
                           />
-                        )}
-                        {/* Tablet: 1024x300px */}
-                        {supplier.bannerImageUrlTablet && (
-                          <source 
-                            media="(min-width: 640px) and (max-width: 1023px)" 
-                            srcSet={supplier.bannerImageUrlTablet}
-                          />
-                        )}
-                        {/* Desktop: 1920x400px */}
+                        </picture>
+                      ) : (
                         <img
-                          src={supplier.bannerImageUrl || supplier.bannerImageUrlTablet || supplier.bannerImageUrlMobile || placeholderBanner}
-                          alt={supplier.legalName}
+                          src={placeholderBanner}
+                          alt="Anuncia tu empresa aquí - ConstruLink"
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          data-testid={`img-banner-${supplier.id}`}
+                          data-testid={`img-banner-placeholder-${supplier.id}`}
                         />
-                      </picture>
-                    ) : (
-                      <img
-                        src={placeholderBanner}
-                        alt="Anuncia tu empresa aquí"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        data-testid={`img-banner-placeholder-${supplier.id}`}
-                      />
-                    )}
-                  </div>
-                </CarouselItem>
-              ))}
+                      )}
+                    </div>
+                  </CarouselItem>
+                );
+              })}
             </CarouselContent>
           </Carousel>
         </div>
@@ -637,7 +641,7 @@ export default function Landing() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              ¿Por qué elegir ConstructLink?
+              ¿Por qué elegir ConstruLink?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               La plataforma más confiable para conectar con los mejores proveedores
