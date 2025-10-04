@@ -56,6 +56,23 @@ const specialties = [
   "Pinturas y Acabados",
   "Ferretería",
   "Seguridad y Protección",
+  "Ebanistería y Carpintería",
+  "Pisos y Revestimientos",
+  "Aluminio y PVC",
+  "Vidriería y Cristalería",
+  "Cerrajería y Herrería",
+  "Aire Acondicionado y Ventilación",
+  "Techado e Impermeabilización",
+  "Jardinería y Paisajismo",
+  "Piscinas y Spas",
+  "Acabados y Decoración",
+  "Cemento y Concreto",
+  "Estructuras Metálicas",
+  "Mármol y Granito",
+  "Equipos Pesados y Maquinaria",
+  "Instalaciones Solares",
+  "Sistemas de Seguridad",
+  "Puertas y Ventanas",
 ];
 
 const locations = [
@@ -147,16 +164,6 @@ export default function Directory() {
     setSelectedProviderName(supplierName || "");
     setShowQuoteModal(true);
   };
-
-  const specialties = [
-    "Fontanería",
-    "Eléctricos", 
-    "Concreto",
-    "Estructura de Acero",
-    "Techado",
-    "Pintura",
-    "Iluminación",
-  ];
 
   const locations = [
     "Santo Domingo",
