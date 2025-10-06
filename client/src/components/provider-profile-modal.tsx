@@ -21,7 +21,8 @@ import {
   FileText,
   Loader2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Flag
 } from "lucide-react";
 import {
   Select,
@@ -34,6 +35,7 @@ import { useReviews } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
 import { ReviewForm } from "@/components/review-form";
 import { ReviewResponseForm } from "@/components/review-response-form";
+import { ReviewReportForm } from "@/components/review-report-form";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -72,6 +74,7 @@ export function ProviderProfileModal({
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [canReview, setCanReview] = useState(false);
   const [respondingToReviewId, setRespondingToReviewId] = useState<string | null>(null);
+  const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'rating_high' | 'rating_low'>('recent');
   const [page, setPage] = useState(0);
   const REVIEWS_PER_PAGE = 5;
@@ -378,9 +381,23 @@ export function ProviderProfileModal({
                             ))}
                           </div>
                         </div>
-                        <span className="text-xs text-gray-500" data-testid={`review-date-${review.id}`}>
-                          {format(new Date(review.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500" data-testid={`review-date-${review.id}`}>
+                            {format(new Date(review.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
+                          </span>
+                          {!isProviderOwner && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setReportingReviewId(review.id)}
+                              className="h-7 px-2 text-gray-500 hover:text-orange-600"
+                              data-testid={`button-report-${review.id}`}
+                              title="Reportar reseña"
+                            >
+                              <Flag className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       {review.comment && (
                         <p className="text-gray-700 text-sm mt-2" data-testid={`review-comment-${review.id}`}>
@@ -481,6 +498,15 @@ export function ProviderProfileModal({
             </div>
           </div>
         </div>
+
+        {/* Report Review Modal */}
+        <ReviewReportForm
+          reviewId={reportingReviewId || ''}
+          isOpen={!!reportingReviewId}
+          onClose={() => setReportingReviewId(null)}
+          isAuthenticated={isAuthenticated}
+          userEmail={user?.email}
+        />
       </DialogContent>
     </Dialog>
   );
