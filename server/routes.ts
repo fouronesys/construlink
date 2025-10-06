@@ -3331,6 +3331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Scraping endpoints
   app.post("/api/admin/scrape-suppliers", isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
     try {
+      console.log('Starting supplier import process...');
       const { scrapeBusinesses } = await import('./scraper');
       const { categories, cities, maxPages } = req.body;
       
@@ -3338,16 +3339,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const citiesToScrape = cities || ['santo-domingo'];
       const maxPagesPerCategory = maxPages || 3;
       
+      console.log(`Scraping config: categories=${categoriesToScrape.join(',')}, cities=${citiesToScrape.join(',')}, maxPages=${maxPagesPerCategory}`);
+      
       const businesses: any[] = [];
       
       for (const category of categoriesToScrape) {
         for (const city of citiesToScrape) {
+          console.log(`Scraping ${category} in ${city}...`);
           const scraped = await scrapeBusinesses(category, city, maxPagesPerCategory);
+          console.log(`Found ${scraped.length} businesses for ${category} in ${city}`);
           businesses.push(...scraped);
         }
       }
       
+      console.log(`Total businesses scraped: ${businesses.length}`);
+      
+      if (businesses.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No se encontraron negocios para importar',
+          imported: 0,
+          total: 0,
+        });
+      }
+      
       const importedSuppliers = [];
+      const errors: string[] = [];
       
       for (const business of businesses) {
         const generatedRnc = `SCR-${business.name.substring(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
@@ -3385,25 +3402,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             importedSuppliers.push(newSupplier);
+            console.log(`✓ Imported: ${business.name}`);
+          } else {
+            console.log(`- Skipped (duplicate): ${business.name}`);
           }
         } catch (error) {
-          console.error(`Error importing ${business.name}:`, error);
+          const errorMsg = `Error importing ${business.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
         }
       }
+      
+      console.log(`Import complete: ${importedSuppliers.length}/${businesses.length} suppliers imported`);
       
       res.json({
         success: true,
         message: `Se importaron ${importedSuppliers.length} proveedores de ${businesses.length} negocios scrapeados`,
         imported: importedSuppliers.length,
         total: businesses.length,
+        errors: errors.length > 0 ? errors : undefined,
       });
       
     } catch (error) {
-      console.error('Error during scraping:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error('Error during scraping:', errorMessage);
+      console.error('Stack trace:', errorStack);
+      
       res.status(500).json({ 
         success: false,
         error: 'Error al scrapear proveedores',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMessage
       });
     }
   });
