@@ -622,7 +622,10 @@ export default function AdminPanel() {
         action,
         reason
       });
-      if (!response.ok) throw new Error("Failed to update subscription status");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update subscription status");
+      }
       return response.json();
     },
     onSuccess: (_, variables) => {
@@ -633,10 +636,10 @@ export default function AdminPanel() {
         description: `Suscripción ${variables.action === 'suspend' ? 'suspendida' : 'reactivada'} correctamente`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar la suscripción",
+        description: error.message || "No se pudo actualizar la suscripción",
         variant: "destructive",
       });
     },

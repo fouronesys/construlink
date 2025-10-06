@@ -1387,7 +1387,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscription = await storage.getSubscriptionBySupplierId(id);
       
       if (!subscription) {
-        return res.status(404).json({ message: "Subscription not found" });
+        return res.status(400).json({ 
+          message: "Este proveedor no tiene una suscripción activa. El proveedor debe crear una suscripción primero." 
+        });
       }
 
       const newStatus = action === 'suspend' ? 'inactive' : 'active';
