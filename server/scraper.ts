@@ -60,6 +60,119 @@ const CITIES = [
   'barahona'
 ];
 
+// Helper function to normalize business names for duplicate detection
+export function normalizeBusinessName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(srl|s\.r\.l\.|s\.a\.|sa|inc|ltd|ltda|eirl|e\.i\.r\.l\.)\b/gi, '')
+    .replace(/[.,\-_()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Helper function to check if two business names are duplicates
+export function areBusinessNamesSimilar(name1: string, name2: string): boolean {
+  const normalized1 = normalizeBusinessName(name1);
+  const normalized2 = normalizeBusinessName(name2);
+  
+  // Exact match after normalization
+  if (normalized1 === normalized2) return true;
+  
+  // Check if one is contained in the other (for cases like "ABC" vs "ABC Construcciones")
+  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+    const words1 = normalized1.split(' ').filter(w => w.length > 2);
+    const words2 = normalized2.split(' ').filter(w => w.length > 2);
+    
+    // If they share most significant words, consider them duplicates
+    const commonWords = words1.filter(w => words2.includes(w));
+    if (commonWords.length >= Math.min(words1.length, words2.length) * 0.7) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Keyword mapping for specialty inference
+const SPECIALTY_KEYWORDS: Record<string, string[]> = {
+  'Construcción': ['construc', 'edifici', 'obra', 'contratist', 'ingeni', 'arquitect'],
+  'Restaurante': ['restauran', 'comida', 'food', 'cocina', 'gastronom', 'parrilla', 'pizz'],
+  'Supermercado': ['supermercad', 'colmad', 'minimarket', 'bodeg', 'abarrote'],
+  'Farmacia': ['farmacia', 'medicamento', 'pharmacy', 'drogueria'],
+  'Ferretería': ['ferrete', 'ferreter', 'hardware', 'herramienta', 'materiales'],
+  'Tecnología': ['tecnolog', 'tech', 'software', 'informatic', 'sistemas', 'computador', 'digital'],
+  'Transporte': ['transport', 'mudanza', 'logistic', 'carga', 'delivery', 'mensajer'],
+  'Salud': ['clinic', 'salud', 'medic', 'hospital', 'doctor', 'odontolog', 'dentist', 'laboratorio'],
+  'Hotelería': ['hotel', 'hospedaj', 'resort', 'alojamiento', 'hostal'],
+  'Legal': ['abogad', 'legal', 'juridic', 'notari', 'ley', 'derecho'],
+  'Contabilidad': ['contab', 'contador', 'auditoria', 'financ', 'accounting'],
+  'Seguros': ['seguro', 'insurance', 'aseguradora'],
+  'Limpieza': ['limpie', 'cleaning', 'fumigac', 'sanitiz'],
+  'Diseño': ['diseñ', 'design', 'publicidad', 'marketing', 'imprenta', 'grafico'],
+  'Seguridad': ['seguridad', 'vigilancia', 'security', 'alarm'],
+  'Mantenimiento': ['mantenimient', 'reparac', 'servicio tecnico', 'plomer', 'electric', 'pintura', 'carpint'],
+  'Automotriz': ['taller', 'mecanica', 'auto', 'vehiculo', 'repuesto', 'lubricentro'],
+  'Inmobiliaria': ['inmobiliar', 'bienes raices', 'real estate', 'propiedades'],
+  'Educación': ['educac', 'escuela', 'colegio', 'universidad', 'academia', 'instituto'],
+  'Muebles': ['muebl', 'furniture', 'decorac', 'tapiceria'],
+};
+
+// Helper function to infer specialties from business name and description
+export function inferSpecialties(name: string, description?: string, primaryCategory?: string): string[] {
+  const text = `${name} ${description || ''}`.toLowerCase();
+  const specialties = new Set<string>();
+  
+  // Add primary category if provided
+  if (primaryCategory) {
+    // Map common category names to specialty format
+    const categoryMap: Record<string, string> = {
+      'constructoras': 'Construcción',
+      'restaurantes': 'Restaurante',
+      'supermercados': 'Supermercado',
+      'farmacias': 'Farmacia',
+      'ferreterias': 'Ferretería',
+      'tecnologia': 'Tecnología',
+      'computadoras': 'Tecnología',
+      'transporte': 'Transporte',
+      'mensajeria': 'Transporte',
+      'clinicas': 'Salud',
+      'laboratorios': 'Salud',
+      'dentistas': 'Salud',
+      'hoteles': 'Hotelería',
+      'abogados': 'Legal',
+      'contadores': 'Contabilidad',
+      'seguros': 'Seguros',
+      'limpieza': 'Limpieza',
+      'publicidad': 'Diseño',
+      'imprentas': 'Diseño',
+      'seguridad': 'Seguridad',
+      'plomeria': 'Mantenimiento',
+      'electricidad': 'Mantenimiento',
+      'pintura': 'Mantenimiento',
+      'carpinteria': 'Mantenimiento',
+      'talleres-mecanicos': 'Automotriz',
+      'mueblerias': 'Muebles',
+    };
+    
+    const mappedCategory = categoryMap[primaryCategory.toLowerCase()];
+    if (mappedCategory) {
+      specialties.add(mappedCategory);
+    }
+  }
+  
+  // Check for additional specialties based on keywords
+  Object.entries(SPECIALTY_KEYWORDS).forEach(([specialty, keywords]) => {
+    for (const keyword of keywords) {
+      if (text.includes(keyword)) {
+        specialties.add(specialty);
+        break;
+      }
+    }
+  });
+  
+  return Array.from(specialties).slice(0, 5); // Limit to 5 specialties
+}
+
 export async function scrapeBusinesses(
   category: string,
   city: string,
@@ -110,14 +223,40 @@ export async function scrapeBusinesses(
         
         if (!name) return;
         
-        const addressElement = $article.find('address, .address, [itemprop="address"]');
-        const address = addressElement.text().trim().replace(/\s+/g, ' ');
+        // Address is usually in h3 element (if it's not the name)
+        let address = '';
+        const h3Elements = $article.find('h3');
         
+        // The h3 contains the address if it's different from the name
+        if (h3Elements.length > 0) {
+          const h3Text = h3Elements.first().text().trim();
+          // If h3 is not the same as name, it's likely the address
+          if (h3Text && h3Text !== name) {
+            address = h3Text.replace(/\s+/g, ' ');
+          }
+        }
+        
+        // Fallback to other address selectors
+        if (!address) {
+          const addressElement = $article.find('address, .address, [itemprop="address"]');
+          address = addressElement.text().trim().replace(/\s+/g, ' ');
+        }
+        
+        // Extract phone numbers from links and text
         let phone = '';
         $article.find('a[href^="tel:"]').each((_, el) => {
-          const tel = $(el).attr('href')?.replace('tel:', '') || '';
+          const tel = $(el).attr('href')?.replace('tel:', '').replace(/\D/g, '') || '';
           if (tel && !phone) phone = tel;
         });
+        
+        // If no phone link found, try to extract from text
+        if (!phone) {
+          const text = $article.text();
+          const phoneMatch = text.match(/(?:809|829|849)[-\s]?\d{3}[-\s]?\d{4}/);
+          if (phoneMatch) {
+            phone = phoneMatch[0].replace(/\D/g, '');
+          }
+        }
         
         let whatsapp = '';
         $article.find('a[href*="wa.me"], a[href*="whatsapp"]').each((_, el) => {
@@ -143,7 +282,7 @@ export async function scrapeBusinesses(
         const description = descriptionElement.first().text().trim().replace(/\s+/g, ' ').substring(0, 500);
         
         const business: ScrapedBusiness = {
-          name,
+          name: name.trim(),
           address: address || undefined,
           phone: phone || undefined,
           whatsapp: whatsapp || undefined,

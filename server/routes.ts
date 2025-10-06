@@ -3332,7 +3332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/scrape-suppliers", isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
     try {
       console.log('Starting supplier import process...');
-      const { scrapeBusinesses } = await import('./scraper');
+      const { scrapeBusinesses, areBusinessNamesSimilar, inferSpecialties } = await import('./scraper');
       const { categories, cities, maxPages } = req.body;
       
       const categoriesToScrape = categories || ['constructoras', 'restaurantes', 'supermercados'];
@@ -3363,10 +3363,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const importedSuppliers = [];
-      const errors: string[] = [];
+      // Remove duplicates within the scraped batch
+      const uniqueBusinesses: any[] = [];
+      const seenNames: string[] = [];
       
       for (const business of businesses) {
+        let isDuplicate = false;
+        
+        for (const seenName of seenNames) {
+          if (areBusinessNamesSimilar(business.name, seenName)) {
+            isDuplicate = true;
+            console.log(`- Skipped duplicate in batch: ${business.name} (similar to ${seenName})`);
+            break;
+          }
+        }
+        
+        if (!isDuplicate) {
+          uniqueBusinesses.push(business);
+          seenNames.push(business.name);
+        }
+      }
+      
+      console.log(`Unique businesses after deduplication: ${uniqueBusinesses.length} (removed ${businesses.length - uniqueBusinesses.length} duplicates)`);
+      
+      const importedSuppliers = [];
+      const skippedDuplicates: string[] = [];
+      const errors: string[] = [];
+      
+      // Get all existing suppliers to check for duplicates
+      const existingSuppliers = await db.query.suppliers.findMany({
+        columns: {
+          id: true,
+          legalName: true,
+        },
+      });
+      
+      for (const business of uniqueBusinesses) {
+        // Check if similar business already exists in database
+        let isDuplicate = false;
+        for (const existing of existingSuppliers) {
+          if (areBusinessNamesSimilar(business.name, existing.legalName)) {
+            isDuplicate = true;
+            skippedDuplicates.push(`${business.name} (similar a ${existing.legalName})`);
+            console.log(`- Skipped (duplicate in DB): ${business.name} (similar to ${existing.legalName})`);
+            break;
+          }
+        }
+        
+        if (isDuplicate) continue;
+        
         const generatedRnc = `SCR-${business.name.substring(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         
         const generatedEmail = business.email || 
@@ -3387,25 +3432,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         try {
-          const existingSupplier = await db.query.suppliers.findFirst({
-            where: eq(suppliers.legalName, business.name),
-          });
+          const [newSupplier] = await db.insert(suppliers).values(supplierData).returning();
           
-          if (!existingSupplier) {
-            const [newSupplier] = await db.insert(suppliers).values(supplierData).returning();
+          // Infer and add specialties
+          const specialties = inferSpecialties(business.name, business.description, business.category);
+          
+          if (specialties.length > 0) {
+            const specialtyValues = specialties.map(specialty => ({
+              supplierId: newSupplier.id,
+              specialty,
+            }));
             
-            if (business.category) {
-              await db.insert(supplierSpecialties).values({
-                supplierId: newSupplier.id,
-                specialty: business.category,
-              });
-            }
-            
-            importedSuppliers.push(newSupplier);
-            console.log(`✓ Imported: ${business.name}`);
+            await db.insert(supplierSpecialties).values(specialtyValues);
+            console.log(`✓ Imported: ${business.name} with specialties: ${specialties.join(', ')}`);
           } else {
-            console.log(`- Skipped (duplicate): ${business.name}`);
+            console.log(`✓ Imported: ${business.name} (no specialties detected)`);
           }
+          
+          importedSuppliers.push(newSupplier);
+          
         } catch (error) {
           const errorMsg = `Error importing ${business.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
           console.error(errorMsg);
@@ -3413,13 +3458,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`Import complete: ${importedSuppliers.length}/${businesses.length} suppliers imported`);
+      console.log(`Import complete: ${importedSuppliers.length}/${uniqueBusinesses.length} suppliers imported`);
+      console.log(`Duplicates skipped: ${skippedDuplicates.length}`);
+      
+      const message = importedSuppliers.length > 0
+        ? `Se importaron ${importedSuppliers.length} proveedores de ${businesses.length} negocios scrapeados (${skippedDuplicates.length} duplicados omitidos)`
+        : `No se importaron proveedores (${skippedDuplicates.length} duplicados omitidos)`;
       
       res.json({
         success: true,
-        message: `Se importaron ${importedSuppliers.length} proveedores de ${businesses.length} negocios scrapeados`,
+        message,
         imported: importedSuppliers.length,
         total: businesses.length,
+        duplicatesSkipped: skippedDuplicates.length,
         errors: errors.length > 0 ? errors : undefined,
       });
       
