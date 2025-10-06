@@ -315,6 +315,19 @@ export function ProviderProfileModal({
                           Verificada
                         </Badge>
                       )}
+                      {review.response && (
+                        <div className="mt-4 pl-4 border-l-2 border-blue-200 bg-blue-50 p-3 rounded-r" data-testid={`review-response-${review.id}`}>
+                          <p className="font-medium text-sm text-blue-900 mb-1">
+                            Respuesta del proveedor
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            {review.response.responseText}
+                          </p>
+                          <span className="text-xs text-gray-500 mt-2 block">
+                            {format(new Date(review.response.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
+                          </span>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
