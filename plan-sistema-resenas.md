@@ -105,12 +105,12 @@
 **Objetivo:** Mejorar la experiencia del sistema de reseñas
 
 #### Tareas opcionales:
-1. ⬜ Permitir al proveedor responder a reseñas
-2. ⬜ Sistema de reportes para reseñas inapropiadas
+1. ✅ Permitir al proveedor responder a reseñas (Backend + Frontend visualización)
+2. ✅ Sistema de reportes para reseñas inapropiadas (Backend)
 3. ⬜ Moderación de reseñas por admin
 4. ⬜ Verificar reseñas (marcar como verificadas)
-5. ⬜ Paginación de reseñas (si hay muchas)
-6. ⬜ Filtros: ordenar por más recientes, mejor rating, etc.
+5. ✅ Paginación de reseñas (si hay muchas) (Backend)
+6. ✅ Filtros: ordenar por más recientes, mejor rating, etc. (Backend)
 
 ---
 
@@ -195,3 +195,124 @@ Si se desea implementar la Etapa 6, considerar agregar:
 - Moderación de reseñas por admin
 - Paginación de reseñas
 - Filtros y ordenamiento
+
+---
+
+## Etapa 6: Implementación de Funcionalidades Avanzadas 🚀
+
+**Fecha de inicio:** 6 de octubre de 2025
+
+### Funcionalidades Implementadas (Backend)
+
+#### 1. Sistema de Respuestas del Proveedor ✅
+**Tabla:** `reviewResponses`
+- `id` (varchar, PK, UUID)
+- `reviewId` (varchar, FK a reviews)
+- `supplierId` (varchar, FK a suppliers)
+- `responseText` (text)
+- `createdAt` (timestamp)
+- `updatedAt` (timestamp)
+
+**Endpoints creados:**
+- `POST /api/reviews/:id/responses` - Crear respuesta a una reseña
+- `PUT /api/reviews/:reviewId/responses/:id` - Actualizar respuesta
+- `DELETE /api/reviews/:reviewId/responses/:id` - Eliminar respuesta
+
+**Storage functions:**
+- `createReviewResponse(data)` - Crear respuesta del proveedor
+- `updateReviewResponse(id, data)` - Actualizar respuesta
+- `deleteReviewResponse(id)` - Eliminar respuesta
+- `getReviewResponse(reviewId)` - Obtener respuesta de una reseña
+
+**Validaciones:**
+- Solo el proveedor dueño de la reseña puede responder
+- Solo puede haber una respuesta por reseña
+- La respuesta debe tener entre 10 y 1000 caracteres
+
+#### 2. Sistema de Reportes de Reseñas ✅
+**Tabla:** `reviewReports`
+- `id` (varchar, PK, UUID)
+- `reviewId` (varchar, FK a reviews)
+- `reportedBy` (varchar, FK a users, nullable)
+- `reporterEmail` (varchar)
+- `reason` (varchar: spam, inappropriate, fake, other)
+- `description` (text, opcional)
+- `status` (varchar: pending, reviewed, resolved, dismissed)
+- `createdAt` (timestamp)
+- `resolvedAt` (timestamp, nullable)
+
+**Endpoints creados:**
+- `POST /api/reviews/:id/reports` - Reportar una reseña
+- `GET /api/reviews/reports` - Obtener todos los reportes (admin)
+- `PATCH /api/reviews/reports/:id` - Actualizar estado de reporte (admin)
+
+**Storage functions:**
+- `createReviewReport(data)` - Crear reporte
+- `getReviewReports(filters)` - Obtener reportes con filtros
+- `updateReviewReportStatus(id, status)` - Actualizar estado del reporte
+
+**Validaciones:**
+- Un usuario/email solo puede reportar una vez por reseña
+- Las razones válidas son: spam, inappropriate, fake, other
+- La descripción es opcional pero recomendada
+
+#### 3. Paginación y Filtros de Reseñas ✅
+**Parámetros de query soportados:**
+- `sortBy`: `recent` (más recientes), `rating_high` (mejor rating), `rating_low` (peor rating)
+- `limit`: número de resultados por página (default: 10, max: 50)
+- `offset`: número de registros a saltar (para paginación)
+
+**Endpoint actualizado:**
+- `GET /api/suppliers/:id/reviews?sortBy=recent&limit=10&offset=0`
+
+**Storage function actualizada:**
+- `getReviewsBySupplierId(supplierId, options)` - Soporta ordenamiento, límite y offset
+
+### Funcionalidades Implementadas (Frontend)
+
+#### 1. Visualización de Respuestas del Proveedor ✅
+**Archivo:** `client/src/components/provider-profile-modal.tsx`
+
+**Implementación:**
+- Las respuestas del proveedor se muestran debajo de cada reseña
+- Estilo visual distintivo con borde azul y fondo claro
+- Muestra el texto de la respuesta y la fecha
+- Data-testid para pruebas: `review-response-${reviewId}`
+
+**Hook actualizado:** `client/src/hooks/useReviews.ts`
+- Incluye interfaz `ReviewResponse`
+- Interfaz `Review` extendida con campo `response?: ReviewResponse | null`
+- Soporta parámetros de ordenamiento y paginación
+
+### Funcionalidades Pendientes (Frontend)
+
+#### 1. Formulario para Responder a Reseñas ⬜
+- Componente de formulario para que proveedores respondan
+- Solo visible para el proveedor dueño del negocio
+- Permitir editar/eliminar respuestas existentes
+
+#### 2. Interfaz de Reportes ⬜
+- Botón para reportar reseñas inapropiadas
+- Modal con formulario de reporte (razón + descripción)
+- Confirmación de envío exitoso
+
+#### 3. UI de Filtros y Paginación ⬜
+- Dropdown para seleccionar ordenamiento (recientes, mejor rating, peor rating)
+- Botones de paginación (anterior/siguiente)
+- Mostrar total de reseñas
+
+#### 4. Panel de Admin para Moderación ⬜
+- Vista de reportes pendientes
+- Acciones: aprobar, rechazar, eliminar reseña
+- Filtros por estado de reporte
+
+### Archivos Modificados
+
+**Backend:**
+- `shared/schema.ts` - Nuevas tablas y schemas
+- `server/storage.ts` - Nuevas funciones de storage
+- `server/routes.ts` - Nuevos endpoints
+
+**Frontend:**
+- `client/src/hooks/useReviews.ts` - Hook actualizado con soporte para filtros
+- `client/src/components/provider-profile-modal.tsx` - Visualización de respuestas
