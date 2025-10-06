@@ -284,24 +284,41 @@ Si se desea implementar la Etapa 6, considerar agregar:
 - Interfaz `Review` extendida con campo `response?: ReviewResponse | null`
 - Soporta parámetros de ordenamiento y paginación
 
+#### 2. Formulario para Responder a Reseñas ✅
+**Archivo:** `client/src/components/review-response-form.tsx`
+
+**Implementación:**
+- Componente de formulario con validación Zod (10-1000 caracteres)
+- Solo visible para el proveedor dueño del negocio (verificación con `isProviderOwner`)
+- Permite crear nuevas respuestas a reseñas
+- Permite editar respuestas existentes
+- Permite eliminar respuestas existentes
+- Invalidación de cache con función predicate para actualizar todas las variantes de queries de reviews
+- Manejo de estados de carga con spinners
+- Toasts para feedback al usuario
+- Data-testids para pruebas: `input-response-${reviewId}`, `button-submit-response-${reviewId}`, `button-delete-response-${reviewId}`, `button-cancel-response-${reviewId}`
+
+**Integración en modal:**
+- Botón "Responder" aparece debajo de cada reseña sin respuesta (solo para el proveedor dueño)
+- Botón "Editar" aparece en respuestas existentes (solo para el proveedor dueño)
+- El formulario se muestra inline al hacer clic en "Responder" o "Editar"
+- Cancela automáticamente al enviar exitosamente o al hacer clic en "Cancelar"
+
+**Fecha de implementación:** 6 de octubre de 2025
+
 ### Funcionalidades Pendientes (Frontend)
 
-#### 1. Formulario para Responder a Reseñas ⬜
-- Componente de formulario para que proveedores respondan
-- Solo visible para el proveedor dueño del negocio
-- Permitir editar/eliminar respuestas existentes
-
-#### 2. Interfaz de Reportes ⬜
+#### 1. Interfaz de Reportes ⬜
 - Botón para reportar reseñas inapropiadas
 - Modal con formulario de reporte (razón + descripción)
 - Confirmación de envío exitoso
 
-#### 3. UI de Filtros y Paginación ⬜
+#### 2. UI de Filtros y Paginación ⬜
 - Dropdown para seleccionar ordenamiento (recientes, mejor rating, peor rating)
 - Botones de paginación (anterior/siguiente)
 - Mostrar total de reseñas
 
-#### 4. Panel de Admin para Moderación ⬜
+#### 3. Panel de Admin para Moderación ⬜
 - Vista de reportes pendientes
 - Acciones: aprobar, rechazar, eliminar reseña
 - Filtros por estado de reporte
@@ -315,4 +332,5 @@ Si se desea implementar la Etapa 6, considerar agregar:
 
 **Frontend:**
 - `client/src/hooks/useReviews.ts` - Hook actualizado con soporte para filtros
-- `client/src/components/provider-profile-modal.tsx` - Visualización de respuestas
+- `client/src/components/provider-profile-modal.tsx` - Visualización de respuestas y formulario integrado
+- `client/src/components/review-response-form.tsx` - Formulario para crear/editar/eliminar respuestas (NUEVO)
