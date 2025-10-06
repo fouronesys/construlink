@@ -157,6 +157,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 6, 2025 - Sistema de Respuestas del Proveedor (Etapa 6 - Fase 1)
+- ✓ Creado componente ReviewResponseForm para responder a reseñas
+- ✓ Integrado formulario en el modal del proveedor con verificación de permisos
+- ✓ Implementada funcionalidad para crear respuestas nuevas
+- ✓ Implementada funcionalidad para editar respuestas existentes
+- ✓ Implementada funcionalidad para eliminar respuestas
+- ✓ Validación con Zod (10-1000 caracteres)
+- ✓ Invalidación de cache con función predicate para actualizar todas las variantes
+- ✓ Data-testids completos para pruebas de QA
+- ✓ UI responsive con estados de carga y feedback mediante toasts
+- ✓ Documentación actualizada en plan-sistema-resenas.md
 
 ### October 4, 2025 - CapRover Deployment Fix
 - ✓ Fixed banner images not displaying in CapRover deployment
