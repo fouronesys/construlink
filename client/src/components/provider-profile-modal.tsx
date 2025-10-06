@@ -19,8 +19,17 @@ import {
   MessageSquare,
   Building2,
   FileText,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useReviews } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
 import { ReviewForm } from "@/components/review-form";
@@ -63,10 +72,26 @@ export function ProviderProfileModal({
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [canReview, setCanReview] = useState(false);
   const [respondingToReviewId, setRespondingToReviewId] = useState<string | null>(null);
-  const { reviews, isLoading: reviewsLoading, refetch: refetchReviews } = useReviews(provider?.id);
+  const [sortBy, setSortBy] = useState<'recent' | 'rating_high' | 'rating_low'>('recent');
+  const [page, setPage] = useState(0);
+  const REVIEWS_PER_PAGE = 5;
+  
+  const { reviews, isLoading: reviewsLoading, refetch: refetchReviews } = useReviews(provider?.id, {
+    sortBy,
+    limit: REVIEWS_PER_PAGE,
+    offset: page * REVIEWS_PER_PAGE
+  });
   const { user, isAuthenticated } = useAuth();
 
   const isProviderOwner = isAuthenticated && user?.id && provider?.userId === user.id;
+  const hasMoreReviews = reviews.length === REVIEWS_PER_PAGE;
+  const canGoBack = page > 0;
+  
+  useEffect(() => {
+    if (reviews.length === 0 && page > 0 && !reviewsLoading) {
+      setPage(p => Math.max(0, p - 1));
+    }
+  }, [reviews.length, page, reviewsLoading]);
 
   useEffect(() => {
     const checkClaimStatus = async () => {
@@ -226,18 +251,66 @@ export function ProviderProfileModal({
 
           {/* Reviews */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Reseñas de Clientes</h3>
-              {canReview && !showReviewForm && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowReviewForm(true)}
-                  data-testid="button-write-review"
-                >
-                  <Star className="w-4 h-4 mr-2" />
-                  Escribir Reseña
-                </Button>
+            <div className="flex flex-col gap-3 mb-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Reseñas de Clientes</h3>
+                {canReview && !showReviewForm && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowReviewForm(true)}
+                    data-testid="button-write-review"
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    Escribir Reseña
+                  </Button>
+                )}
+              </div>
+              
+              {/* Filters and Pagination Controls */}
+              {reviews.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className="text-sm text-gray-600">Ordenar por:</span>
+                    <Select value={sortBy} onValueChange={(value: 'recent' | 'rating_high' | 'rating_low') => {
+                      setSortBy(value);
+                      setPage(0);
+                    }}>
+                      <SelectTrigger className="w-[180px]" data-testid="select-sort-reviews">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recent">Más recientes</SelectItem>
+                        <SelectItem value="rating_high">Mejor valoradas</SelectItem>
+                        <SelectItem value="rating_low">Menor valoradas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => p - 1)}
+                      disabled={!canGoBack}
+                      data-testid="button-previous-page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm text-gray-600 px-2" data-testid="text-page-number">
+                      Página {page + 1}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={!hasMoreReviews}
+                      data-testid="button-next-page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
 
