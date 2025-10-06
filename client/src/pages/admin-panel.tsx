@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -280,6 +281,7 @@ function ImportSuppliersSection() {
   const [selectedCities, setSelectedCities] = useState<string[]>(['santo-domingo']);
   const [maxPages, setMaxPages] = useState(3);
   const [importResult, setImportResult] = useState<any>(null);
+  const [progressEstimate, setProgressEstimate] = useState(0);
 
   const { data: scrapeConfig } = useQuery<{ categories: string[]; cities: string[] }>({
     queryKey: ['/api/admin/scrape-config'],
@@ -287,6 +289,8 @@ function ImportSuppliersSection() {
 
   const importMutation = useMutation({
     mutationFn: async (data: { categories: string[]; cities: string[]; maxPages: number }) => {
+      setProgressEstimate(10);
+      
       const response = await fetch('/api/admin/scrape-suppliers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -300,19 +304,33 @@ function ImportSuppliersSection() {
         throw new Error(result.details || result.error || 'Import failed');
       }
       
+      setProgressEstimate(100);
       return result;
     },
     onSuccess: (data) => {
       setImportResult(data);
       queryClient.invalidateQueries({ queryKey: ['/api/admin/suppliers'] });
       
-      toast({
-        title: "Importación exitosa",
-        description: `Se importaron ${data.imported} de ${data.total} proveedores`,
-      });
+      const hasErrors = data.errors && data.errors.length > 0;
+      
+      if (data.imported === 0) {
+        toast({
+          title: "Sin resultados",
+          description: hasErrors ? "No se encontraron negocios. Revisa los detalles abajo." : "No se encontraron negocios para importar con los filtros seleccionados",
+          variant: hasErrors ? "destructive" : "default",
+        });
+      } else {
+        toast({
+          title: "Importación exitosa",
+          description: `Se importaron ${data.imported} de ${data.total} proveedores`,
+        });
+      }
+      
+      setTimeout(() => setProgressEstimate(0), 500);
     },
     onError: (error: Error) => {
       console.error('Import error:', error);
+      setProgressEstimate(0);
       toast({
         title: "Error en la importación",
         description: error.message || "No se pudo completar la importación",
@@ -321,13 +339,27 @@ function ImportSuppliersSection() {
     },
   });
 
+  // Simulate progress during import
+  useEffect(() => {
+    if (importMutation.isPending && progressEstimate < 90) {
+      const timer = setInterval(() => {
+        setProgressEstimate(prev => Math.min(prev + 5, 90));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [importMutation.isPending, progressEstimate]);
+
   const handleImport = () => {
+    setImportResult(null);
+    setProgressEstimate(0);
     importMutation.mutate({
       categories: selectedCategories,
       cities: selectedCities,
       maxPages,
     });
   };
+
+  const estimatedTime = selectedCategories.length * selectedCities.length * maxPages * 2;
 
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev =>
@@ -405,38 +437,79 @@ function ImportSuppliersSection() {
         </p>
       </div>
 
-      <Button
-        onClick={handleImport}
-        disabled={importMutation.isPending || selectedCategories.length === 0 || selectedCities.length === 0}
-        className="w-full md:w-auto"
-        data-testid="button-import-suppliers"
-      >
-        {importMutation.isPending ? (
-          <>
-            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-            Importando...
-          </>
-        ) : (
-          <>
-            <Download className="w-4 h-4 mr-2" />
-            Iniciar Importación
-          </>
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={handleImport}
+            disabled={importMutation.isPending || selectedCategories.length === 0 || selectedCities.length === 0}
+            className="w-full md:w-auto"
+            data-testid="button-import-suppliers"
+          >
+            {importMutation.isPending ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Importando...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 mr-2" />
+                Iniciar Importación
+              </>
+            )}
+          </Button>
+
+          {importMutation.isPending && (
+            <div className="flex-1 text-sm text-gray-600">
+              <p>Tiempo estimado: ~{estimatedTime} segundos</p>
+            </div>
+          )}
+        </div>
+
+        {importMutation.isPending && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Scrapeando datos...</span>
+              <span className="text-gray-600">{progressEstimate}%</span>
+            </div>
+            <Progress value={progressEstimate} className="h-2" data-testid="import-progress" />
+          </div>
         )}
-      </Button>
+      </div>
 
       {importResult && (
-        <Card className="bg-green-50 border-green-200">
+        <Card className={importResult.imported > 0 ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}>
           <CardContent className="p-4">
             <div className="flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-green-900">Importación Completa</h4>
-                <p className="text-sm text-green-800 mt-1">
+              {importResult.imported > 0 ? (
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <h4 className={`font-semibold ${importResult.imported > 0 ? 'text-green-900' : 'text-yellow-900'}`}>
+                  {importResult.imported > 0 ? 'Importación Completa' : 'Sin Resultados'}
+                </h4>
+                <p className={`text-sm mt-1 ${importResult.imported > 0 ? 'text-green-800' : 'text-yellow-800'}`}>
                   {importResult.message}
                 </p>
-                <div className="mt-2 text-xs text-green-700">
+                <div className={`mt-2 text-xs ${importResult.imported > 0 ? 'text-green-700' : 'text-yellow-700'}`}>
                   <p>✓ Proveedores importados: {importResult.imported}</p>
                   <p>✓ Total scrapeados: {importResult.total}</p>
+                  {importResult.errors && importResult.errors.length > 0 && (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer font-semibold text-red-700">
+                        ⚠️ Errores encontrados ({importResult.errors.length})
+                      </summary>
+                      <div className="mt-2 space-y-1 max-h-40 overflow-y-auto bg-white bg-opacity-50 rounded p-2">
+                        {importResult.errors.slice(0, 10).map((error: string, idx: number) => (
+                          <p key={idx} className="text-xs text-red-600">• {error}</p>
+                        ))}
+                        {importResult.errors.length > 10 && (
+                          <p className="text-xs text-red-600 italic">... y {importResult.errors.length - 10} errores más</p>
+                        )}
+                      </div>
+                    </details>
+                  )}
                 </div>
               </div>
             </div>
@@ -449,7 +522,7 @@ function ImportSuppliersSection() {
           <div className="flex items-start space-x-3">
             <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-blue-900">Importante</h4>
+              <h4 className="font-semibold text-blue-900">Información Importante</h4>
               <ul className="text-sm text-blue-800 mt-2 space-y-1">
                 <li>• Los proveedores importados tendrán estado "aprobado" automáticamente</li>
                 <li>• Se marcarán como "Agregados por Admin" y "No Reclamados"</li>
@@ -457,6 +530,16 @@ function ImportSuppliersSection() {
                 <li>• Se generarán RNC y emails ficticios cuando no estén disponibles</li>
                 <li>• El proceso puede tardar varios minutos dependiendo de la cantidad</li>
               </ul>
+              
+              <div className="mt-3 pt-3 border-t border-blue-300">
+                <h5 className="font-semibold text-blue-900">⚠️ Si no se encuentran negocios:</h5>
+                <ul className="text-sm text-blue-800 mt-1 space-y-1">
+                  <li>• La combinación categoría/ciudad puede no existir en el sitio web</li>
+                  <li>• Prueba con categorías populares: "constructoras", "ferreterias", "restaurantes"</li>
+                  <li>• Prueba con ciudades principales: "santo-domingo", "santiago"</li>
+                  <li>• Revisa los errores específicos en el panel de resultados</li>
+                </ul>
+              </div>
             </div>
           </div>
         </CardContent>
