@@ -673,24 +673,6 @@ export default function AdminPanel() {
   const [enterpriseProducts, setEnterpriseProducts] = useState(-1);
   const [enterpriseImages, setEnterpriseImages] = useState(-1);
 
-  // Access control
-  if (!authLoading && user && !['admin', 'superadmin'].includes(user.role)) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="max-w-2xl mx-auto px-4 py-16">
-          <div className="text-center">
-            <Shield className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4">Acceso Denegado</h2>
-            <p className="text-gray-600">
-              No tienes permisos para acceder al panel de administración.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Fetch admin dashboard data
   const { data: dashboardData, isLoading } = useQuery<{ stats: { totalSuppliers: number; pendingApprovals: number; totalQuotes: number; activeSubscriptions: number; } }>({
     queryKey: ["/api/admin/dashboard"],
@@ -832,6 +814,13 @@ export default function AdminPanel() {
   const { data: platformConfigs = [] } = useQuery<PlatformConfig[]>({
     queryKey: ["/api/admin/config"],
     enabled: !!user && user.role === 'superadmin',
+    retry: false,
+  });
+
+  // Fetch approved suppliers for featured section with pagination
+  const { data: approvedSuppliersData, isLoading: approvedSuppliersLoading } = useQuery<{ suppliers: Supplier[]; total: number }>({
+    queryKey: [`/api/admin/suppliers?page=${featuredPage}&limit=${featuredLimit}&status=approved&search=${featuredSearch}`],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
 
@@ -1680,13 +1669,6 @@ export default function AdminPanel() {
     return matchesPlan;
   });
 
-  // Fetch approved suppliers for featured section with pagination
-  const { data: approvedSuppliersData, isLoading: approvedSuppliersLoading } = useQuery<{ suppliers: Supplier[]; total: number }>({
-    queryKey: [`/api/admin/suppliers?page=${featuredPage}&limit=${featuredLimit}&status=approved&search=${featuredSearch}`],
-    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
-    retry: false,
-  });
-  
   const approvedSuppliers = approvedSuppliersData?.suppliers || [];
   
   // Filter featured suppliers by plan and featured status (client-side filters)
@@ -1698,6 +1680,24 @@ export default function AdminPanel() {
     
     return matchesPlan && matchesFeatured;
   });
+
+  // Access control - check after all hooks are called
+  if (!authLoading && user && !['admin', 'superadmin'].includes(user.role)) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <div className="text-center">
+            <Shield className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-4">Acceso Denegado</h2>
+            <p className="text-gray-600">
+              No tienes permisos para acceder al panel de administración.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
