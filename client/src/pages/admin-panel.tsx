@@ -1797,7 +1797,13 @@ export default function AdminPanel() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" title="Ver detalles" data-testid={`button-view-${supplier.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              title="Ver detalles" 
+                              onClick={() => window.open(`/supplier/${supplier.id}`, '_blank')}
+                              data-testid={`button-view-${supplier.id}`}
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
                             {supplier.status === 'approved' && (

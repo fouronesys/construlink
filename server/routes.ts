@@ -1656,8 +1656,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const stats = await storage.getBannerStats();
-      res.json(stats);
+      const rawStats = await storage.getBannerStats();
+      
+      // Calculate aggregated statistics
+      const totalBanners = rawStats.length;
+      const totalClicks = rawStats.reduce((sum, banner) => sum + banner.clicks, 0);
+      const totalImpressions = rawStats.reduce((sum, banner) => sum + banner.impressions, 0);
+      const averageCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+      
+      // Format banner details with CTR
+      const bannerDetails = rawStats.map(banner => ({
+        id: banner.bannerId,
+        supplierId: banner.supplierId,
+        supplierName: banner.supplierName,
+        deviceType: banner.deviceType,
+        clicks: banner.clicks,
+        impressions: banner.impressions,
+        ctr: banner.impressions > 0 ? (banner.clicks / banner.impressions) * 100 : 0
+      }));
+      
+      res.json({
+        totalBanners,
+        totalClicks,
+        totalImpressions,
+        averageCTR,
+        bannerDetails
+      });
     } catch (error) {
       console.error("Error fetching banner stats:", error);
       res.status(500).json({ message: "Failed to fetch banner statistics" });
