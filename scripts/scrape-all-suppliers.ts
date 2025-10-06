@@ -158,6 +158,107 @@ const allSuppliersData: SupplierData[] = [
   { legalName: "LV International, SRL", location: "La Vega", phone: "809-573-2323", address: "J H Rodriguez 41" },
   { legalName: "Proci Construcciones, Srl", location: "La Vega", phone: "809-573-2424", address: "Las Carreras 36" },
   { legalName: "Scaffoldom", location: "La Vega", phone: "809-573-2525", address: "C. Benito Monción No. 34, Centro de la Ciudad" },
+
+  // FERRETERÍAS - SANTO DOMINGO
+  { legalName: "Ferretería Americana", location: "Santo Domingo", phone: "809-682-8181", address: "Av. Duarte No. 154, Centro", description: "Ferretería con amplio surtido de herramientas, materiales de construcción y artículos para el hogar." },
+  { legalName: "Ferretería El Siglo", location: "Santo Domingo", phone: "809-535-7070", address: "Av. Independencia No. 405, Zona Colonial", description: "Más de 50 años ofreciendo materiales de construcción y ferretería." },
+  { legalName: "Ferretería La Cadena", location: "Santo Domingo", phone: "809-566-4040", address: "Av. 27 de Febrero No. 203, Ensanche La Fe", description: "Ferretería y materiales de construcción al por mayor y detal." },
+  { legalName: "Ferretería Plaza Lama", location: "Santo Domingo", phone: "809-508-8000", address: "Av. Máximo Gómez esq. 27 de Febrero", description: "Cadena de ferreterías y materiales de construcción." },
+  { legalName: "EPA Ferretería", location: "Santo Domingo", phone: "809-955-3722", address: "Av. Winston Churchill, Piantini", description: "Ferretería moderna con todo para construcción y remodelación." },
+  { legalName: "Ferretería Ochoa", location: "Santo Domingo", phone: "809-687-5555", address: "Av. Independencia No. 256, Gascue", description: "Ferretería especializada en materiales eléctricos y plomería." },
+  { legalName: "Multiferretería del Caribe", location: "Santo Domingo", phone: "809-565-3030", address: "Av. Abraham Lincoln No. 1021, Piantini", description: "Amplia gama de productos ferreteros y materiales de construcción." },
+  { legalName: "Ferretería Nacional", location: "Santo Domingo", phone: "809-688-9090", address: "Calle Pasteur No. 201, Gazcue", description: "Herramientas profesionales y materiales para construcción." },
+  { legalName: "Ferretería La Económica", location: "Santo Domingo", phone: "809-567-1212", address: "Av. Duarte No. 89, Villa Consuelo", description: "Precios accesibles en materiales de construcción y ferretería." },
+  { legalName: "Ferretería Gómez", location: "Santo Domingo", phone: "809-533-6060", address: "Av. Hermanas Mirabal No. 456, Villa Mella", description: "Ferretería y materiales de construcción para profesionales." },
+
+  // MATERIALES DE CONSTRUCCIÓN - SANTO DOMINGO
+  { legalName: "Constanza Materiales de Construcción", location: "Santo Domingo", phone: "809-549-7070", address: "Autopista Duarte Km 9, Los Alcarrizos", description: "Distribuidora de cemento, varillas, blocks y materiales de construcción." },
+  { legalName: "Deposito de Materiales La Fe", location: "Santo Domingo", phone: "809-567-8080", address: "Av. San Vicente de Paul No. 78, Los Mina", description: "Materiales de construcción al por mayor: cemento, arena, gravilla." },
+  { legalName: "Materiales de Construcción El Progreso", location: "Santo Domingo", phone: "809-566-9191", address: "Av. Venezuela No. 34, Cristo Rey", description: "Cemento, varillas, blocks, arena y más materiales de construcción." },
+  { legalName: "Blockes Fabián", location: "Santo Domingo", phone: "809-594-4040", address: "Carr. Mella Km 12, Los Frailes II", description: "Fábrica y venta de blocks, adoquines y productos de cemento." },
+  { legalName: "Cementos Cibao", location: "Santo Domingo", phone: "809-565-5151", address: "Av. Máximo Gómez No. 45, Ensanche La Fe", description: "Distribución de cementos y materiales de construcción." },
+  { legalName: "Arena y Gravilla del Este", location: "Santo Domingo", phone: "809-594-6262", address: "Autopista del Este Km 14", description: "Venta de arena, gravilla y piedra para construcción." },
+  { legalName: "Hierros y Varillas del Caribe", location: "Santo Domingo", phone: "809-549-7373", address: "Av. Duarte Km 8, Los Alcarrizos", description: "Distribución de varillas, cabillas y hierro estructural." },
+  { legalName: "Deposito La Unión", location: "Santo Domingo", phone: "809-535-8484", address: "Av. México No. 156, Cristo Rey", description: "Materiales de construcción: cemento, blocks, varillas y arena." },
+
+  // PLOMERÍA - SANTO DOMINGO
+  { legalName: "Plomería Universal", location: "Santo Domingo", phone: "809-566-7070", address: "Av. Winston Churchill No. 56, Piantini", description: "Materiales de plomería, tuberías PVC, sanitarios y grifería." },
+  { legalName: "Sanitarios y Grifería del Caribe", location: "Santo Domingo", phone: "809-565-8080", address: "Av. 27 de Febrero No. 308, Naco", description: "Inodoros, lavamanos, griferías y accesorios de baño." },
+  { legalName: "Tuberías Nacional", location: "Santo Domingo", phone: "809-547-9090", address: "Av. Duarte No. 234, Villa Consuelo", description: "Tuberías PVC, cobre y accesorios de plomería." },
+  { legalName: "Plomería Martínez", location: "Santo Domingo", phone: "809-688-0101", address: "Calle Cervantes No. 67, Gazcue", description: "Materiales para instalaciones sanitarias y plomería." },
+  { legalName: "Accesorios de Plomería La Popular", location: "Santo Domingo", phone: "809-535-1212", address: "Av. Independencia No. 789, Centro", description: "Tuberías, válvulas, conexiones y accesorios de plomería." },
+
+  // PINTURAS - SANTO DOMINGO
+  { legalName: "Pinturas Popular", location: "Santo Domingo", phone: "809-549-2020", address: "Av. Máximo Gómez No. 78, Ensanche La Fe", description: "Pinturas para interiores, exteriores, esmaltes y barnices." },
+  { legalName: "Sherwin Williams Dominicana", location: "Santo Domingo", phone: "809-565-3030", address: "Av. Abraham Lincoln No. 907, Piantini", description: "Pinturas de alta calidad para todo tipo de proyectos." },
+  { legalName: "Pinturas Tropical", location: "Santo Domingo", phone: "809-567-4040", address: "Av. Duarte No. 456, Villa Francisca", description: "Pinturas, barnices, esmaltes y productos químicos para construcción." },
+  { legalName: "Colorama Pinturas", location: "Santo Domingo", phone: "809-566-5050", address: "Av. 27 de Febrero No. 512, Bella Vista", description: "Pinturas decorativas, acabados especiales y asesoría en color." },
+  { legalName: "Pinturas y Acabados RD", location: "Santo Domingo", phone: "809-535-6060", address: "Av. San Martín No. 123, Villa Consuelo", description: "Pinturas, impermeabilizantes y productos para acabados." },
+
+  // ELÉCTRICOS - SANTO DOMINGO
+  { legalName: "Eléctrica del Caribe", location: "Santo Domingo", phone: "809-565-7070", address: "Av. Winston Churchill No. 152, Piantini", description: "Materiales eléctricos, cables, breakers e iluminación." },
+  { legalName: "Electro Materiales SD", location: "Santo Domingo", phone: "809-547-8080", address: "Av. Duarte No. 345, Centro", description: "Cables, interruptores, tomacorrientes y accesorios eléctricos." },
+  { legalName: "Iluminación y Electricidad Total", location: "Santo Domingo", phone: "809-566-9090", address: "Av. 27 de Febrero No. 678, Naco", description: "Materiales eléctricos y sistemas de iluminación LED." },
+  { legalName: "Cables y Breakers RD", location: "Santo Domingo", phone: "809-535-0101", address: "Av. Independencia No. 567, Gazcue", description: "Cables eléctricos, breakers, tableros y accesorios." },
+  { legalName: "Electro Suministros Nacional", location: "Santo Domingo", phone: "809-688-1111", address: "Calle Pasteur No. 89, Gazcue", description: "Materiales eléctricos para proyectos residenciales y comerciales." },
+
+  // ALUMINIO Y PVC - SANTO DOMINGO
+  { legalName: "Aluminio del Caribe", location: "Santo Domingo", phone: "809-566-2020", address: "Av. Winston Churchill No. 234, Piantini", description: "Ventanas, puertas y estructuras de aluminio y PVC." },
+  { legalName: "Ventanas PVC Dominicana", location: "Santo Domingo", phone: "809-565-3030", address: "Av. 27 de Febrero No. 890, Bella Vista", description: "Fabricación e instalación de ventanas y puertas PVC." },
+  { legalName: "Aluplast RD", location: "Santo Domingo", phone: "809-547-4040", address: "Av. Duarte No. 567, Villa Consuelo", description: "Perfiles de aluminio y PVC para construcción." },
+  { legalName: "Techos y Aluminio Nacional", location: "Santo Domingo", phone: "809-535-5050", address: "Av. Independencia No. 234, Centro", description: "Techos de aluminio, zinc y estructuras metálicas." },
+
+  // VIDRIERÍA - SANTO DOMINGO
+  { legalName: "Vidriería Cristal", location: "Santo Domingo", phone: "809-566-6060", address: "Av. Winston Churchill No. 345, Piantini", description: "Vidrios, espejos, vitrales y trabajos en cristal." },
+  { legalName: "Cristalería del Este", location: "Santo Domingo", phone: "809-594-7070", address: "Av. España No. 78, Villa Duarte", description: "Vidrios templados, espejos y cerramientos de cristal." },
+  { legalName: "Vidrios y Espejos Nacional", location: "Santo Domingo", phone: "809-535-8080", address: "Av. Duarte No. 678, Centro", description: "Corte de vidrio, espejos y trabajos especializados." },
+
+  // PISOS Y REVESTIMIENTOS - SANTO DOMINGO
+  { legalName: "Cerámica del Caribe", location: "Santo Domingo", phone: "809-565-9090", address: "Av. Abraham Lincoln No. 567, Piantini", description: "Cerámicas, porcelanatos y pisos importados." },
+  { legalName: "Pisos y Azulejos Nacional", location: "Santo Domingo", phone: "809-566-0101", address: "Av. 27 de Febrero No. 456, Bella Vista", description: "Pisos cerámicos, porcelanatos y revestimientos." },
+  { legalName: "Mármoles y Granitos del Este", location: "Santo Domingo", phone: "809-594-1111", address: "Autopista del Este Km 10", description: "Mármol, granito, cuarzo y piedras naturales." },
+  { legalName: "Adoquines Dominicanos", location: "Santo Domingo", phone: "809-549-2020", address: "Autopista Duarte Km 7, Los Alcarrizos", description: "Adoquines de concreto para pisos exteriores." },
+
+  // AIRES ACONDICIONADOS - SANTO DOMINGO
+  { legalName: "Aire Frío del Caribe", location: "Santo Domingo", phone: "809-566-3030", address: "Av. Winston Churchill No. 678, Piantini", description: "Venta e instalación de aires acondicionados y sistemas de ventilación." },
+  { legalName: "Climatización Total RD", location: "Santo Domingo", phone: "809-565-4040", address: "Av. 27 de Febrero No. 234, Naco", description: "Aires acondicionados residenciales y comerciales." },
+  { legalName: "Refrigeración Nacional", location: "Santo Domingo", phone: "809-547-5050", address: "Av. Duarte No. 789, Villa Consuelo", description: "Aires acondicionados, refrigeración y mantenimiento." },
+
+  // TECHADO E IMPERMEABILIZACIÓN - SANTO DOMINGO
+  { legalName: "Techos del Caribe", location: "Santo Domingo", phone: "809-566-6060", address: "Av. Winston Churchill No. 890, Piantini", description: "Techos de zinc, aluminio e impermeabilización." },
+  { legalName: "Impermeabilizantes Tropical", location: "Santo Domingo", phone: "809-565-7070", address: "Av. 27 de Febrero No. 345, Bella Vista", description: "Productos impermeabilizantes y selladores." },
+  { legalName: "Techados y Estructuras RD", location: "Santo Domingo", phone: "809-535-8080", address: "Av. Independencia No. 456, Gazcue", description: "Instalación de techos metálicos y estructuras." },
+
+  // PUERTAS Y VENTANAS - SANTO DOMINGO
+  { legalName: "Puertas Premium RD", location: "Santo Domingo", phone: "809-566-9090", address: "Av. Abraham Lincoln No. 234, Piantini", description: "Puertas de madera, metal y fibra de vidrio." },
+  { legalName: "Ventanas del Caribe", location: "Santo Domingo", phone: "809-565-0101", address: "Av. Winston Churchill No. 567, Piantini", description: "Ventanas de aluminio, PVC y madera." },
+  { legalName: "Puertas y Closets Nacional", location: "Santo Domingo", phone: "809-547-1111", address: "Av. Duarte No. 890, Centro", description: "Puertas, closets y trabajos de ebanistería." },
+
+  // FERRETERÍAS - SANTIAGO
+  { legalName: "Ferretería Industrial Santiago", location: "Santiago", phone: "809-582-5555", address: "Av. 27 de Febrero No. 234, Centro", description: "Ferretería con herramientas industriales y materiales de construcción." },
+  { legalName: "Ferretería La Campana", location: "Santiago", phone: "809-583-6666", address: "Calle del Sol No. 156, Centro", description: "Materiales de construcción y artículos ferreteros." },
+  { legalName: "Multiferretería del Cibao", location: "Santiago", phone: "809-582-7777", address: "Av. Juan Pablo Duarte Km 4", description: "Ferretería y materiales para construcción." },
+
+  // MATERIALES DE CONSTRUCCIÓN - SANTIAGO
+  { legalName: "Materiales Cibao", location: "Santiago", phone: "809-583-8888", address: "Autopista Duarte Km 3", description: "Cemento, varillas, blocks y materiales de construcción." },
+  { legalName: "Blockes del Norte", location: "Santiago", phone: "809-582-9999", address: "Carr. Don Pedro Km 2", description: "Fabricación de blocks y productos de cemento." },
+  { legalName: "Arena y Gravilla Santiago", location: "Santiago", phone: "809-583-0000", address: "Autopista Duarte Km 5", description: "Arena, gravilla y piedra para construcción." },
+
+  // PINTURAS - SANTIAGO
+  { legalName: "Pinturas del Cibao", location: "Santiago", phone: "809-582-1111", address: "Av. 27 de Febrero No. 567, Los Jardines", description: "Pinturas, barnices y productos químicos para construcción." },
+  { legalName: "Colorama Santiago", location: "Santiago", phone: "809-583-2222", address: "Calle del Sol No. 234, Centro", description: "Pinturas decorativas y acabados especiales." },
+
+  // PLOMERÍA - SANTIAGO
+  { legalName: "Plomería del Norte", location: "Santiago", phone: "809-582-3333", address: "Av. Estrella Sadhalá No. 45", description: "Tuberías, sanitarios y accesorios de plomería." },
+  { legalName: "Sanitarios Santiago", location: "Santiago", phone: "809-583-4444", address: "Av. 27 de Febrero No. 345", description: "Inodoros, lavamanos y griferías importadas." },
+
+  // ELÉCTRICOS - SANTIAGO
+  { legalName: "Eléctrica Santiago", location: "Santiago", phone: "809-582-5555", address: "Calle del Sol No. 456", description: "Materiales eléctricos, cables e iluminación." },
+  { legalName: "Iluminación del Cibao", location: "Santiago", phone: "809-583-6666", address: "Av. Juan Pablo Duarte No. 234", description: "Sistemas de iluminación LED y materiales eléctricos." },
+
+  // ALUMINIO Y PVC - SANTIAGO
+  { legalName: "Aluminio Santiago", location: "Santiago", phone: "809-582-7777", address: "Av. Estrella Sadhalá No. 78", description: "Ventanas y puertas de aluminio y PVC." },
+  { legalName: "Ventanas PVC del Norte", location: "Santiago", phone: "809-583-8888", address: "Autopista Duarte Km 4", description: "Fabricación de ventanas y puertas PVC." },
 ];
 
 // Función para generar RNC
@@ -191,16 +292,65 @@ function inferSpecialties(legalName: string, description?: string): string[] {
   const text = `${legalName} ${description || ''}`.toLowerCase();
   const specialties: string[] = [];
   
-  // Siempre agregar Construcción General
-  specialties.push("Construcción General");
-  
-  if (text.includes('ferret') || text.includes('material')) {
-    specialties.push("Ferretería", "Materiales de Construcción");
+  // Categorías específicas primero
+  if (text.includes('ferret')) {
+    specialties.push("Ferretería");
   }
-  if (text.includes('metal') || text.includes('acero') || text.includes('estructura')) {
+  if (text.includes('material') && (text.includes('construcción') || text.includes('deposito') || text.includes('block') || text.includes('cemento'))) {
+    specialties.push("Materiales de Construcción");
+  }
+  if (text.includes('herramienta')) {
+    specialties.push("Herramientas y Equipos");
+  }
+  if (text.includes('metal') || text.includes('acero') || text.includes('hierro') || text.includes('varilla') || text.includes('estructura')) {
     specialties.push("Estructuras Metálicas");
   }
-  if (text.includes('comercial')) {
+  if (text.includes('plomería') || text.includes('tubería') || text.includes('sanitario') || text.includes('grifo') || text.includes('inodoro') || text.includes('lavamanos')) {
+    specialties.push("Plomería y Sanitarios");
+  }
+  if (text.includes('eléctric') || text.includes('electric') || text.includes('cable') || text.includes('breaker') || text.includes('iluminación')) {
+    specialties.push("Eléctricos y Iluminación");
+  }
+  if (text.includes('pintura') || text.includes('barniz') || text.includes('esmalte')) {
+    specialties.push("Pinturas y Acabados");
+  }
+  if (text.includes('aluminio') || text.includes('pvc') || text.includes('aluplast')) {
+    specialties.push("Aluminio y PVC");
+  }
+  if (text.includes('vidrio') || text.includes('cristal') || text.includes('espejo')) {
+    specialties.push("Vidriería y Cristalería");
+  }
+  if (text.includes('adoquin') || text.includes('piso') || text.includes('cerámica') || text.includes('porcelanato') || text.includes('azulejo') || text.includes('revestimiento')) {
+    specialties.push("Pisos y Revestimientos");
+  }
+  if (text.includes('mármol') || text.includes('granito')) {
+    specialties.push("Mármol y Granito");
+  }
+  if (text.includes('aire') && (text.includes('acondicionado') || text.includes('frío')) || text.includes('climatización') || text.includes('refrigeración')) {
+    specialties.push("Aire Acondicionado y Ventilación");
+  }
+  if (text.includes('techado') || text.includes('techo') || text.includes('impermeabil') || text.includes('zinc')) {
+    specialties.push("Techado e Impermeabilización");
+  }
+  if (text.includes('puerta') && (text.includes('ventana') || !text.includes('puerto'))) {
+    specialties.push("Puertas y Ventanas");
+  }
+  if (text.includes('ventana') && !text.includes('puerto')) {
+    specialties.push("Puertas y Ventanas");
+  }
+  if (text.includes('closet') || text.includes('ebanist') || text.includes('carpint')) {
+    specialties.push("Ebanistería y Carpintería");
+  }
+  if (text.includes('cerrajer') || text.includes('herrer')) {
+    specialties.push("Cerrajería y Herrería");
+  }
+  if (text.includes('piscina') || text.includes('spa')) {
+    specialties.push("Piscinas y Spas");
+  }
+  if (text.includes('jardín') || text.includes('paisaj')) {
+    specialties.push("Jardinería y Paisajismo");
+  }
+  if (text.includes('comercial') && text.includes('construcción')) {
     specialties.push("Construcción Comercial");
   }
   if (text.includes('residencial') || text.includes('hogar') || text.includes('vivienda') || text.includes('apartamento')) {
@@ -209,40 +359,22 @@ function inferSpecialties(legalName: string, description?: string): string[] {
   if (text.includes('turístico') || text.includes('hotel')) {
     specialties.push("Construcción de Proyectos");
   }
-  if (text.includes('piscina')) {
-    specialties.push("Piscinas y Spas");
-  }
-  if (text.includes('pintura') || text.includes('química')) {
-    specialties.push("Pinturas y Acabados");
-  }
-  if (text.includes('adoquin') || text.includes('piso')) {
-    specialties.push("Pisos y Revestimientos");
-  }
-  if (text.includes('eléctric') || text.includes('electric')) {
-    specialties.push("Eléctricos y Iluminación");
-  }
-  if (text.includes('plomería') || text.includes('tubería') || text.includes('sanitario')) {
-    specialties.push("Plomería y Sanitarios");
-  }
   if (text.includes('diseño') || text.includes('arquitect')) {
     specialties.push("Construcción de Proyectos");
-  }
-  if (text.includes('jardín') || text.includes('paisaj')) {
-    specialties.push("Jardinería y Paisajismo");
-  }
-  if (text.includes('techado') || text.includes('impermeabil')) {
-    specialties.push("Techado e Impermeabilización");
   }
   if (text.includes('acabado') || text.includes('decoración')) {
     specialties.push("Acabados y Decoración");
   }
-  if (text.includes('cemento') || text.includes('concreto') || text.includes('hormigón')) {
+  if (text.includes('cemento') || text.includes('concreto') || text.includes('hormigón') || text.includes('block')) {
     specialties.push("Cemento y Concreto");
   }
+  if (text.includes('arena') || text.includes('gravilla') || text.includes('piedra')) {
+    specialties.push("Materiales de Construcción");
+  }
   
-  // Si solo tiene Construcción General, agregar otra por defecto
-  if (specialties.length === 1) {
-    specialties.push("Construcción de Proyectos");
+  // Si no tiene especialidades específicas, agregar Construcción General
+  if (specialties.length === 0) {
+    specialties.push("Construcción General");
   }
   
   return [...new Set(specialties)]; // Eliminar duplicados
