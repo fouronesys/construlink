@@ -364,6 +364,16 @@ export default function AdminPanel() {
     setReportPage(1);
   }, [reportStatusFilter, reportLimit]);
 
+  // Suppliers filters and states
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [supplierStatusFilter, setSupplierStatusFilter] = useState("all");
+  const [supplierPlanFilter, setSupplierPlanFilter] = useState("all");
+
+  // Featured suppliers filters and states
+  const [featuredSearch, setFeaturedSearch] = useState("");
+  const [featuredPlanFilter, setFeaturedPlanFilter] = useState("all");
+  const [featuredStatusFilter, setFeaturedStatusFilter] = useState("all");
+
   // Plan configuration states
   const [basicPrice, setBasicPrice] = useState(1000);
   const [basicProducts, setBasicProducts] = useState(10);
@@ -1373,7 +1383,34 @@ export default function AdminPanel() {
     }
   };
 
+  // Filter suppliers based on search and filters
+  const filteredSuppliers = allSuppliers.filter((supplier: Supplier) => {
+    const matchesSearch = !supplierSearch || 
+      supplier.legalName.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+      supplier.email.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+      supplier.rnc?.toLowerCase().includes(supplierSearch.toLowerCase());
+    
+    const matchesStatus = supplierStatusFilter === 'all' || supplier.status === supplierStatusFilter;
+    const matchesPlan = supplierPlanFilter === 'all' || supplier.planType === supplierPlanFilter;
+    
+    return matchesSearch && matchesStatus && matchesPlan;
+  });
+
+  // Filter featured suppliers
   const approvedSuppliers = allSuppliers.filter((s: Supplier) => s.status === 'approved');
+  
+  const filteredFeaturedSuppliers = approvedSuppliers.filter((supplier: Supplier) => {
+    const matchesSearch = !featuredSearch || 
+      supplier.legalName.toLowerCase().includes(featuredSearch.toLowerCase()) ||
+      supplier.rnc?.toLowerCase().includes(featuredSearch.toLowerCase());
+    
+    const matchesPlan = featuredPlanFilter === 'all' || supplier.planType === featuredPlanFilter;
+    const matchesFeatured = featuredStatusFilter === 'all' || 
+      (featuredStatusFilter === 'featured' && supplier.isFeatured) ||
+      (featuredStatusFilter === 'not-featured' && !supplier.isFeatured);
+    
+    return matchesSearch && matchesPlan && matchesFeatured;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1755,90 +1792,150 @@ export default function AdminPanel() {
           {/* Suppliers Tab */}
           <TabsContent value="suppliers" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <h2 className="text-lg sm:text-xl font-semibold">Todos los Proveedores</h2>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" data-testid="button-filter-suppliers" className="text-xs sm:text-sm">
-                  <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Filtrar
-                </Button>
-                <Button variant="outline" data-testid="button-export-suppliers" className="text-xs sm:text-sm">
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Exportar
-                </Button>
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold">Todos los Proveedores</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Mostrando {filteredSuppliers.length} de {allSuppliers.length} proveedores
+                </p>
               </div>
             </div>
 
+            {/* Search and Filters */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="supplier-search">Buscar</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        id="supplier-search"
+                        placeholder="Nombre, email o RNC..."
+                        value={supplierSearch}
+                        onChange={(e) => setSupplierSearch(e.target.value)}
+                        className="pl-9"
+                        data-testid="input-supplier-search"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="supplier-status-filter">Estado</Label>
+                    <select
+                      id="supplier-status-filter"
+                      value={supplierStatusFilter}
+                      onChange={(e) => setSupplierStatusFilter(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-supplier-status"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="approved">Aprobado</option>
+                      <option value="rejected">Rechazado</option>
+                      <option value="suspended">Suspendido</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="supplier-plan-filter">Plan</Label>
+                    <select
+                      id="supplier-plan-filter"
+                      value={supplierPlanFilter}
+                      onChange={(e) => setSupplierPlanFilter(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-supplier-plan"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="basic">Basic</option>
+                      <option value="professional">Professional</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardContent className="p-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Fecha de Registro</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allSuppliers.map((supplier: Supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell className="font-medium">{supplier.legalName}</TableCell>
-                        <TableCell>{supplier.email}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{supplier.planType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(supplier.status)}>
-                            {getStatusIcon(supplier.status)}
-                            <span className="ml-1 capitalize">{supplier.status}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(supplier.createdAt).toLocaleDateString('es-DO')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              title="Ver detalles" 
-                              onClick={() => window.open(`/supplier/${supplier.id}`, '_blank')}
-                              data-testid={`button-view-${supplier.id}`}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {supplier.status === 'approved' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleSubscriptionAction(supplier, 'suspend')}
-                                className="text-red-600 hover:text-red-700"
-                                title="Suspender suscripción"
-                                data-testid={`button-suspend-${supplier.id}`}
-                              >
-                                <AlertTriangle className="w-4 h-4" />
-                              </Button>
-                            )}
-                            {supplier.status === 'suspended' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleSubscriptionAction(supplier, 'reactivate')}
-                                className="text-green-600 hover:text-green-700"
-                                title="Reactivar suscripción"
-                                data-testid={`button-reactivate-${supplier.id}`}
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                {filteredSuppliers.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No se encontraron proveedores
+                    </h3>
+                    <p className="text-gray-600">
+                      Intenta ajustar los filtros de búsqueda
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha de Registro</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSuppliers.map((supplier: Supplier) => (
+                        <TableRow key={supplier.id}>
+                          <TableCell className="font-medium">{supplier.legalName}</TableCell>
+                          <TableCell>{supplier.email}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{supplier.planType}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(supplier.status)}>
+                              {getStatusIcon(supplier.status)}
+                              <span className="ml-1 capitalize">{supplier.status}</span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(supplier.createdAt).toLocaleDateString('es-DO')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                title="Ver detalles" 
+                                onClick={() => window.open(`/supplier/${supplier.id}`, '_blank')}
+                                data-testid={`button-view-${supplier.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {supplier.status === 'approved' && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleSubscriptionAction(supplier, 'suspend')}
+                                  className="text-red-600 hover:text-red-700"
+                                  title="Suspender suscripción"
+                                  data-testid={`button-suspend-${supplier.id}`}
+                                >
+                                  <AlertTriangle className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {supplier.status === 'suspended' && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleSubscriptionAction(supplier, 'reactivate')}
+                                  className="text-green-600 hover:text-green-700"
+                                  title="Reactivar suscripción"
+                                  data-testid={`button-reactivate-${supplier.id}`}
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1848,68 +1945,131 @@ export default function AdminPanel() {
             <div>
               <h2 className="text-lg sm:text-xl font-semibold">Proveedores Destacados</h2>
               <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                Gestiona qué proveedores aparecen en el carrusel de la homepage
+                Gestiona qué proveedores aparecen en el carrusel de la homepage (Mostrando {filteredFeaturedSuppliers.length} de {approvedSuppliers.length} proveedores)
               </p>
             </div>
+
+            {/* Search and Filters */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="featured-search">Buscar</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        id="featured-search"
+                        placeholder="Nombre o RNC..."
+                        value={featuredSearch}
+                        onChange={(e) => setFeaturedSearch(e.target.value)}
+                        className="pl-9"
+                        data-testid="input-featured-search"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="featured-plan-filter">Plan</Label>
+                    <select
+                      id="featured-plan-filter"
+                      value={featuredPlanFilter}
+                      onChange={(e) => setFeaturedPlanFilter(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-featured-plan"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="basic">Basic</option>
+                      <option value="professional">Professional</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="featured-status-filter">Estado Featured</Label>
+                    <select
+                      id="featured-status-filter"
+                      value={featuredStatusFilter}
+                      onChange={(e) => setFeaturedStatusFilter(e.target.value)}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      data-testid="select-featured-status"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="featured">Destacados</option>
+                      <option value="not-featured">No Destacados</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>Proveedores Aprobados</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>RNC</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Estado Featured</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {approvedSuppliers.map((supplier: Supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell className="font-medium">{supplier.legalName}</TableCell>
-                        <TableCell>{supplier.rnc}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{supplier.planType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              checked={supplier.isFeatured || false}
-                              onCheckedChange={() => handleToggleFeatured(supplier)}
-                              data-testid={`switch-featured-${supplier.id}`}
-                            />
-                            <span className="text-sm">
-                              {supplier.isFeatured ? (
-                                <Badge className="bg-yellow-100 text-yellow-800">
-                                  <Star className="w-3 h-3 mr-1" />
-                                  Destacado
-                                </Badge>
-                              ) : (
-                                <span className="text-gray-500">No destacado</span>
-                              )}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleManageBanner(supplier)}
-                            disabled={!supplier.isFeatured}
-                            data-testid={`button-manage-banner-${supplier.id}`}
-                          >
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            Gestionar Banner
-                          </Button>
-                        </TableCell>
+                {filteredFeaturedSuppliers.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Star className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No se encontraron proveedores
+                    </h3>
+                    <p className="text-gray-600">
+                      Intenta ajustar los filtros de búsqueda
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>RNC</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Estado Featured</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredFeaturedSuppliers.map((supplier: Supplier) => (
+                        <TableRow key={supplier.id}>
+                          <TableCell className="font-medium">{supplier.legalName}</TableCell>
+                          <TableCell>{supplier.rnc}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{supplier.planType}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={supplier.isFeatured || false}
+                                onCheckedChange={() => handleToggleFeatured(supplier)}
+                                data-testid={`switch-featured-${supplier.id}`}
+                              />
+                              <span className="text-sm">
+                                {supplier.isFeatured ? (
+                                  <Badge className="bg-yellow-100 text-yellow-800">
+                                    <Star className="w-3 h-3 mr-1" />
+                                    Destacado
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-500">No destacado</span>
+                                )}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleManageBanner(supplier)}
+                              disabled={!supplier.isFeatured}
+                              data-testid={`button-manage-banner-${supplier.id}`}
+                            >
+                              <ImageIcon className="w-4 h-4 mr-2" />
+                              Gestionar Banner
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
