@@ -120,9 +120,10 @@ const categories = [
   { name: "Estructuras Metálicas", icon: Grid3x3, color: "bg-zinc-100 text-zinc-800" },
   { name: "Mármol y Granito", icon: Gem, color: "bg-violet-100 text-violet-800" },
   { name: "Maquinaria", icon: Cog, color: "bg-orange-100 text-orange-800" },
-  { name: "Instalaciones Solares", icon: Sun, color: "bg-yellow-100 text-yellow-800" },
+  { name: "Energía renovable", icon: Sun, color: "bg-yellow-100 text-yellow-800" },
   { name: "Sistemas de Seguridad", icon: Camera, color: "bg-red-100 text-red-800" },
   { name: "Puertas y Ventanas", icon: DoorClosed, color: "bg-emerald-100 text-emerald-800" },
+  { name: "Servicio de mudanzas", icon: Truck, color: "bg-blue-100 text-blue-800" },
 ];
 
 const subscriptionPlans = [

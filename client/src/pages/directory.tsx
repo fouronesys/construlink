@@ -71,9 +71,10 @@ const specialties = [
   "Estructuras Metálicas",
   "Mármol y Granito",
   "Equipos Pesados y Maquinaria",
-  "Instalaciones Solares",
+  "Energía renovable",
   "Sistemas de Seguridad",
   "Puertas y Ventanas",
+  "Servicio de mudanzas",
 ];
 
 const locations = [
