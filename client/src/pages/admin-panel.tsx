@@ -273,6 +273,191 @@ interface ReviewReport {
   };
 }
 
+function ImportSuppliersSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['constructoras']);
+  const [selectedCities, setSelectedCities] = useState<string[]>(['santo-domingo']);
+  const [maxPages, setMaxPages] = useState(3);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const { data: scrapeConfig } = useQuery<{ categories: string[]; cities: string[] }>({
+    queryKey: ['/api/admin/scrape-config'],
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (data: { categories: string[]; cities: string[]; maxPages: number }) => {
+      const response = await fetch('/api/admin/scrape-suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Import failed');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setImportResult(data);
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/suppliers'] });
+      
+      toast({
+        title: "Importación exitosa",
+        description: `Se importaron ${data.imported} de ${data.total} proveedores`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo completar la importación",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImport = () => {
+    importMutation.mutate({
+      categories: selectedCategories,
+      cities: selectedCities,
+      maxPages,
+    });
+  };
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const toggleCity = (city: string) => {
+    setSelectedCities(prev =>
+      prev.includes(city)
+        ? prev.filter(c => c !== city)
+        : [...prev, city]
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <Label>Categorías a Importar</Label>
+          <div className="mt-2 space-y-2 max-h-64 overflow-y-auto border rounded p-3">
+            {scrapeConfig?.categories.map((category) => (
+              <div key={category} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={`cat-${category}`}
+                  checked={selectedCategories.includes(category)}
+                  onChange={() => toggleCategory(category)}
+                  className="rounded"
+                />
+                <label htmlFor={`cat-${category}`} className="text-sm capitalize">
+                  {category.replace(/-/g, ' ')}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Ciudades a Importar</Label>
+          <div className="mt-2 space-y-2 max-h-64 overflow-y-auto border rounded p-3">
+            {scrapeConfig?.cities.map((city) => (
+              <div key={city} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={`city-${city}`}
+                  checked={selectedCities.includes(city)}
+                  onChange={() => toggleCity(city)}
+                  className="rounded"
+                />
+                <label htmlFor={`city-${city}`} className="text-sm capitalize">
+                  {city.replace(/-/g, ' ')}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="max-pages">Páginas por Categoría (máximo)</Label>
+        <Input
+          id="max-pages"
+          type="number"
+          min="1"
+          max="10"
+          value={maxPages}
+          onChange={(e) => setMaxPages(parseInt(e.target.value) || 1)}
+          className="mt-2 max-w-xs"
+        />
+        <p className="text-sm text-gray-500 mt-1">
+          Cada página contiene aproximadamente 15 negocios
+        </p>
+      </div>
+
+      <Button
+        onClick={handleImport}
+        disabled={importMutation.isPending || selectedCategories.length === 0 || selectedCities.length === 0}
+        className="w-full md:w-auto"
+        data-testid="button-import-suppliers"
+      >
+        {importMutation.isPending ? (
+          <>
+            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            Importando...
+          </>
+        ) : (
+          <>
+            <Download className="w-4 h-4 mr-2" />
+            Iniciar Importación
+          </>
+        )}
+      </Button>
+
+      {importResult && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-green-900">Importación Completa</h4>
+                <p className="text-sm text-green-800 mt-1">
+                  {importResult.message}
+                </p>
+                <div className="mt-2 text-xs text-green-700">
+                  <p>✓ Proveedores importados: {importResult.imported}</p>
+                  <p>✓ Total scrapeados: {importResult.total}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-blue-900">Importante</h4>
+              <ul className="text-sm text-blue-800 mt-2 space-y-1">
+                <li>• Los proveedores importados tendrán estado "aprobado" automáticamente</li>
+                <li>• Se marcarán como "Agregados por Admin" y "No Reclamados"</li>
+                <li>• Los datos scrapeados pueden no estar completos (emails, teléfonos)</li>
+                <li>• Se generarán RNC y emails ficticios cuando no estén disponibles</li>
+                <li>• El proceso puede tardar varios minutos dependiendo de la cantidad</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -1501,6 +1686,10 @@ export default function AdminPanel() {
                     <Activity className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                     Logs
                   </TabsTrigger>
+                  <TabsTrigger value="import" data-testid="tab-import" className="text-xs sm:text-sm whitespace-nowrap">
+                    <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    Importar
+                  </TabsTrigger>
                 </>
               )}
             </TabsList>
@@ -2672,6 +2861,27 @@ export default function AdminPanel() {
                       </p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Import Tab (Superadmin Only) */}
+          {user?.role === 'superadmin' && (
+            <TabsContent value="import" className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold">Importar Proveedores</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Importa proveedores automáticamente desde Páginas Amarillas RD
+                </p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuración de Scraping</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ImportSuppliersSection />
                 </CardContent>
               </Card>
             </TabsContent>
