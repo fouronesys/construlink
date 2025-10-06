@@ -466,6 +466,105 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
+  async getSuppliersWithCount(filters?: {
+    status?: string;
+    specialty?: string;
+    location?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ suppliers: Supplier[]; total: number }> {
+    const conditions = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(suppliers.status, filters.status as any));
+    }
+    
+    if (filters?.location) {
+      conditions.push(ilike(suppliers.location, `%${filters.location}%`));
+    }
+    
+    // Filter by specialty if provided
+    if (filters?.specialty) {
+      const suppliersWithSpecialty = await db
+        .select({ id: supplierSpecialties.supplierId })
+        .from(supplierSpecialties)
+        .where(ilike(supplierSpecialties.specialty, `%${filters.specialty}%`));
+      
+      const specialtySupplierIds = suppliersWithSpecialty.map(s => s.id);
+      
+      if (specialtySupplierIds.length > 0) {
+        conditions.push(inArray(suppliers.id, specialtySupplierIds));
+      } else {
+        // No suppliers with this specialty found
+        return { suppliers: [], total: 0 };
+      }
+    }
+    
+    // Enhanced search: search in supplier name, specialties, products (name, description, category)
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      
+      const searchConditions = [
+        ilike(suppliers.legalName, searchTerm)
+      ];
+      
+      const suppliersBySpecialty = await db
+        .select({ id: supplierSpecialties.supplierId })
+        .from(supplierSpecialties)
+        .where(ilike(supplierSpecialties.specialty, searchTerm));
+      
+      const suppliersByProducts = await db
+        .select({ id: products.supplierId })
+        .from(products)
+        .where(
+          or(
+            ilike(products.name, searchTerm),
+            ilike(products.description, searchTerm),
+            ilike(products.category, searchTerm)
+          )
+        );
+      
+      const matchingSupplierIds = new Set([
+        ...suppliersBySpecialty.map(s => s.id),
+        ...suppliersByProducts.map(s => s.id)
+      ]);
+      
+      if (matchingSupplierIds.size > 0) {
+        searchConditions.push(inArray(suppliers.id, Array.from(matchingSupplierIds)));
+      }
+      
+      conditions.push(or(...searchConditions));
+    }
+    
+    // Count total
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(suppliers);
+    if (conditions.length > 0) {
+      countQuery = countQuery.where(and(...conditions)) as any;
+    }
+    const [{ count }] = await countQuery;
+    
+    // Get paginated results
+    let query = db.select().from(suppliers);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    query = query.orderBy(desc(suppliers.createdAt)) as any;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    const results = await query;
+    
+    return { suppliers: results, total: Number(count) };
+  }
+
   // Supplier specialties
   async addSupplierSpecialty(specialty: InsertSupplierSpecialty): Promise<SupplierSpecialty> {
     const [newSpecialty] = await db.insert(supplierSpecialties).values(specialty).returning();

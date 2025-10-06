@@ -643,11 +643,24 @@ export default function AdminPanel() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [supplierStatusFilter, setSupplierStatusFilter] = useState("all");
   const [supplierPlanFilter, setSupplierPlanFilter] = useState("all");
+  const [supplierPage, setSupplierPage] = useState(1);
+  const [supplierLimit, setSupplierLimit] = useState(50);
 
   // Featured suppliers filters and states
   const [featuredSearch, setFeaturedSearch] = useState("");
   const [featuredPlanFilter, setFeaturedPlanFilter] = useState("all");
   const [featuredStatusFilter, setFeaturedStatusFilter] = useState("all");
+  const [featuredPage, setFeaturedPage] = useState(1);
+  const [featuredLimit, setFeaturedLimit] = useState(50);
+
+  // Reset pages when filters change
+  useEffect(() => {
+    setSupplierPage(1);
+  }, [supplierSearch, supplierStatusFilter, supplierPlanFilter, supplierLimit]);
+
+  useEffect(() => {
+    setFeaturedPage(1);
+  }, [featuredSearch, featuredPlanFilter, featuredStatusFilter, featuredLimit]);
 
   // Plan configuration states
   const [basicPrice, setBasicPrice] = useState(1000);
@@ -692,16 +705,9 @@ export default function AdminPanel() {
     retry: false,
   });
 
-  // Fetch all suppliers
-  const { data: allSuppliers = [] } = useQuery<Supplier[]>({
-    queryKey: ["/api/admin/suppliers"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/suppliers?limit=10000", {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch suppliers");
-      return res.json();
-    },
+  // Fetch all suppliers with pagination
+  const { data: suppliersData, isLoading: suppliersLoading } = useQuery<{ suppliers: Supplier[]; total: number }>({
+    queryKey: [`/api/admin/suppliers?page=${supplierPage}&limit=${supplierLimit}&status=${supplierStatusFilter}&search=${supplierSearch}`],
     enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
@@ -1665,33 +1671,32 @@ export default function AdminPanel() {
     }
   };
 
-  // Filter suppliers based on search and filters
+  // Suppliers data comes filtered from the backend based on query params
+  const allSuppliers = suppliersData?.suppliers || [];
+  
+  // Filter suppliers by plan on the frontend (only client-side filter)
   const filteredSuppliers = allSuppliers.filter((supplier: Supplier) => {
-    const matchesSearch = !supplierSearch || 
-      supplier.legalName.toLowerCase().includes(supplierSearch.toLowerCase()) ||
-      supplier.email.toLowerCase().includes(supplierSearch.toLowerCase()) ||
-      supplier.rnc?.toLowerCase().includes(supplierSearch.toLowerCase());
-    
-    const matchesStatus = supplierStatusFilter === 'all' || supplier.status === supplierStatusFilter;
     const matchesPlan = supplierPlanFilter === 'all' || supplier.planType === supplierPlanFilter;
-    
-    return matchesSearch && matchesStatus && matchesPlan;
+    return matchesPlan;
   });
 
-  // Filter featured suppliers
-  const approvedSuppliers = allSuppliers.filter((s: Supplier) => s.status === 'approved');
+  // Fetch approved suppliers for featured section with pagination
+  const { data: approvedSuppliersData, isLoading: approvedSuppliersLoading } = useQuery<{ suppliers: Supplier[]; total: number }>({
+    queryKey: [`/api/admin/suppliers?page=${featuredPage}&limit=${featuredLimit}&status=approved&search=${featuredSearch}`],
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
+    retry: false,
+  });
   
+  const approvedSuppliers = approvedSuppliersData?.suppliers || [];
+  
+  // Filter featured suppliers by plan and featured status (client-side filters)
   const filteredFeaturedSuppliers = approvedSuppliers.filter((supplier: Supplier) => {
-    const matchesSearch = !featuredSearch || 
-      supplier.legalName.toLowerCase().includes(featuredSearch.toLowerCase()) ||
-      supplier.rnc?.toLowerCase().includes(featuredSearch.toLowerCase());
-    
     const matchesPlan = featuredPlanFilter === 'all' || supplier.planType === featuredPlanFilter;
     const matchesFeatured = featuredStatusFilter === 'all' || 
       (featuredStatusFilter === 'featured' && supplier.isFeatured) ||
       (featuredStatusFilter === 'not-featured' && !supplier.isFeatured);
     
-    return matchesSearch && matchesPlan && matchesFeatured;
+    return matchesPlan && matchesFeatured;
   });
 
   return (
@@ -2081,7 +2086,7 @@ export default function AdminPanel() {
               <div>
                 <h2 className="text-lg sm:text-xl font-semibold">Todos los Proveedores</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Mostrando {filteredSuppliers.length} de {allSuppliers.length} proveedores
+                  Mostrando {((supplierPage - 1) * supplierLimit) + 1} - {Math.min(supplierPage * supplierLimit, suppliersData?.total || 0)} de {suppliersData?.total || 0} proveedores
                 </p>
               </div>
             </div>
@@ -2222,6 +2227,38 @@ export default function AdminPanel() {
                     </TableBody>
                   </Table>
                 )}
+                
+                {/* Pagination Controls */}
+                {suppliersData && suppliersData.total > 0 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                      Mostrando {((supplierPage - 1) * supplierLimit) + 1} - {Math.min(supplierPage * supplierLimit, suppliersData.total)} de {suppliersData.total}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSupplierPage(Math.max(1, supplierPage - 1))}
+                        disabled={supplierPage === 1}
+                        data-testid="button-prev-supplier-page"
+                      >
+                        Anterior
+                      </Button>
+                      <span className="px-3 py-2 text-sm" data-testid="text-current-supplier-page">
+                        Página {supplierPage}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSupplierPage(supplierPage + 1)}
+                        disabled={supplierPage * supplierLimit >= suppliersData.total}
+                        data-testid="button-next-supplier-page"
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -2231,7 +2268,7 @@ export default function AdminPanel() {
             <div>
               <h2 className="text-lg sm:text-xl font-semibold">Proveedores Destacados</h2>
               <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                Gestiona qué proveedores aparecen en el carrusel de la homepage (Mostrando {filteredFeaturedSuppliers.length} de {approvedSuppliers.length} proveedores)
+                Gestiona qué proveedores aparecen en el carrusel de la homepage (Mostrando {((featuredPage - 1) * featuredLimit) + 1} - {Math.min(featuredPage * featuredLimit, approvedSuppliersData?.total || 0)} de {approvedSuppliersData?.total || 0} proveedores)
               </p>
             </div>
 
@@ -2355,6 +2392,38 @@ export default function AdminPanel() {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+                
+                {/* Pagination Controls */}
+                {approvedSuppliersData && approvedSuppliersData.total > 0 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                      Mostrando {((featuredPage - 1) * featuredLimit) + 1} - {Math.min(featuredPage * featuredLimit, approvedSuppliersData.total)} de {approvedSuppliersData.total}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFeaturedPage(Math.max(1, featuredPage - 1))}
+                        disabled={featuredPage === 1}
+                        data-testid="button-prev-featured-page"
+                      >
+                        Anterior
+                      </Button>
+                      <span className="px-3 py-2 text-sm" data-testid="text-current-featured-page">
+                        Página {featuredPage}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFeaturedPage(featuredPage + 1)}
+                        disabled={featuredPage * featuredLimit >= approvedSuppliersData.total}
+                        data-testid="button-next-featured-page"
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>

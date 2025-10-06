@@ -1301,12 +1301,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const { status, search, limit = 50, offset = 0 } = req.query;
-      const suppliers = await storage.getSuppliers({
-        status: status as string,
-        search: search as string,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
+      const { status, search, page, limit } = req.query;
+      
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedLimit = limit ? parseInt(limit as string) : 50;
+      const parsedOffset = (parsedPage - 1) * parsedLimit;
+      
+      const { suppliers, total } = await storage.getSuppliersWithCount({
+        status: status && status !== 'all' ? status as string : undefined,
+        search: search ? search as string : undefined,
+        limit: !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50,
+        offset: !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0,
       });
 
       // Get additional data for each supplier
@@ -1325,7 +1330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      res.json(suppliersWithDetails);
+      res.json({ suppliers: suppliersWithDetails, total });
     } catch (error) {
       console.error("Error fetching admin suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
