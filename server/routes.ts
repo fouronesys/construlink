@@ -3328,6 +3328,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Scraping endpoints
+  app.post("/api/admin/scrape-suppliers", isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      const { scrapeBusinesses } = await import('./scraper');
+      const { categories, cities, maxPages } = req.body;
+      
+      const categoriesToScrape = categories || ['constructoras', 'restaurantes', 'supermercados'];
+      const citiesToScrape = cities || ['santo-domingo'];
+      const maxPagesPerCategory = maxPages || 3;
+      
+      const businesses: any[] = [];
+      
+      for (const category of categoriesToScrape) {
+        for (const city of citiesToScrape) {
+          const scraped = await scrapeBusinesses(category, city, maxPagesPerCategory);
+          businesses.push(...scraped);
+        }
+      }
+      
+      const importedSuppliers = [];
+      
+      for (const business of businesses) {
+        const generatedRnc = `SCR-${business.name.substring(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        
+        const generatedEmail = business.email || 
+          `${business.name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}@scrapeado.fouroneplatform.do`;
+        
+        const supplierData = {
+          legalName: business.name,
+          rnc: generatedRnc,
+          phone: business.phone || 'No disponible',
+          email: generatedEmail,
+          status: 'approved' as const,
+          location: business.address || `${business.city}, República Dominicana`,
+          description: business.description || `Proveedor de ${business.category} en ${business.city}`,
+          website: business.website,
+          addedByAdmin: true,
+          isClaimed: false,
+          approvalDate: new Date(),
+        };
+        
+        try {
+          const existingSupplier = await db.query.suppliers.findFirst({
+            where: eq(suppliers.legalName, business.name),
+          });
+          
+          if (!existingSupplier) {
+            const [newSupplier] = await db.insert(suppliers).values(supplierData).returning();
+            
+            if (business.category) {
+              await db.insert(supplierSpecialties).values({
+                supplierId: newSupplier.id,
+                specialty: business.category,
+              });
+            }
+            
+            importedSuppliers.push(newSupplier);
+          }
+        } catch (error) {
+          console.error(`Error importing ${business.name}:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Se importaron ${importedSuppliers.length} proveedores de ${businesses.length} negocios scrapeados`,
+        imported: importedSuppliers.length,
+        total: businesses.length,
+      });
+      
+    } catch (error) {
+      console.error('Error during scraping:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Error al scrapear proveedores',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.get("/api/admin/scrape-config", isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      const { getAvailableCategories, getAvailableCities } = await import('./scraper');
+      
+      res.json({
+        categories: getAvailableCategories(),
+        cities: getAvailableCities(),
+      });
+    } catch (error) {
+      console.error('Error getting scrape config:', error);
+      res.status(500).json({ error: 'Error al obtener configuración de scraping' });
+    }
+  });
+
   // Create HTTP server
   const server = createServer(app);
 
