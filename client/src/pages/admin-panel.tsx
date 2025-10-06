@@ -293,8 +293,14 @@ function ImportSuppliersSection() {
         credentials: 'include',
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Import failed');
-      return response.json();
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.details || result.error || 'Import failed');
+      }
+      
+      return result;
     },
     onSuccess: (data) => {
       setImportResult(data);
@@ -305,10 +311,11 @@ function ImportSuppliersSection() {
         description: `Se importaron ${data.imported} de ${data.total} proveedores`,
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      console.error('Import error:', error);
       toast({
-        title: "Error",
-        description: "No se pudo completar la importación",
+        title: "Error en la importación",
+        description: error.message || "No se pudo completar la importación",
         variant: "destructive",
       });
     },
