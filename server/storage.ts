@@ -213,6 +213,8 @@ export interface IStorage {
   // Review operations
   createReview(review: InsertReview): Promise<Review>;
   getReviewsBySupplierId(supplierId: string): Promise<Review[]>;
+  updateSupplierRating(supplierId: string): Promise<void>;
+  canUserReview(supplierId: string, userId?: string, email?: string): Promise<boolean>;
   
   // Plan usage operations
   createPlanUsage(usage: InsertPlanUsage): Promise<PlanUsage>;
@@ -887,6 +889,7 @@ export class DatabaseStorage implements IStorage {
   // Review operations
   async createReview(review: InsertReview): Promise<Review> {
     const [newReview] = await db.insert(reviews).values(review).returning();
+    await this.updateSupplierRating(review.supplierId);
     return newReview;
   }
 
@@ -896,6 +899,63 @@ export class DatabaseStorage implements IStorage {
       .from(reviews)
       .where(eq(reviews.supplierId, supplierId))
       .orderBy(desc(reviews.createdAt));
+  }
+
+  async updateSupplierRating(supplierId: string): Promise<void> {
+    const supplierReviews = await this.getReviewsBySupplierId(supplierId);
+    
+    if (supplierReviews.length === 0) {
+      await db
+        .update(suppliers)
+        .set({ 
+          averageRating: sql`0`,
+          totalReviews: 0,
+          updatedAt: new Date()
+        })
+        .where(eq(suppliers.id, supplierId));
+      return;
+    }
+
+    const totalRating = supplierReviews.reduce((sum, review) => {
+      return sum + parseFloat(review.rating);
+    }, 0);
+    
+    const averageRating = totalRating / supplierReviews.length;
+    
+    await db
+      .update(suppliers)
+      .set({ 
+        averageRating: sql`${averageRating}`,
+        totalReviews: supplierReviews.length,
+        updatedAt: new Date()
+      })
+      .where(eq(suppliers.id, supplierId));
+  }
+
+  async canUserReview(supplierId: string, userId?: string, email?: string): Promise<boolean> {
+    if (!userId && !email) return false;
+
+    const conditions = [];
+    
+    if (userId) {
+      conditions.push(eq(reviews.userId, userId));
+    }
+    if (email) {
+      conditions.push(eq(reviews.clientEmail, email));
+    }
+
+    const existingReview = await db
+      .select()
+      .from(reviews)
+      .where(
+        and(
+          eq(reviews.supplierId, supplierId),
+          or(...conditions)
+        )
+      )
+      .limit(1);
+
+    return existingReview.length === 0;
   }
 
   // Additional subscription operations

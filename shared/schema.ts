@@ -11,6 +11,7 @@ import {
   uuid,
   date,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -71,6 +72,8 @@ export const suppliers = pgTable("suppliers", {
   isClaimed: boolean("is_claimed").default(true),
   claimedAt: timestamp("claimed_at"),
   addedByAdmin: boolean("added_by_admin").default(false),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default(sql`0`),
+  totalReviews: integer("total_reviews").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
