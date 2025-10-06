@@ -96,8 +96,17 @@ export async function scrapeBusinesses(
       $('article').each((_, element) => {
         const $article = $(element);
         
-        const nameElement = $article.find('h2 a, h3 a');
-        const name = nameElement.text().trim();
+        // Try to find name in h2 first (with or without link), then h3
+        let name = $article.find('h2 a').first().text().trim();
+        if (!name) {
+          name = $article.find('h2').first().text().trim();
+        }
+        if (!name) {
+          name = $article.find('h3 a').first().text().trim();
+        }
+        if (!name) {
+          name = $article.find('h3').first().text().trim();
+        }
         
         if (!name) return;
         
