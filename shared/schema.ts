@@ -266,6 +266,31 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Review responses (supplier replies to reviews)
+export const reviewResponses = pgTable("review_responses", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewId: uuid("review_id").references(() => reviews.id, { onDelete: "cascade" }).notNull(),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  responseText: text("response_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Review reports (for inappropriate reviews)
+export const reviewReports = pgTable("review_reports", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewId: uuid("review_id").references(() => reviews.id, { onDelete: "cascade" }).notNull(),
+  reportedBy: varchar("reported_by").references(() => users.id, { onDelete: "set null" }),
+  reporterEmail: varchar("reporter_email", { length: 255 }),
+  reason: varchar("reason", { enum: ["spam", "inappropriate", "offensive", "fake", "other"] }).notNull(),
+  description: text("description"),
+  status: varchar("status", { enum: ["pending", "reviewed", "resolved", "dismissed"] }).default("pending"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 // Admin actions log
 export const adminActions = pgTable("admin_actions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -393,10 +418,45 @@ export const verificationsRelations = relations(verifications, ({ one }) => ({
   }),
 }));
 
-export const reviewsRelations = relations(reviews, ({ one }) => ({
+export const reviewsRelations = relations(reviews, ({ one, many }) => ({
   supplier: one(suppliers, {
     fields: [reviews.supplierId],
     references: [suppliers.id],
+  }),
+  user: one(users, {
+    fields: [reviews.userId],
+    references: [users.id],
+  }),
+  response: one(reviewResponses, {
+    fields: [reviews.id],
+    references: [reviewResponses.reviewId],
+  }),
+  reports: many(reviewReports),
+}));
+
+export const reviewResponsesRelations = relations(reviewResponses, ({ one }) => ({
+  review: one(reviews, {
+    fields: [reviewResponses.reviewId],
+    references: [reviews.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [reviewResponses.supplierId],
+    references: [suppliers.id],
+  }),
+}));
+
+export const reviewReportsRelations = relations(reviewReports, ({ one }) => ({
+  review: one(reviews, {
+    fields: [reviewReports.reviewId],
+    references: [reviews.id],
+  }),
+  reporter: one(users, {
+    fields: [reviewReports.reportedBy],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [reviewReports.reviewedBy],
+    references: [users.id],
   }),
 }));
 
@@ -513,6 +573,18 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   createdAt: true,
 });
 
+export const insertReviewResponseSchema = createInsertSchema(reviewResponses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertReviewReportSchema = createInsertSchema(reviewReports).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+});
+
 export const insertPlanUsageSchema = createInsertSchema(planUsage).omit({
   id: true,
   createdAt: true,
@@ -625,6 +697,8 @@ export type Service = typeof services.$inferSelect;
 export type QuoteRequest = typeof quoteRequests.$inferSelect;
 export type Verification = typeof verifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type ReviewResponse = typeof reviewResponses.$inferSelect;
+export type ReviewReport = typeof reviewReports.$inferSelect;
 export type PlanUsage = typeof planUsage.$inferSelect;
 export type AdminAction = typeof adminActions.$inferSelect;
 export type PlatformConfig = typeof platformConfig.$inferSelect;
@@ -645,6 +719,8 @@ export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type InsertVerification = z.infer<typeof insertVerificationSchema>;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type InsertReviewResponse = z.infer<typeof insertReviewResponseSchema>;
+export type InsertReviewReport = z.infer<typeof insertReviewReportSchema>;
 export type InsertPlanUsage = z.infer<typeof insertPlanUsageSchema>;
 export type InsertAdminAction = z.infer<typeof insertAdminActionSchema>;
 export type InsertPlatformConfig = z.infer<typeof insertPlatformConfigSchema>;

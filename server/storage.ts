@@ -11,6 +11,8 @@ import {
   quoteRequests,
   verifications,
   reviews,
+  reviewResponses,
+  reviewReports,
   supplierDocuments,
   supplierBanners,
   planUsage,
@@ -42,6 +44,10 @@ import {
   type InsertVerification,
   type Review,
   type InsertReview,
+  type ReviewResponse,
+  type InsertReviewResponse,
+  type ReviewReport,
+  type InsertReviewReport,
   type SupplierDocument,
   type InsertSupplierDocument,
   type PlanUsage,
@@ -212,9 +218,28 @@ export interface IStorage {
   
   // Review operations
   createReview(review: InsertReview): Promise<Review>;
-  getReviewsBySupplierId(supplierId: string): Promise<Review[]>;
+  getReviewsBySupplierId(supplierId: string, filters?: {
+    sortBy?: 'recent' | 'rating_high' | 'rating_low';
+    limit?: number;
+    offset?: number;
+  }): Promise<Review[]>;
   updateSupplierRating(supplierId: string): Promise<void>;
   canUserReview(supplierId: string, userId?: string, email?: string): Promise<boolean>;
+  
+  // Review response operations
+  createReviewResponse(response: InsertReviewResponse): Promise<ReviewResponse>;
+  getReviewResponse(reviewId: string): Promise<ReviewResponse | undefined>;
+  updateReviewResponse(id: string, responseText: string): Promise<ReviewResponse>;
+  deleteReviewResponse(id: string): Promise<void>;
+  
+  // Review report operations
+  createReviewReport(report: InsertReviewReport): Promise<ReviewReport>;
+  getReviewReports(filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ReviewReport[]>;
+  updateReviewReportStatus(id: string, status: 'reviewed' | 'resolved' | 'dismissed', reviewedBy: string, reviewNotes?: string): Promise<ReviewReport>;
   
   // Plan usage operations
   createPlanUsage(usage: InsertPlanUsage): Promise<PlanUsage>;
@@ -893,12 +918,35 @@ export class DatabaseStorage implements IStorage {
     return newReview;
   }
 
-  async getReviewsBySupplierId(supplierId: string): Promise<Review[]> {
-    return await db
+  async getReviewsBySupplierId(supplierId: string, filters?: {
+    sortBy?: 'recent' | 'rating_high' | 'rating_low';
+    limit?: number;
+    offset?: number;
+  }): Promise<Review[]> {
+    let query = db
       .select()
       .from(reviews)
-      .where(eq(reviews.supplierId, supplierId))
-      .orderBy(desc(reviews.createdAt));
+      .where(eq(reviews.supplierId, supplierId));
+    
+    // Apply sorting
+    if (filters?.sortBy === 'rating_high') {
+      query = query.orderBy(desc(reviews.rating), desc(reviews.createdAt)) as any;
+    } else if (filters?.sortBy === 'rating_low') {
+      query = query.orderBy(asc(reviews.rating), desc(reviews.createdAt)) as any;
+    } else {
+      // Default: recent first
+      query = query.orderBy(desc(reviews.createdAt)) as any;
+    }
+    
+    // Apply pagination
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
   }
 
   async updateSupplierRating(supplierId: string): Promise<void> {
@@ -956,6 +1004,82 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     return existingReview.length === 0;
+  }
+
+  // Review response operations
+  async createReviewResponse(response: InsertReviewResponse): Promise<ReviewResponse> {
+    const [newResponse] = await db.insert(reviewResponses).values(response).returning();
+    return newResponse;
+  }
+
+  async getReviewResponse(reviewId: string): Promise<ReviewResponse | undefined> {
+    const [response] = await db
+      .select()
+      .from(reviewResponses)
+      .where(eq(reviewResponses.reviewId, reviewId))
+      .limit(1);
+    return response;
+  }
+
+  async updateReviewResponse(id: string, responseText: string): Promise<ReviewResponse> {
+    const [updated] = await db
+      .update(reviewResponses)
+      .set({ responseText, updatedAt: new Date() })
+      .where(eq(reviewResponses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteReviewResponse(id: string): Promise<void> {
+    await db.delete(reviewResponses).where(eq(reviewResponses.id, id));
+  }
+
+  // Review report operations
+  async createReviewReport(report: InsertReviewReport): Promise<ReviewReport> {
+    const [newReport] = await db.insert(reviewReports).values(report).returning();
+    return newReport;
+  }
+
+  async getReviewReports(filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ReviewReport[]> {
+    let query = db.select().from(reviewReports);
+
+    if (filters?.status && filters.status !== 'all') {
+      query = query.where(eq(reviewReports.status, filters.status as any)) as any;
+    }
+
+    query = query.orderBy(desc(reviewReports.createdAt)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+
+    return await query;
+  }
+
+  async updateReviewReportStatus(
+    id: string, 
+    status: 'reviewed' | 'resolved' | 'dismissed', 
+    reviewedBy: string, 
+    reviewNotes?: string
+  ): Promise<ReviewReport> {
+    const [updated] = await db
+      .update(reviewReports)
+      .set({ 
+        status, 
+        reviewedBy, 
+        reviewNotes,
+        resolvedAt: new Date() 
+      })
+      .where(eq(reviewReports.id, id))
+      .returning();
+    return updated;
   }
 
   // Additional subscription operations

@@ -2511,8 +2511,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/suppliers/:id/reviews', async (req, res) => {
     try {
       const { id } = req.params;
-      const reviews = await storage.getReviewsBySupplierId(id);
-      res.json(reviews);
+      const { sortBy, limit, offset } = req.query;
+      
+      const reviews = await storage.getReviewsBySupplierId(id, {
+        sortBy: sortBy as 'recent' | 'rating_high' | 'rating_low' | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+      
+      // Fetch responses for each review
+      const reviewsWithResponses = await Promise.all(
+        reviews.map(async (review) => {
+          const response = await storage.getReviewResponse(review.id);
+          return {
+            ...review,
+            response: response || null,
+          };
+        })
+      );
+      
+      res.json(reviewsWithResponses);
     } catch (error) {
       console.error("Error fetching reviews:", error);
       res.status(500).json({ message: "Failed to fetch reviews" });
@@ -2569,6 +2587,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating review:", error);
       res.status(500).json({ message: "Failed to create review" });
+    }
+  });
+
+  // Create review response (supplier only)
+  app.post('/api/reviews/:reviewId/response', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reviewId } = req.params;
+      const { responseText } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      // Get the review to verify supplier
+      const [review] = await db.select().from(reviews).where(eq(reviews.id, reviewId)).limit(1);
+      if (!review) {
+        return res.status(404).json({ message: "Reseña no encontrada" });
+      }
+
+      // Check if user owns this supplier
+      const supplier = await storage.getSupplier(review.supplierId);
+      if (!supplier || supplier.userId !== userId) {
+        return res.status(403).json({ message: "Solo el proveedor puede responder a sus reseñas" });
+      }
+
+      // Check if response already exists
+      const existingResponse = await storage.getReviewResponse(reviewId);
+      if (existingResponse) {
+        return res.status(400).json({ message: "Ya existe una respuesta para esta reseña" });
+      }
+
+      const response = await storage.createReviewResponse({
+        reviewId,
+        supplierId: supplier.id,
+        responseText,
+      });
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error creating review response:", error);
+      res.status(500).json({ message: "Failed to create response" });
+    }
+  });
+
+  // Update review response (supplier only)
+  app.put('/api/reviews/:reviewId/response', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reviewId } = req.params;
+      const { responseText } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const existingResponse = await storage.getReviewResponse(reviewId);
+      if (!existingResponse) {
+        return res.status(404).json({ message: "Respuesta no encontrada" });
+      }
+
+      // Verify ownership
+      const supplier = await storage.getSupplier(existingResponse.supplierId);
+      if (!supplier || supplier.userId !== userId) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      const updated = await storage.updateReviewResponse(existingResponse.id, responseText);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating review response:", error);
+      res.status(500).json({ message: "Failed to update response" });
+    }
+  });
+
+  // Delete review response (supplier only)
+  app.delete('/api/reviews/:reviewId/response', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reviewId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no autenticado" });
+      }
+
+      const existingResponse = await storage.getReviewResponse(reviewId);
+      if (!existingResponse) {
+        return res.status(404).json({ message: "Respuesta no encontrada" });
+      }
+
+      // Verify ownership
+      const supplier = await storage.getSupplier(existingResponse.supplierId);
+      if (!supplier || supplier.userId !== userId) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
+
+      await storage.deleteReviewResponse(existingResponse.id);
+      res.json({ message: "Respuesta eliminada exitosamente" });
+    } catch (error) {
+      console.error("Error deleting review response:", error);
+      res.status(500).json({ message: "Failed to delete response" });
+    }
+  });
+
+  // Report a review
+  app.post('/api/reviews/:id/report', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, description, reporterEmail } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId && !reporterEmail) {
+        return res.status(400).json({ message: "Email es requerido para usuarios no autenticados" });
+      }
+
+      const report = await storage.createReviewReport({
+        reviewId: id,
+        reportedBy: userId,
+        reporterEmail: reporterEmail || undefined,
+        reason,
+        description,
+        status: 'pending',
+      });
+
+      res.json(report);
+    } catch (error) {
+      console.error("Error reporting review:", error);
+      res.status(500).json({ message: "Failed to report review" });
+    }
+  });
+
+  // Get review reports (admin only)
+  app.get('/api/admin/review-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin', 'moderator'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, page, limit } = req.query;
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedLimit = limit ? parseInt(limit as string) : 20;
+      const parsedOffset = (parsedPage - 1) * parsedLimit;
+
+      const reports = await storage.getReviewReports({
+        status: status && status !== 'all' ? status as string : undefined,
+        limit: parsedLimit,
+        offset: parsedOffset,
+      });
+
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching review reports:", error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  // Update review report status (admin only)
+  app.patch('/api/admin/review-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin', 'moderator'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { status, reviewNotes } = req.body;
+
+      const updated = await storage.updateReviewReportStatus(id, status, user.id, reviewNotes);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating review report:", error);
+      res.status(500).json({ message: "Failed to update report" });
     }
   });
 
