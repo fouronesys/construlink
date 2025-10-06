@@ -309,7 +309,7 @@ function ImportSuppliersSection() {
     },
     onSuccess: (data) => {
       setImportResult(data);
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/suppliers?limit=10000'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/suppliers'] });
       
       const hasErrors = data.errors && data.errors.length > 0;
       
@@ -694,7 +694,14 @@ export default function AdminPanel() {
 
   // Fetch all suppliers
   const { data: allSuppliers = [] } = useQuery<Supplier[]>({
-    queryKey: ["/api/admin/suppliers?limit=10000"],
+    queryKey: ["/api/admin/suppliers"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/suppliers?limit=10000", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch suppliers");
+      return res.json();
+    },
     enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
@@ -885,7 +892,7 @@ export default function AdminPanel() {
         description: `El proveedor ha sido ${variables.action === 'approve' ? 'aprobado' : 'rechazado'} exitosamente.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers?limit=10000"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
       setShowApprovalModal(false);
       setSelectedSupplier(null);
@@ -915,7 +922,7 @@ export default function AdminPanel() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers?limit=10000"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       toast({
         title: "Éxito",
         description: `Suscripción ${variables.action === 'suspend' ? 'suspendida' : 'reactivada'} correctamente`,
@@ -940,7 +947,7 @@ export default function AdminPanel() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers?limit=10000"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers/featured"] });
       toast({
         title: "Éxito",
@@ -968,7 +975,7 @@ export default function AdminPanel() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/claims"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers?limit=10000"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       toast({
         title: variables.action === 'approve' ? "Reclamación Aprobada" : "Reclamación Rechazada",
         description: `La reclamación ha sido ${variables.action === 'approve' ? 'aprobada' : 'rechazada'} exitosamente.`,
@@ -1011,7 +1018,7 @@ export default function AdminPanel() {
       return { supplierId, data: await bannerResponse.json() };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers?limit=10000"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers/featured"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers", result.supplierId, "banners"] });
       toast({
@@ -1037,7 +1044,7 @@ export default function AdminPanel() {
       return { supplierId, data: await response.json() };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers?limit=10000"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers/featured"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers", result.supplierId, "banners"] });
       toast({
