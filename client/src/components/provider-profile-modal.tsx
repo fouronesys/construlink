@@ -24,11 +24,13 @@ import {
 import { useReviews } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
 import { ReviewForm } from "@/components/review-form";
+import { ReviewResponseForm } from "@/components/review-response-form";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface Provider {
   id: string;
+  userId?: string | null;
   legalName: string;
   rnc: string;
   specialties: string[];
@@ -60,8 +62,11 @@ export function ProviderProfileModal({
   const [canClaim, setCanClaim] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [respondingToReviewId, setRespondingToReviewId] = useState<string | null>(null);
   const { reviews, isLoading: reviewsLoading, refetch: refetchReviews } = useReviews(provider?.id);
   const { user, isAuthenticated } = useAuth();
+
+  const isProviderOwner = isAuthenticated && user?.id && provider?.userId === user.id;
 
   useEffect(() => {
     const checkClaimStatus = async () => {
@@ -315,18 +320,59 @@ export function ProviderProfileModal({
                           Verificada
                         </Badge>
                       )}
-                      {review.response && (
+                      {review.response && respondingToReviewId !== review.id && (
                         <div className="mt-4 pl-4 border-l-2 border-blue-200 bg-blue-50 p-3 rounded-r" data-testid={`review-response-${review.id}`}>
-                          <p className="font-medium text-sm text-blue-900 mb-1">
-                            Respuesta del proveedor
-                          </p>
-                          <p className="text-sm text-gray-700">
-                            {review.response.responseText}
-                          </p>
-                          <span className="text-xs text-gray-500 mt-2 block">
-                            {format(new Date(review.response.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
-                          </span>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm text-blue-900 mb-1">
+                                Respuesta del proveedor
+                              </p>
+                              <p className="text-sm text-gray-700">
+                                {review.response.responseText}
+                              </p>
+                              <span className="text-xs text-gray-500 mt-2 block">
+                                {format(new Date(review.response.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
+                              </span>
+                            </div>
+                            {isProviderOwner && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setRespondingToReviewId(review.id)}
+                                data-testid={`button-edit-response-${review.id}`}
+                                className="ml-2"
+                              >
+                                Editar
+                              </Button>
+                            )}
+                          </div>
                         </div>
+                      )}
+                      
+                      {isProviderOwner && !review.response && respondingToReviewId !== review.id && (
+                        <div className="mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRespondingToReviewId(review.id)}
+                            data-testid={`button-respond-${review.id}`}
+                          >
+                            Responder
+                          </Button>
+                        </div>
+                      )}
+
+                      {isProviderOwner && respondingToReviewId === review.id && (
+                        <ReviewResponseForm
+                          reviewId={review.id}
+                          supplierId={provider.id}
+                          existingResponse={review.response}
+                          onSuccess={() => {
+                            setRespondingToReviewId(null);
+                            refetchReviews();
+                          }}
+                          onCancel={() => setRespondingToReviewId(null)}
+                        />
                       )}
                     </CardContent>
                   </Card>
