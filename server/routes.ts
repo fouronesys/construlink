@@ -2507,13 +2507,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get reviews for supplier
+  app.get('/api/suppliers/:id/reviews', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const reviews = await storage.getReviewsBySupplierId(id);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  // Check if user can review
+  app.get('/api/suppliers/:id/can-review', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      const email = req.query.email as string;
+
+      const canReview = await storage.canUserReview(id, userId, email);
+      res.json({ canReview });
+    } catch (error) {
+      console.error("Error checking review eligibility:", error);
+      res.status(500).json({ message: "Failed to check review eligibility" });
+    }
+  });
+
   // Create review for supplier
   app.post('/api/suppliers/:id/reviews', async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      const { clientName, clientEmail, rating, comment } = req.body;
+
+      // Check if user can review
+      const canReview = await storage.canUserReview(id, userId, clientEmail);
+      if (!canReview) {
+        return res.status(400).json({ message: "Ya has dejado una reseña para este proveedor" });
+      }
+
+      // Check supplier not reviewing themselves
+      if (userId) {
+        const supplier = await storage.getSupplier(id);
+        if (supplier?.userId === userId) {
+          return res.status(400).json({ message: "No puedes dejar una reseña en tu propio negocio" });
+        }
+      }
+
       const reviewData = {
-        ...req.body,
         supplierId: id,
+        userId: userId || undefined,
+        clientName,
+        clientEmail,
+        rating,
+        comment,
       };
 
       const review = await storage.createReview(reviewData);
