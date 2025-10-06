@@ -43,32 +43,6 @@ interface ProviderProfileModalProps {
   onClaimBusiness?: (supplierId: string) => void;
 }
 
-const mockReviews = [
-  {
-    id: '1',
-    author: 'María González',
-    rating: 5,
-    comment: 'Excelente trabajo, muy profesionales y puntuales. Recomendado 100%.',
-    date: '2024-01-15',
-    project: 'Construcción de casa'
-  },
-  {
-    id: '2',
-    author: 'Carlos Rodríguez',
-    rating: 5,
-    comment: 'Trabajo de primera calidad, cumplieron con todos los plazos acordados.',
-    date: '2024-01-10',
-    project: 'Instalación eléctrica'
-  },
-  {
-    id: '3',
-    author: 'Ana Martínez',
-    rating: 4,
-    comment: 'Buenos profesionales, solo pequeños detalles en la comunicación.',
-    date: '2024-01-05',
-    project: 'Remodelación baño'
-  }
-];
 
 export function ProviderProfileModal({ 
   isOpen, 
@@ -205,32 +179,10 @@ export function ProviderProfileModal({
             </CardContent>
           </Card>
 
-          {/* Reviews */}
+          {/* Reviews - Temporalmente oculto hasta conectar con backend */}
           <div>
             <h3 className="font-semibold mb-4">Reseñas de Clientes</h3>
-            <div className="space-y-4">
-              {mockReviews.slice(0, 3).map((review) => (
-                <Card key={review.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">{review.author}</span>
-                          <div className="flex items-center">
-                            {renderStars(review.rating)}
-                          </div>
-                        </div>
-                        <span className="text-sm text-gray-500">{review.project}</span>
-                      </div>
-                      <span className="text-sm text-gray-500">
-                        {new Date(review.date).toLocaleDateString('es-DO')}
-                      </span>
-                    </div>
-                    <p className="text-gray-700">{review.comment}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <p className="text-gray-500 text-sm">Las reseñas se cargarán próximamente.</p>
           </div>
 
           {/* Action Buttons */}
