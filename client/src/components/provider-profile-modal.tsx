@@ -18,8 +18,14 @@ import {
   CheckCircle, 
   MessageSquare,
   Building2,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
+import { useReviews } from "@/hooks/useReviews";
+import { useAuth } from "@/hooks/useAuth";
+import { ReviewForm } from "@/components/review-form";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface Provider {
   id: string;
@@ -52,6 +58,10 @@ export function ProviderProfileModal({
   onClaimBusiness
 }: ProviderProfileModalProps) {
   const [canClaim, setCanClaim] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const { reviews, isLoading: reviewsLoading, refetch: refetchReviews } = useReviews(provider?.id);
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const checkClaimStatus = async () => {
@@ -71,6 +81,36 @@ export function ProviderProfileModal({
       checkClaimStatus();
     }
   }, [provider?.id, onClaimBusiness]);
+
+  useEffect(() => {
+    const checkReviewEligibility = async () => {
+      if (!provider?.id) return;
+      
+      // For authenticated users, check if they can review
+      if (isAuthenticated && user?.id) {
+        try {
+          const response = await fetch(`/api/suppliers/${provider.id}/can-review`);
+          if (!response.ok) {
+            setCanReview(true);
+            return;
+          }
+          const data = await response.json();
+          setCanReview(data.canReview);
+        } catch (error) {
+          console.error("Error checking review eligibility:", error);
+          setCanReview(true);
+        }
+      } else {
+        // For unauthenticated users, always allow them to try
+        // Duplicate checks will be performed on submission
+        setCanReview(true);
+      }
+    };
+
+    if (provider?.id) {
+      checkReviewEligibility();
+    }
+  }, [provider?.id, user?.id, isAuthenticated]);
 
   if (!provider) return null;
 
@@ -179,10 +219,107 @@ export function ProviderProfileModal({
             </CardContent>
           </Card>
 
-          {/* Reviews - Temporalmente oculto hasta conectar con backend */}
+          {/* Reviews */}
           <div>
-            <h3 className="font-semibold mb-4">Reseñas de Clientes</h3>
-            <p className="text-gray-500 text-sm">Las reseñas se cargarán próximamente.</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Reseñas de Clientes</h3>
+              {canReview && !showReviewForm && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowReviewForm(true)}
+                  data-testid="button-write-review"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  Escribir Reseña
+                </Button>
+              )}
+            </div>
+
+            {/* Review Form */}
+            {showReviewForm && canReview && (
+              <Card className="mb-4">
+                <CardHeader>
+                  <CardTitle className="text-lg">Deja tu Reseña</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ReviewForm
+                    supplierId={provider.id}
+                    isAuthenticated={isAuthenticated}
+                    userName={isAuthenticated ? `${user?.firstName} ${user?.lastName}` : ''}
+                    userEmail={user?.email || ''}
+                    onSuccess={() => {
+                      setShowReviewForm(false);
+                      setCanReview(false);
+                      refetchReviews();
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowReviewForm(false)}
+                    className="mt-2"
+                    data-testid="button-cancel-review"
+                  >
+                    Cancelar
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {!canReview && !showReviewForm && (
+              <p className="text-gray-500 text-sm mb-4">Ya has dejado una reseña para este proveedor.</p>
+            )}
+            
+            {reviewsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : reviews.length === 0 ? (
+              <p className="text-gray-500 text-sm py-4">Aún no hay reseñas para este proveedor. ¡Sé el primero en dejar una!</p>
+            ) : (
+              <div className="space-y-4" data-testid="reviews-list">
+                {reviews.map((review) => (
+                  <Card key={review.id} data-testid={`review-${review.id}`}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-medium" data-testid={`review-author-${review.id}`}>
+                            {review.clientName}
+                          </p>
+                          <div className="flex items-center mt-1">
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < parseFloat(review.rating)
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500" data-testid={`review-date-${review.id}`}>
+                          {format(new Date(review.createdAt), "d 'de' MMMM, yyyy", { locale: es })}
+                        </span>
+                      </div>
+                      {review.comment && (
+                        <p className="text-gray-700 text-sm mt-2" data-testid={`review-comment-${review.id}`}>
+                          {review.comment}
+                        </p>
+                      )}
+                      {review.isVerified && (
+                        <Badge variant="secondary" className="mt-2">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Verificada
+                        </Badge>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
