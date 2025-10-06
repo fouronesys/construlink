@@ -68,6 +68,24 @@ export const hasRole = (roles: string[]) => {
     }
 
     try {
+      // Check if it's an environment-based admin user first
+      const envAdmin = ENV_ADMINS.find(admin => admin.id === req.session.userId);
+      if (envAdmin) {
+        if (!roles.includes(envAdmin.role)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        req.user = {
+          id: envAdmin.id,
+          email: envAdmin.email,
+          firstName: envAdmin.firstName,
+          lastName: envAdmin.lastName,
+          role: envAdmin.role,
+          isActive: true
+        };
+        return next();
+      }
+
+      // Check database users
       const user = await db.select().from(users).where(eq(users.id, req.session.userId!)).limit(1);
       
       if (!user.length || !roles.includes(user[0].role || '')) {

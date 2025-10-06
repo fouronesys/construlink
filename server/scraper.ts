@@ -71,6 +71,7 @@ export async function scrapeBusinesses(
     try {
       const url = `https://paginasamarillas.com.do/en/business/search/${city}/c/${category}?p=${page}`;
       console.log(`Scraping page ${page} of ${category} in ${city}...`);
+      console.log(`URL: ${url}`);
       
       const response = await axios.get(url, {
         headers: {
@@ -80,6 +81,17 @@ export async function scrapeBusinesses(
       });
 
       const $ = cheerio.load(response.data);
+      
+      const articleCount = $('article').length;
+      console.log(`Found ${articleCount} article elements on page ${page}`);
+      
+      if (articleCount === 0 && page === 1) {
+        console.warn(`⚠️ No articles found on first page. The website structure may have changed.`);
+        console.log(`Response status: ${response.status}`);
+        console.log(`Response content length: ${response.data.length}`);
+      }
+      
+      let foundOnThisPage = 0;
       
       $('article').each((_, element) => {
         const $article = $(element);
@@ -133,16 +145,32 @@ export async function scrapeBusinesses(
         };
         
         businesses.push(business);
+        foundOnThisPage++;
       });
+      
+      console.log(`Extracted ${foundOnThisPage} businesses from page ${page}`);
+      
+      if (foundOnThisPage === 0 && page > 1) {
+        console.log(`No more results found, stopping pagination.`);
+        break;
+      }
       
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
       
     } catch (error) {
       console.error(`Error scraping page ${page} of ${category} in ${city}:`, error);
+      if (error instanceof Error) {
+        console.error(`Error message: ${error.message}`);
+        if (axios.isAxiosError(error)) {
+          console.error(`Status: ${error.response?.status}`);
+          console.error(`Status text: ${error.response?.statusText}`);
+        }
+      }
       break;
     }
   }
   
+  console.log(`Total businesses found for ${category} in ${city}: ${businesses.length}`);
   return businesses;
 }
 
