@@ -45,6 +45,7 @@ import {
   Receipt,
   RefreshCw,
   Building2,
+  Flag,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
@@ -247,6 +248,31 @@ interface SupplierClaim {
   userName?: string;
 }
 
+interface ReviewReport {
+  id: string;
+  reviewId: string;
+  reportedBy?: string | null;
+  reporterEmail?: string | null;
+  reason: 'spam' | 'inappropriate' | 'offensive' | 'fake' | 'other';
+  description?: string | null;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  reviewedBy?: string | null;
+  reviewNotes?: string | null;
+  createdAt: string;
+  resolvedAt?: string | null;
+  review?: {
+    id: string;
+    supplierId: string;
+    clientName: string;
+    clientEmail: string;
+    rating: string;
+    comment?: string | null;
+    supplier?: {
+      legalName: string;
+    };
+  };
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -325,6 +351,18 @@ export default function AdminPanel() {
   useEffect(() => {
     setSubscriptionPage(1);
   }, [subscriptionSearch, subscriptionStatusFilter, subscriptionPlanFilter, subscriptionLimit]);
+
+  // Review reports filters and states
+  const [reportStatusFilter, setReportStatusFilter] = useState("pending");
+  const [reportPage, setReportPage] = useState(1);
+  const [reportLimit, setReportLimit] = useState(10);
+  const [selectedReport, setSelectedReport] = useState<ReviewReport | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportNotes, setReportNotes] = useState("");
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [reportStatusFilter, reportLimit]);
 
   // Plan configuration states
   const [basicPrice, setBasicPrice] = useState(1000);
@@ -474,6 +512,23 @@ export default function AdminPanel() {
 
   // Get pending claims count
   const pendingClaimsCount = supplierClaims.filter(claim => claim.status === 'pending').length;
+
+  // Fetch review reports
+  const { data: reviewReportsData, isLoading: reportsLoading } = useQuery<{ reports: ReviewReport[]; total: number }>({
+    queryKey: ['/api/reviews/reports', { status: reportStatusFilter, page: reportPage, limit: reportLimit }],
+    enabled: !!user && ['admin', 'superadmin', 'moderator'].includes(user.role),
+    retry: false,
+  });
+
+  const reviewReports = reviewReportsData?.reports || [];
+  
+  // Fetch all pending reports for accurate count
+  const { data: pendingReportsData } = useQuery<{ reports: ReviewReport[] }>({
+    queryKey: ['/api/reviews/reports', { status: 'pending', page: 1, limit: 1000 }],
+    enabled: !!user && ['admin', 'superadmin', 'moderator'].includes(user.role),
+    retry: false,
+  });
+  const pendingReportsCount = pendingReportsData?.reports?.length || 0;
 
   // Fetch platform configurations (superadmin only)
   const { data: platformConfigs = [] } = useQuery<PlatformConfig[]>({
@@ -1170,6 +1225,35 @@ export default function AdminPanel() {
     }
   };
 
+  // Update review report status mutation
+  const updateReportMutation = useMutation({
+    mutationFn: async ({ reportId, status, notes }: { reportId: string; status: string; notes?: string }) => {
+      return await apiRequest("PATCH", `/api/admin/review-reports/${reportId}`, { status, reviewNotes: notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === '/api/reviews/reports';
+        }
+      });
+      toast({
+        title: "Reporte actualizado",
+        description: "El estado del reporte ha sido actualizado correctamente.",
+      });
+      setShowReportModal(false);
+      setSelectedReport(null);
+      setReportNotes("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el reporte",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleManageBanner = (supplier: Supplier) => {
     setSelectedBannerSupplier(supplier);
     setShowBannerModal(true);
@@ -1353,6 +1437,15 @@ export default function AdminPanel() {
               <TabsTrigger value="invoices" data-testid="tab-invoices" className="text-xs sm:text-sm whitespace-nowrap">
                 <Receipt className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                 Facturas
+              </TabsTrigger>
+              <TabsTrigger value="moderation" data-testid="tab-moderation" className="text-xs sm:text-sm whitespace-nowrap">
+                <Flag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Moderación
+                {pendingReportsCount > 0 && (
+                  <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
+                    {pendingReportsCount}
+                  </Badge>
+                )}
               </TabsTrigger>
               {user?.role === 'superadmin' && (
                 <>
@@ -3491,8 +3584,371 @@ export default function AdminPanel() {
               </Card>
             </TabsContent>
           )}
+
+          {/* Moderation Tab */}
+          <TabsContent value="moderation" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Flag className="w-5 h-5 mr-2" />
+                  Moderación de Reseñas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <Label htmlFor="report-status-filter">Filtrar por Estado</Label>
+                      <select
+                        id="report-status-filter"
+                        value={reportStatusFilter}
+                        onChange={(e) => setReportStatusFilter(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                        data-testid="select-report-status"
+                      >
+                        <option value="pending">Pendientes</option>
+                        <option value="reviewed">Revisados</option>
+                        <option value="resolved">Resueltos</option>
+                        <option value="dismissed">Rechazados</option>
+                        <option value="all">Todos</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <Badge variant="outline" className="text-sm">
+                        Total: {reviewReports.length}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {reportsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                    </div>
+                  ) : reviewReports.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Flag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">No hay reportes de reseñas</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Reseña</TableHead>
+                            <TableHead>Razón</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {reviewReports.map((report) => (
+                            <TableRow key={report.id} data-testid={`report-row-${report.id}`}>
+                              <TableCell className="font-mono text-xs">
+                                {report.id.slice(0, 8)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <p className="font-medium text-sm">
+                                    {report.review?.supplier?.legalName || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Cliente: {report.review?.clientName || 'N/A'}
+                                  </p>
+                                  <div className="flex items-center gap-1">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-3 h-3 ${
+                                          i < Number(report.review?.rating || 0)
+                                            ? 'fill-yellow-400 text-yellow-400'
+                                            : 'text-gray-300'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {report.reason === 'spam' && 'Spam'}
+                                  {report.reason === 'inappropriate' && 'Inapropiado'}
+                                  {report.reason === 'offensive' && 'Ofensivo'}
+                                  {report.reason === 'fake' && 'Falso'}
+                                  {report.reason === 'other' && 'Otro'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={
+                                    report.status === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : report.status === 'reviewed'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : report.status === 'resolved'
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }
+                                >
+                                  {report.status === 'pending' && 'Pendiente'}
+                                  {report.status === 'reviewed' && 'Revisado'}
+                                  {report.status === 'resolved' && 'Resuelto'}
+                                  {report.status === 'dismissed' && 'Rechazado'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {new Date(report.createdAt).toLocaleDateString('es-DO')}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  {report.status === 'pending' && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedReport(report);
+                                          setShowReportModal(true);
+                                        }}
+                                        data-testid={`button-review-report-${report.id}`}
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-green-600 hover:text-green-700"
+                                        onClick={() => {
+                                          if (confirm('¿Resolver este reporte?')) {
+                                            updateReportMutation.mutate({
+                                              reportId: report.id,
+                                              status: 'resolved',
+                                            });
+                                          }
+                                        }}
+                                        data-testid={`button-resolve-report-${report.id}`}
+                                      >
+                                        <CheckCircle className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-red-600 hover:text-red-700"
+                                        onClick={() => {
+                                          if (confirm('¿Rechazar este reporte?')) {
+                                            updateReportMutation.mutate({
+                                              reportId: report.id,
+                                              status: 'dismissed',
+                                            });
+                                          }
+                                        }}
+                                        data-testid={`button-dismiss-report-${report.id}`}
+                                      >
+                                        <XCircle className="w-3 h-3" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {report.status !== 'pending' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedReport(report);
+                                        setShowReportModal(true);
+                                      }}
+                                      data-testid={`button-view-report-${report.id}`}
+                                    >
+                                      <Eye className="w-3 h-3 mr-1" />
+                                      Ver
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Report Review Modal */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">
+              Detalle del Reporte de Reseña
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedReport && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-3 sm:p-4 bg-gray-50">
+                <h4 className="font-medium mb-3 text-sm sm:text-base">Información del Reporte</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
+                  <div>
+                    <span className="text-gray-600 font-medium">ID:</span>{' '}
+                    <span className="font-mono">{selectedReport.id.slice(0, 8)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 font-medium">Estado:</span>{' '}
+                    <Badge
+                      className={
+                        selectedReport.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : selectedReport.status === 'reviewed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : selectedReport.status === 'resolved'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }
+                    >
+                      {selectedReport.status === 'pending' && 'Pendiente'}
+                      {selectedReport.status === 'reviewed' && 'Revisado'}
+                      {selectedReport.status === 'resolved' && 'Resuelto'}
+                      {selectedReport.status === 'dismissed' && 'Rechazado'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 font-medium">Razón:</span>{' '}
+                    {selectedReport.reason === 'spam' && 'Spam'}
+                    {selectedReport.reason === 'inappropriate' && 'Inapropiado'}
+                    {selectedReport.reason === 'offensive' && 'Ofensivo'}
+                    {selectedReport.reason === 'fake' && 'Falso'}
+                    {selectedReport.reason === 'other' && 'Otro'}
+                  </div>
+                  <div>
+                    <span className="text-gray-600 font-medium">Fecha:</span>{' '}
+                    {new Date(selectedReport.createdAt).toLocaleDateString('es-DO')}
+                  </div>
+                </div>
+                {selectedReport.description && (
+                  <div className="mt-3">
+                    <span className="text-gray-600 font-medium">Descripción:</span>
+                    <p className="text-sm mt-1">{selectedReport.description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border rounded-lg p-3 sm:p-4 bg-blue-50">
+                <h4 className="font-medium mb-3 text-sm sm:text-base">Reseña Reportada</h4>
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <div>
+                    <span className="text-gray-600 font-medium">Proveedor:</span>{' '}
+                    {selectedReport.review?.supplier?.legalName || 'N/A'}
+                  </div>
+                  <div>
+                    <span className="text-gray-600 font-medium">Cliente:</span>{' '}
+                    {selectedReport.review?.clientName || 'N/A'}
+                  </div>
+                  <div>
+                    <span className="text-gray-600 font-medium">Email:</span>{' '}
+                    {selectedReport.review?.clientEmail || 'N/A'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 font-medium">Rating:</span>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < Number(selectedReport.review?.rating || 0)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {selectedReport.review?.comment && (
+                    <div>
+                      <span className="text-gray-600 font-medium">Comentario:</span>
+                      <p className="mt-1 p-2 bg-white rounded border">
+                        {selectedReport.review.comment}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedReport.status === 'pending' && (
+                <div>
+                  <Label htmlFor="report-notes">Notas de Revisión (Opcional)</Label>
+                  <Textarea
+                    id="report-notes"
+                    value={reportNotes}
+                    onChange={(e) => setReportNotes(e.target.value)}
+                    placeholder="Agregar notas sobre la revisión..."
+                    rows={3}
+                    data-testid="textarea-report-notes"
+                  />
+                </div>
+              )}
+
+              {selectedReport.reviewNotes && (
+                <div className="border rounded-lg p-3 sm:p-4 bg-gray-50">
+                  <h4 className="font-medium mb-2 text-sm sm:text-base">Notas de Revisión</h4>
+                  <p className="text-sm">{selectedReport.reviewNotes}</p>
+                </div>
+              )}
+
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setSelectedReport(null);
+                    setReportNotes("");
+                  }}
+                  data-testid="button-cancel-report"
+                  className="w-full sm:w-auto"
+                >
+                  {selectedReport.status === 'pending' ? 'Cancelar' : 'Cerrar'}
+                </Button>
+                {selectedReport.status === 'pending' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto text-red-600 hover:text-red-700"
+                      onClick={() => {
+                        updateReportMutation.mutate({
+                          reportId: selectedReport.id,
+                          status: 'dismissed',
+                          notes: reportNotes,
+                        });
+                      }}
+                      disabled={updateReportMutation.isPending}
+                      data-testid="button-confirm-dismiss-report"
+                    >
+                      {updateReportMutation.isPending ? 'Procesando...' : 'Rechazar'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        updateReportMutation.mutate({
+                          reportId: selectedReport.id,
+                          status: 'resolved',
+                          notes: reportNotes,
+                        });
+                      }}
+                      disabled={updateReportMutation.isPending}
+                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                      data-testid="button-confirm-resolve-report"
+                    >
+                      {updateReportMutation.isPending ? 'Procesando...' : 'Resolver'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Approval Modal */}
       <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
