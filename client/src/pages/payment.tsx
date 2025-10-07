@@ -132,16 +132,15 @@ export default function Payment() {
     
     setLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/payments/process-verifone", {
+      const response = await apiRequest("POST", "/api/process-verifone-payment", {
         subscriptionId,
-        planId,
-        amount: plan.price,
         paymentMethod: {
           cardNumber: paymentData.cardNumber.replace(/\s/g, ''),
           expiryDate: paymentData.expiryDate,
           cvv: paymentData.cvv,
-          cardholderName: paymentData.cardholderName,
-        }
+          cardName: paymentData.cardholderName,
+        },
+        amount: plan.price
       });
 
       const result = await response.json();

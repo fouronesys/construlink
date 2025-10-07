@@ -351,7 +351,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId!;
-      const { plan = 'basic' } = req.body;
+      // Support both old format (plan) and new format (planId, planName, monthlyAmount)
+      const { plan, planId, planName, monthlyAmount } = req.body;
+      const selectedPlan = planId || plan || 'basic';
       
       const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       const supplier = await db.select().from(suppliers).where(eq(suppliers.userId, userId)).limit(1);
@@ -366,18 +368,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(subscriptions.supplierId, supplier[0].id),
           inArray(subscriptions.status, ['active', 'trialing'])
         )).limit(1);
+      
+      // Plan pricing
+      const planPricing: Record<string, number> = {
+        basic: 1000,
+        professional: 2500,
+        enterprise: 5000
+      };
+
+      const amount = monthlyAmount || planPricing[selectedPlan] || 1000;
+      
       if (existingSubscription.length > 0) {
         // Update existing subscription plan instead of blocking
-        const planPricing: Record<string, number> = {
-          basic: 1000,
-          professional: 2500,
-          enterprise: 5000
-        };
-        const amount = planPricing[plan] || 1000;
-        
-        // Update existing subscription
         await db.update(subscriptions).set({ 
-          plan: plan as 'basic' | 'professional' | 'enterprise',
+          plan: selectedPlan as 'basic' | 'professional' | 'enterprise',
           monthlyAmount: amount.toString(),
           status: 'inactive'
         }).where(eq(subscriptions.id, existingSubscription[0].id));
@@ -388,23 +392,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             subscriptionId: existingSubscription[0].verifoneSubscriptionId,
             amount,
             currency: 'DOP',
-            plan,
-            description: `Actualización a Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+            plan: selectedPlan,
+            description: `Actualización a Plan ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}`,
           },
           amount,
-          plan,
+          plan: selectedPlan,
           message: "Subscription updated successfully"
         });
       }
-
-      // Plan pricing and trial days
-      const planPricing: Record<string, number> = {
-        basic: 1000,
-        professional: 2500,
-        enterprise: 5000
-      };
-
-      const amount = planPricing[plan] || 1000;
 
       // Generate unique Verifone subscription ID
       const verifoneSubscriptionId = `vf_sub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -420,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPeriodStart: currentPeriodStart,
         currentPeriodEnd: currentPeriodEnd,
         status: 'inactive',
-        plan: plan as 'basic' | 'professional' | 'enterprise',
+        plan: selectedPlan as 'basic' | 'professional' | 'enterprise',
         monthlyAmount: amount.toString()
       });
 
@@ -429,8 +424,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionId: verifoneSubscriptionId,
         amount,
         currency: 'DOP',
-        plan,
-        description: `Suscripción mensual - Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+        plan: selectedPlan,
+        description: `Suscripción mensual - Plan ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}`,
         redirectUrl: `${req.protocol}://${req.get('host')}/supplier-dashboard?payment=success`,
         cancelUrl: `${req.protocol}://${req.get('host')}/register?payment=cancelled`
       };
@@ -439,61 +434,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionId: verifoneSubscriptionId,
         paymentSession: paymentSession,
         amount,
-        plan,
+        plan: selectedPlan,
         message: "Subscription created successfully"
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
       res.status(500).json({ message: "Failed to create subscription" });
-    }
-  });
-
-  // Process Verifone payment
-  app.post('/api/process-verifone-payment', isAuthenticated, async (req: any, res) => {
-    try {
-      const { subscriptionId, paymentMethod, amount } = req.body;
-      
-      // Basic card validation
-      const cardNumber = paymentMethod.cardNumber.replace(/\s/g, '');
-      const isValidCard = validateCreditCard(cardNumber, paymentMethod.expiryDate, paymentMethod.cvv);
-      
-      if (!isValidCard.valid) {
-        return res.status(400).json({
-          success: false,
-          error: 'INVALID_CARD',
-          message: isValidCard.message
-        });
-      }
-      
-      // Process payment with real Verifone API
-      const paymentResult = await processVerifonePayment(paymentMethod, amount, subscriptionId);
-      
-      if (paymentResult.success) {
-        // Update subscription status
-        const subscription = await storage.getSubscriptionByVerifoneId(subscriptionId);
-        if (subscription) {
-          await storage.updateSubscription(subscription.id, { status: 'active' });
-        }
-        
-        res.json({
-          success: true,
-          transactionId: paymentResult.transactionId,
-          message: 'Payment processed successfully'
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: (paymentResult as any).error,
-          message: (paymentResult as any).message
-        });
-      }
-    } catch (error) {
-      console.error("Payment processing error:", error);
-      res.status(500).json({ 
-        success: false,
-        error: 'SYSTEM_ERROR',
-        message: "Error interno del sistema. Inténtalo de nuevo." 
-      });
     }
   });
 
