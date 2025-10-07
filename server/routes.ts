@@ -3508,6 +3508,292 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get empty categories (categories with few or no suppliers)
+  app.get("/api/admin/empty-categories", isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      // Map of scraped categories to specialty names
+      const categoryMap: Record<string, string> = {
+        'constructoras': 'Construcción',
+        'restaurantes': 'Restaurante',
+        'supermercados': 'Supermercado',
+        'farmacias': 'Farmacia',
+        'ferreterias': 'Ferretería',
+        'tecnologia': 'Tecnología',
+        'computadoras': 'Tecnología',
+        'transporte': 'Transporte',
+        'mensajeria': 'Transporte',
+        'clinicas': 'Salud',
+        'laboratorios': 'Salud',
+        'dentistas': 'Salud',
+        'hoteles': 'Hotelería',
+        'abogados': 'Legal',
+        'contadores': 'Contabilidad',
+        'seguros': 'Seguros',
+        'limpieza': 'Limpieza',
+        'publicidad': 'Diseño',
+        'imprentas': 'Diseño',
+        'seguridad': 'Seguridad',
+        'plomeria': 'Mantenimiento',
+        'electricidad': 'Mantenimiento',
+        'pintura': 'Mantenimiento',
+        'carpinteria': 'Mantenimiento',
+        'talleres-mecanicos': 'Automotriz',
+        'mueblerias': 'Muebles',
+        'electrodomesticos': 'Equipos',
+        'bancos': 'Servicios Financieros',
+        'agencias-de-viajes': 'Turismo',
+        'jardineria': 'Jardinería'
+      };
+
+      // Get count of suppliers per specialty
+      const specialtyCounts = await db
+        .select({
+          specialty: supplierSpecialties.specialty,
+        })
+        .from(supplierSpecialties)
+        .groupBy(supplierSpecialties.specialty);
+
+      const specialtyCountMap = new Map<string, number>();
+      for (const row of specialtyCounts) {
+        specialtyCountMap.set(row.specialty, (specialtyCountMap.get(row.specialty) || 0) + 1);
+      }
+
+      // Find empty or low-count categories
+      const emptyCategories: { category: string; specialty: string; count: number }[] = [];
+      const threshold = parseInt(req.query.threshold as string) || 10; // Default threshold of 10 suppliers
+
+      for (const [category, specialty] of Object.entries(categoryMap)) {
+        const count = specialtyCountMap.get(specialty) || 0;
+        if (count < threshold) {
+          emptyCategories.push({ category, specialty, count });
+        }
+      }
+
+      res.json({
+        emptyCategories,
+        threshold,
+        total: emptyCategories.length
+      });
+    } catch (error) {
+      console.error('Error getting empty categories:', error);
+      res.status(500).json({ error: 'Error al obtener categorías vacías' });
+    }
+  });
+
+  // Scrape suppliers for empty categories
+  app.post("/api/admin/scrape-empty-categories", isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      const { threshold = 10, maxPages = 3, cities } = req.body;
+
+      // Map of scraped categories to specialty names
+      const categoryMap: Record<string, string> = {
+        'constructoras': 'Construcción',
+        'restaurantes': 'Restaurante',
+        'supermercados': 'Supermercado',
+        'farmacias': 'Farmacia',
+        'ferreterias': 'Ferretería',
+        'tecnologia': 'Tecnología',
+        'computadoras': 'Tecnología',
+        'transporte': 'Transporte',
+        'mensajeria': 'Transporte',
+        'clinicas': 'Salud',
+        'laboratorios': 'Salud',
+        'dentistas': 'Salud',
+        'hoteles': 'Hotelería',
+        'abogados': 'Legal',
+        'contadores': 'Contabilidad',
+        'seguros': 'Seguros',
+        'limpieza': 'Limpieza',
+        'publicidad': 'Diseño',
+        'imprentas': 'Diseño',
+        'seguridad': 'Seguridad',
+        'plomeria': 'Mantenimiento',
+        'electricidad': 'Mantenimiento',
+        'pintura': 'Mantenimiento',
+        'carpinteria': 'Mantenimiento',
+        'talleres-mecanicos': 'Automotriz',
+        'mueblerias': 'Muebles',
+        'electrodomesticos': 'Equipos',
+        'bancos': 'Servicios Financieros',
+        'agencias-de-viajes': 'Turismo',
+        'jardineria': 'Jardinería'
+      };
+
+      // Get count of suppliers per specialty
+      const specialtyCounts = await db
+        .select({
+          specialty: supplierSpecialties.specialty,
+        })
+        .from(supplierSpecialties)
+        .groupBy(supplierSpecialties.specialty);
+
+      const specialtyCountMap = new Map<string, number>();
+      for (const row of specialtyCounts) {
+        specialtyCountMap.set(row.specialty, (specialtyCountMap.get(row.specialty) || 0) + 1);
+      }
+
+      // Find empty categories to scrape
+      const categoriesToScrape: string[] = [];
+      for (const [category, specialty] of Object.entries(categoryMap)) {
+        const count = specialtyCountMap.get(specialty) || 0;
+        if (count < threshold) {
+          categoriesToScrape.push(category);
+        }
+      }
+
+      if (categoriesToScrape.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No hay categorías vacías para scrapear',
+          imported: 0,
+          total: 0
+        });
+      }
+
+      console.log(`Scraping empty categories: ${categoriesToScrape.join(', ')}`);
+
+      // Use existing scraping logic
+      const { scrapeBusinesses, areBusinessNamesSimilar, inferSpecialties } = await import('./scraper');
+      const citiesToScrape = cities || ['santo-domingo', 'santiago'];
+      const businesses: any[] = [];
+
+      for (const category of categoriesToScrape) {
+        for (const city of citiesToScrape) {
+          console.log(`Scraping ${category} in ${city}...`);
+          const scraped = await scrapeBusinesses(category, city, maxPages);
+          console.log(`Found ${scraped.length} businesses for ${category} in ${city}`);
+          businesses.push(...scraped);
+        }
+      }
+
+      console.log(`Total businesses scraped: ${businesses.length}`);
+
+      if (businesses.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No se encontraron negocios para importar',
+          imported: 0,
+          total: 0,
+        });
+      }
+
+      // Remove duplicates within the scraped batch
+      const uniqueBusinesses: any[] = [];
+      const seenNames: string[] = [];
+
+      for (const business of businesses) {
+        let isDuplicate = false;
+
+        for (const seenName of seenNames) {
+          if (areBusinessNamesSimilar(business.name, seenName)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+
+        if (!isDuplicate) {
+          uniqueBusinesses.push(business);
+          seenNames.push(business.name);
+        }
+      }
+
+      const importedSuppliers = [];
+      const skippedDuplicates: string[] = [];
+      const errors: string[] = [];
+
+      // Get all existing suppliers to check for duplicates
+      const existingSuppliers = await db.query.suppliers.findMany({
+        columns: {
+          id: true,
+          legalName: true,
+        },
+      });
+
+      for (const business of uniqueBusinesses) {
+        // Check if similar business already exists in database
+        let isDuplicate = false;
+        for (const existing of existingSuppliers) {
+          if (areBusinessNamesSimilar(business.name, existing.legalName)) {
+            isDuplicate = true;
+            skippedDuplicates.push(`${business.name} (similar a ${existing.legalName})`);
+            break;
+          }
+        }
+
+        if (isDuplicate) continue;
+
+        const generatedRnc = `SCR-${business.name.substring(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+        const generatedEmail = business.email || 
+          `${business.name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}@scrapeado.fouroneplatform.do`;
+
+        const supplierData = {
+          legalName: business.name,
+          rnc: generatedRnc,
+          phone: business.phone || 'No disponible',
+          email: generatedEmail,
+          status: 'approved' as const,
+          location: business.address || `${business.city}, República Dominicana`,
+          description: business.description || `Proveedor de ${business.category} en ${business.city}`,
+          website: business.website,
+          addedByAdmin: true,
+          isClaimed: false,
+          approvalDate: new Date(),
+        };
+
+        try {
+          const [newSupplier] = await db.insert(suppliers).values(supplierData).returning();
+
+          // Infer and add specialties
+          const specialties = inferSpecialties(business.name, business.description, business.category);
+
+          if (specialties.length > 0) {
+            const specialtyValues = specialties.map(specialty => ({
+              supplierId: newSupplier.id,
+              specialty,
+            }));
+
+            await db.insert(supplierSpecialties).values(specialtyValues);
+            console.log(`✓ Imported: ${business.name} with specialties: ${specialties.join(', ')}`);
+          } else {
+            console.log(`✓ Imported: ${business.name} (no specialties detected)`);
+          }
+
+          importedSuppliers.push(newSupplier);
+
+        } catch (error) {
+          const errorMsg = `Error importing ${business.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+        }
+      }
+
+      const message = importedSuppliers.length > 0
+        ? `Se importaron ${importedSuppliers.length} proveedores en categorías vacías (${skippedDuplicates.length} duplicados omitidos)`
+        : `No se importaron proveedores (${skippedDuplicates.length} duplicados omitidos)`;
+
+      res.json({
+        success: true,
+        message,
+        imported: importedSuppliers.length,
+        total: businesses.length,
+        duplicatesSkipped: skippedDuplicates.length,
+        categoriesScraped: categoriesToScrape,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error during scraping empty categories:', errorMessage);
+
+      res.status(500).json({ 
+        success: false,
+        error: 'Error al scrapear categorías vacías',
+        details: errorMessage
+      });
+    }
+  });
+
   // Create HTTP server
   const server = createServer(app);
 
