@@ -1400,14 +1400,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete supplier (cascade will delete related records)
       await storage.deleteSupplier(id);
 
-      // Log admin action
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'delete',
-        entityType: 'supplier',
-        entityId: id,
-        details: { supplierName: supplier.legalName, action: 'deleted' },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'delete',
+          entityType: 'supplier',
+          entityId: id,
+          details: { supplierName: supplier.legalName, action: 'deleted' },
+        });
+      }
 
       res.json({ 
         success: true, 
@@ -1989,14 +1992,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const oldRole = currentUser.role;
       const updatedUser = await storage.updateUserRole(id, role);
       
-      // Log the action with accurate before/after details
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_user_role',
-        entityType: 'user',
-        entityId: id,
-        details: { oldRole, newRole: role },
-      });
+      // Log the action with accurate before/after details (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_user_role',
+          entityType: 'user',
+          entityId: id,
+          details: { oldRole, newRole: role },
+        });
+      }
 
       res.json(updatedUser);
     } catch (error) {
@@ -2036,14 +2042,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const oldStatus = currentUser.isActive;
       const updatedUser = await storage.updateUserStatus(id, isActive);
       
-      // Log the action with accurate before/after details
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_user_status',
-        entityType: 'user',
-        entityId: id,
-        details: { oldStatus, newStatus: isActive },
-      });
+      // Log the action with accurate before/after details (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_user_status',
+          entityType: 'user',
+          entityId: id,
+          details: { oldStatus, newStatus: isActive },
+        });
+      }
 
       res.json(updatedUser);
     } catch (error) {
@@ -2095,14 +2104,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(users.id, id))
         .returning();
       
-      // Log the action
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_user_email',
-        entityType: 'user',
-        entityId: id,
-        details: { oldEmail, newEmail: email },
-      });
+      // Log the action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_user_email',
+          entityType: 'user',
+          entityId: id,
+          details: { oldEmail, newEmail: email },
+        });
+      }
 
       // Remove sensitive data before sending response
       const { password, ...safeUser } = updatedUser;
@@ -2150,14 +2162,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .set({ password: hashedPassword, updatedAt: new Date() })
         .where(eq(users.id, id));
       
-      // Log the action (don't include password in details for security)
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_user_password',
-        entityType: 'user',
-        entityId: id,
-        details: { userId: id, action: 'password_changed' },
-      });
+      // Log the action (only if admin user exists in database, don't include password in details for security)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_user_password',
+          entityType: 'user',
+          entityId: id,
+          details: { userId: id, action: 'password_changed' },
+        });
+      }
 
       res.json({ success: true, message: "Contraseña actualizada exitosamente" });
     } catch (error) {
@@ -2275,13 +2290,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const oldStatus = subscription.status;
       const updatedSubscription = await storage.updateSubscriptionStatus(id, status);
       
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_subscription_status',
-        entityType: 'subscription',
-        entityId: id,
-        details: { oldStatus, newStatus: status },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_subscription_status',
+          entityType: 'subscription',
+          entityId: id,
+          details: { oldStatus, newStatus: status },
+        });
+      }
 
       res.json(updatedSubscription);
     } catch (error) {
@@ -2345,13 +2364,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'pending',
       });
 
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'create_refund',
-        entityType: 'refund',
-        entityId: refund.id,
-        details: { paymentId, amount, reason },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'create_refund',
+          entityType: 'refund',
+          entityId: refund.id,
+          details: { paymentId, amount, reason },
+        });
+      }
 
       res.json(refund);
     } catch (error) {
@@ -2387,13 +2410,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         verifoneRefundId,
       });
 
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'process_refund',
-        entityType: 'refund',
-        entityId: id,
-        details: { status, verifoneRefundId },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'process_refund',
+          entityType: 'refund',
+          entityId: id,
+          details: { status, verifoneRefundId },
+        });
+      }
 
       res.json(refund);
     } catch (error) {
@@ -2558,13 +2585,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes,
       });
 
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'create_invoice',
-        entityType: 'invoice',
-        entityId: invoice.id,
-        details: { invoiceNumber, ncf, total },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'create_invoice',
+          entityType: 'invoice',
+          entityId: invoice.id,
+          details: { invoiceNumber, ncf, total },
+        });
+      }
 
       res.json(invoice);
     } catch (error) {
@@ -2590,13 +2621,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paidDate: paidDate ? new Date(paidDate) : undefined,
       });
 
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_invoice',
-        entityType: 'invoice',
-        entityId: id,
-        details: { status, paidDate },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_invoice',
+          entityType: 'invoice',
+          entityId: id,
+          details: { status, paidDate },
+        });
+      }
 
       res.json(invoice);
     } catch (error) {
@@ -2679,13 +2714,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedBy: user.id,
       });
 
-      await storage.logAdminAction({
-        adminId: user.id,
-        actionType: 'update_platform_config',
-        entityType: 'platform_config',
-        entityId: key,
-        details: { configKey: key, configValue, description },
-      });
+      // Log admin action (only if admin user exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_platform_config',
+          entityType: 'platform_config',
+          entityId: key,
+          details: { configKey: key, configValue, description },
+        });
+      }
 
       res.json(config);
     } catch (error) {
