@@ -47,6 +47,8 @@ import {
   RefreshCw,
   Building2,
   Flag,
+  Mail,
+  Key,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
@@ -673,6 +675,13 @@ export default function AdminPanel() {
   const [enterpriseProducts, setEnterpriseProducts] = useState(-1);
   const [enterpriseImages, setEnterpriseImages] = useState(-1);
 
+  // User edit states
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<AdminUser | null>(null);
+  const [showEditEmailModal, setShowEditEmailModal] = useState(false);
+  const [showEditPasswordModal, setShowEditPasswordModal] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
   // Fetch admin dashboard data
   const { data: dashboardData, isLoading } = useQuery<{ stats: { totalSuppliers: number; pendingApprovals: number; totalQuotes: number; activeSubscriptions: number; } }>({
     queryKey: ["/api/admin/dashboard"],
@@ -722,10 +731,10 @@ export default function AdminPanel() {
     retry: false,
   });
 
-  // Fetch all users for role management (superadmin only)
+  // Fetch all users for role management (admin and superadmin)
   const { data: adminUsers = [] } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/all-users"],
-    enabled: !!user && user.role === 'superadmin',
+    enabled: !!user && ['admin', 'superadmin'].includes(user.role),
     retry: false,
   });
 
@@ -1099,6 +1108,64 @@ export default function AdminPanel() {
       toast({
         title: "Error",
         description: error.message || "No se pudo actualizar el estado del usuario",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update user email mutation
+  const updateUserEmailMutation = useMutation({
+    mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/email`, { email });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update email");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setShowEditEmailModal(false);
+      setSelectedUserForEdit(null);
+      setNewEmail("");
+      toast({
+        title: "Éxito",
+        description: "Email actualizado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update user password mutation
+  const updateUserPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/password`, { password });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update password");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setShowEditPasswordModal(false);
+      setSelectedUserForEdit(null);
+      setNewPassword("");
+      toast({
+        title: "Éxito",
+        description: "Contraseña actualizada correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la contraseña",
         variant: "destructive",
       });
     },
@@ -2729,13 +2796,13 @@ export default function AdminPanel() {
             </Card>
           </TabsContent>
 
-          {/* Admin Users Management Tab (Superadmin Only) */}
-          {user?.role === 'superadmin' && (
+          {/* Admin Users Management Tab (Admin and Superadmin) */}
+          {user?.role && ['admin', 'superadmin'].includes(user.role) && (
             <TabsContent value="admins" className="space-y-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-semibold" data-testid="heading-admin-management">Gestión de Administradores</h2>
-                  <p className="text-sm text-gray-600 mt-1" data-testid="text-admin-description">Administrar roles y permisos de usuarios</p>
+                  <h2 className="text-xl font-semibold" data-testid="heading-admin-management">Gestión de Usuarios</h2>
+                  <p className="text-sm text-gray-600 mt-1" data-testid="text-admin-description">Administrar usuarios del sistema</p>
                 </div>
               </div>
 
@@ -2832,17 +2899,32 @@ export default function AdminPanel() {
                               {new Date(adminUser.createdAt).toLocaleDateString('es-DO')}
                             </TableCell>
                             <TableCell>
-                              <Badge
-                                variant={adminUser.role === 'superadmin' ? 'default' : adminUser.role === 'admin' ? 'secondary' : 'outline'}
-                                data-testid={`badge-role-${adminUser.id}`}
-                              >
-                                {adminUser.role === 'superadmin' && <Shield className="w-3 h-3 mr-1" />}
-                                {adminUser.role === 'moderator' ? 'Moderador' : 
-                                 adminUser.role === 'support' ? 'Soporte' : 
-                                 adminUser.role === 'admin' ? 'Admin' : 
-                                 adminUser.role === 'superadmin' ? 'Superadmin' : 
-                                 adminUser.role === 'supplier' ? 'Proveedor' : 'Cliente'}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUserForEdit(adminUser);
+                                    setShowEditEmailModal(true);
+                                  }}
+                                  data-testid={`button-edit-email-${adminUser.id}`}
+                                >
+                                  <Mail className="w-4 h-4 mr-1" />
+                                  Email
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUserForEdit(adminUser);
+                                    setShowEditPasswordModal(true);
+                                  }}
+                                  data-testid={`button-edit-password-${adminUser.id}`}
+                                >
+                                  <Key className="w-4 h-4 mr-1" />
+                                  Contraseña
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -4738,6 +4820,110 @@ export default function AdminPanel() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Email Modal */}
+      <Dialog open={showEditEmailModal} onOpenChange={setShowEditEmailModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Email de Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Usuario Actual</Label>
+              <p className="text-sm text-gray-600 mt-1">{selectedUserForEdit?.email}</p>
+            </div>
+            <div>
+              <Label htmlFor="new-email">Nuevo Email</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="nuevo@email.com"
+                data-testid="input-new-email"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditEmailModal(false);
+                  setNewEmail("");
+                }}
+                data-testid="button-cancel-email"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedUserForEdit && newEmail) {
+                    updateUserEmailMutation.mutate({
+                      userId: selectedUserForEdit.id,
+                      email: newEmail,
+                    });
+                  }
+                }}
+                disabled={!newEmail || updateUserEmailMutation.isPending}
+                data-testid="button-save-email"
+              >
+                {updateUserEmailMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Password Modal */}
+      <Dialog open={showEditPasswordModal} onOpenChange={setShowEditPasswordModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar Contraseña de Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Usuario</Label>
+              <p className="text-sm text-gray-600 mt-1">{selectedUserForEdit?.email}</p>
+            </div>
+            <div>
+              <Label htmlFor="new-password">Nueva Contraseña</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                data-testid="input-new-password"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditPasswordModal(false);
+                  setNewPassword("");
+                }}
+                data-testid="button-cancel-password"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedUserForEdit && newPassword) {
+                    updateUserPasswordMutation.mutate({
+                      userId: selectedUserForEdit.id,
+                      password: newPassword,
+                    });
+                  }
+                }}
+                disabled={!newPassword || newPassword.length < 6 || updateUserPasswordMutation.isPending}
+                data-testid="button-save-password"
+              >
+                {updateUserPasswordMutation.isPending ? "Guardando..." : "Cambiar Contraseña"}
+              </Button>
             </div>
           </div>
         </DialogContent>

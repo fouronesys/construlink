@@ -658,6 +658,14 @@ export const updateUserStatusSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const updateUserEmailSchema = z.object({
+  email: z.string().email("Email inválido"),
+});
+
+export const updateUserPasswordSchema = z.object({
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+});
+
 export const updatePlatformConfigSchema = z.object({
   configValue: z.any(),
   description: z.string().optional(),

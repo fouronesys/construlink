@@ -20,6 +20,8 @@ import {
   logAdminActionSchema,
   updateUserRoleSchema,
   updateUserStatusSchema,
+  updateUserEmailSchema,
+  updateUserPasswordSchema,
   updatePlatformConfigSchema,
   createRefundSchema,
   processRefundSchema,
@@ -1866,13 +1868,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Admin get all users (superadmin only)
+  // Admin get all users (admin and superadmin)
   app.get('/api/admin/all-users', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
       
-      if (!user || user.role !== 'superadmin') {
-        return res.status(403).json({ message: "Only super admins can view all users" });
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Permisos insuficientes" });
       }
 
       const allUsers = await storage.getUsers();
@@ -2047,6 +2049,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user status:", error);
       res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
+  // Admin update user email
+  app.patch('/api/admin/users/:id/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Permisos insuficientes" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate request body
+      const validation = updateUserEmailSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validación fallida", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { email } = validation.data;
+
+      // Check if email already exists
+      const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (existingUser.length > 0 && existingUser[0].id !== id) {
+        return res.status(400).json({ message: "Este email ya está en uso" });
+      }
+
+      // Get current user data before updating
+      const currentUser = await storage.getUser(id);
+      if (!currentUser) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      const oldEmail = currentUser.email;
+      
+      // Update email
+      const [updatedUser] = await db
+        .update(users)
+        .set({ email, updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .returning();
+      
+      // Log the action
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_user_email',
+        entityType: 'user',
+        entityId: id,
+        details: { oldEmail, newEmail: email },
+      });
+
+      // Remove sensitive data before sending response
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error updating user email:", error);
+      res.status(500).json({ message: "Error al actualizar el email" });
+    }
+  });
+
+  // Admin update user password
+  app.patch('/api/admin/users/:id/password', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Permisos insuficientes" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate request body
+      const validation = updateUserPasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validación fallida", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { password } = validation.data;
+
+      // Get current user data before updating
+      const currentUser = await storage.getUser(id);
+      if (!currentUser) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Hash the new password
+      const hashedPassword = await hashPassword(password);
+      
+      // Update password (don't return user object to avoid leaking password hash)
+      await db
+        .update(users)
+        .set({ password: hashedPassword, updatedAt: new Date() })
+        .where(eq(users.id, id));
+      
+      // Log the action (don't include password in details for security)
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'update_user_password',
+        entityType: 'user',
+        entityId: id,
+        details: { userId: id, action: 'password_changed' },
+      });
+
+      res.json({ success: true, message: "Contraseña actualizada exitosamente" });
+    } catch (error) {
+      console.error("Error updating user password:", error);
+      res.status(500).json({ message: "Error al actualizar la contraseña" });
     }
   });
 
