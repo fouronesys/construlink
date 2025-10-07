@@ -1015,6 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         supplierId: id,
         userId,
         email: req.body.email,
+        rnc: req.body.rnc,
         message: req.body.message,
         documentUrls: req.body.documentUrls || [],
       });

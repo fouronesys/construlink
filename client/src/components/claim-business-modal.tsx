@@ -22,6 +22,7 @@ interface ClaimBusinessModalProps {
 
 export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: ClaimBusinessModalProps) {
   const [email, setEmail] = useState("");
+  const [rnc, setRnc] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -50,6 +51,15 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
       return;
     }
 
+    if (!rnc.trim()) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa el RNC",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!message.trim()) {
       toast({
         title: "Error",
@@ -64,6 +74,7 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
     try {
       const response = await apiRequest("POST", `/api/suppliers/${supplier.id}/claim`, {
         email: email.trim(),
+        rnc: rnc.trim(),
         message: message.trim(),
         documentUrls: [],
       });
@@ -79,6 +90,7 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
       });
 
       setEmail("");
+      setRnc("");
       setMessage("");
       onSuccess?.();
       onClose();
@@ -147,6 +159,25 @@ export function ClaimBusinessModal({ isOpen, onClose, supplier, onSuccess }: Cla
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Usaremos este correo para notificarte sobre el estado de tu solicitud
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="rnc">
+                  RNC <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="rnc"
+                  type="text"
+                  value={rnc}
+                  onChange={(e) => setRnc(e.target.value)}
+                  placeholder="Ej: 123-45678-9"
+                  className="mt-2"
+                  required
+                  data-testid="input-claim-rnc"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Ingresa el RNC de la empresa que deseas reclamar
                 </p>
               </div>
 
