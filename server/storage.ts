@@ -267,6 +267,7 @@ export interface IStorage {
   getAdminStats(): Promise<{
     totalSuppliers: number;
     pendingApprovals: number;
+    totalQuotes: number;
     activeSubscriptions: number;
     monthlyRevenue: number;
   }>;
@@ -1380,6 +1381,7 @@ export class DatabaseStorage implements IStorage {
   async getAdminStats(): Promise<{
     totalSuppliers: number;
     pendingApprovals: number;
+    totalQuotes: number;
     activeSubscriptions: number;
     monthlyRevenue: number;
   }> {
@@ -1392,6 +1394,10 @@ export class DatabaseStorage implements IStorage {
       .from(suppliers)
       .where(eq(suppliers.status, 'pending'));
 
+    const [totalQuotesResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(quoteRequests);
+
     const [activeSubscriptionsResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(subscriptions)
@@ -1403,10 +1409,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptions.status, 'active'));
 
     return {
-      totalSuppliers: totalSuppliersResult?.count || 0,
-      pendingApprovals: pendingApprovalsResult?.count || 0,
-      activeSubscriptions: activeSubscriptionsResult?.count || 0,
-      monthlyRevenue: monthlyRevenueResult?.total || 0,
+      totalSuppliers: Number(totalSuppliersResult?.count) || 0,
+      pendingApprovals: Number(pendingApprovalsResult?.count) || 0,
+      totalQuotes: Number(totalQuotesResult?.count) || 0,
+      activeSubscriptions: Number(activeSubscriptionsResult?.count) || 0,
+      monthlyRevenue: Number(monthlyRevenueResult?.total) || 0,
     };
   }
 
