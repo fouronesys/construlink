@@ -1378,6 +1378,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin delete supplier
+  app.delete('/api/admin/suppliers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Permisos insuficientes" });
+      }
+
+      const { id } = req.params;
+
+      // Verify supplier exists
+      const supplier = await storage.getSupplier(id);
+      if (!supplier) {
+        return res.status(404).json({ message: "Proveedor no encontrado" });
+      }
+
+      // Delete supplier (cascade will delete related records)
+      await storage.deleteSupplier(id);
+
+      // Log admin action
+      await storage.logAdminAction({
+        adminId: user.id,
+        actionType: 'delete',
+        entityType: 'supplier',
+        entityId: id,
+        details: { supplierName: supplier.legalName, action: 'deleted' },
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Proveedor ${supplier.legalName} eliminado exitosamente` 
+      });
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      res.status(500).json({ message: "Error al eliminar proveedor" });
+    }
+  });
+
   // Admin suspend/reactivate supplier subscription
   app.patch('/api/admin/suppliers/:id/subscription', isAuthenticated, async (req: any, res) => {
     try {

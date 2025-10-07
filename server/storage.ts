@@ -80,6 +80,7 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Supplier[]>;
+  deleteSupplier(id: string): Promise<void>;
   
   // Supplier specialties
   addSupplierSpecialty(specialty: InsertSupplierSpecialty): Promise<SupplierSpecialty>;
@@ -465,6 +466,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await query;
+  }
+
+  async deleteSupplier(id: string): Promise<void> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
   }
 
   async getSuppliersWithCount(filters?: {
