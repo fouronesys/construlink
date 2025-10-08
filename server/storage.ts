@@ -18,6 +18,8 @@ import {
   planUsage,
   adminActions,
   platformConfig,
+  supplierPublications,
+  paidAdvertisements,
   type User,
   type UpsertUser,
   type Supplier,
@@ -56,6 +58,10 @@ import {
   type InsertAdminAction,
   type PlatformConfig,
   type InsertPlatformConfig,
+  type SupplierPublication,
+  type InsertSupplierPublication,
+  type PaidAdvertisement,
+  type InsertPaidAdvertisement,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -291,6 +297,30 @@ export interface IStorage {
   getPlatformConfig(configKey: string): Promise<PlatformConfig | undefined>;
   getAllPlatformConfigs(): Promise<PlatformConfig[]>;
   upsertPlatformConfig(config: { configKey: string; configValue: any; description?: string; updatedBy?: string; }): Promise<PlatformConfig>;
+  
+  // Supplier publications operations
+  createPublication(publication: InsertSupplierPublication): Promise<SupplierPublication>;
+  getPublicationsBySupplierId(supplierId: string): Promise<SupplierPublication[]>;
+  getActivePublications(filters?: {
+    limit?: number;
+    offset?: number;
+    category?: string;
+  }): Promise<SupplierPublication[]>;
+  updatePublication(id: string, updates: Partial<SupplierPublication>): Promise<SupplierPublication>;
+  deletePublication(id: string): Promise<void>;
+  incrementPublicationViews(id: string): Promise<boolean>;
+  
+  // Paid advertisements operations
+  createAdvertisement(advertisement: InsertPaidAdvertisement): Promise<PaidAdvertisement>;
+  getAdvertisementsBySupplierId(supplierId: string): Promise<PaidAdvertisement[]>;
+  getActiveAdvertisements(filters?: {
+    displayLocation?: string;
+    limit?: number;
+  }): Promise<PaidAdvertisement[]>;
+  updateAdvertisement(id: string, updates: Partial<PaidAdvertisement>): Promise<PaidAdvertisement>;
+  deleteAdvertisement(id: string): Promise<void>;
+  incrementAdvertisementClicks(id: string): Promise<boolean>;
+  incrementAdvertisementImpressions(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1786,6 +1816,142 @@ export class DatabaseStorage implements IStorage {
     const numberPart = parseInt(lastNCF.slice(-8));
     const nextNumber = (numberPart + 1).toString().padStart(8, '0');
     return `${sequence}${nextNumber}`;
+  }
+
+  // Supplier publications operations
+  async createPublication(publication: InsertSupplierPublication): Promise<SupplierPublication> {
+    const [newPublication] = await db.insert(supplierPublications).values(publication).returning();
+    return newPublication;
+  }
+
+  async getPublicationsBySupplierId(supplierId: string): Promise<SupplierPublication[]> {
+    return await db
+      .select()
+      .from(supplierPublications)
+      .where(eq(supplierPublications.supplierId, supplierId))
+      .orderBy(desc(supplierPublications.createdAt));
+  }
+
+  async getActivePublications(filters?: {
+    limit?: number;
+    offset?: number;
+    category?: string;
+  }): Promise<SupplierPublication[]> {
+    const whereConditions = [eq(supplierPublications.isActive, true)];
+    
+    if (filters?.category) {
+      whereConditions.push(eq(supplierPublications.category, filters.category));
+    }
+
+    return await db
+      .select()
+      .from(supplierPublications)
+      .where(and(...whereConditions))
+      .orderBy(desc(supplierPublications.createdAt))
+      .limit(filters?.limit || 10)
+      .offset(filters?.offset || 0);
+  }
+
+  async updatePublication(id: string, updates: Partial<SupplierPublication>): Promise<SupplierPublication> {
+    const [updatedPublication] = await db
+      .update(supplierPublications)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(supplierPublications.id, id))
+      .returning();
+    return updatedPublication;
+  }
+
+  async deletePublication(id: string): Promise<void> {
+    await db.delete(supplierPublications).where(eq(supplierPublications.id, id));
+  }
+
+  async incrementPublicationViews(id: string): Promise<boolean> {
+    const result = await db
+      .update(supplierPublications)
+      .set({ 
+        viewCount: sql`${supplierPublications.viewCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(supplierPublications.id, id))
+      .returning({ id: supplierPublications.id });
+    
+    return result.length > 0;
+  }
+
+  // Paid advertisements operations
+  async createAdvertisement(advertisement: InsertPaidAdvertisement): Promise<PaidAdvertisement> {
+    const [newAdvertisement] = await db.insert(paidAdvertisements).values(advertisement).returning();
+    return newAdvertisement;
+  }
+
+  async getAdvertisementsBySupplierId(supplierId: string): Promise<PaidAdvertisement[]> {
+    return await db
+      .select()
+      .from(paidAdvertisements)
+      .where(eq(paidAdvertisements.supplierId, supplierId))
+      .orderBy(desc(paidAdvertisements.createdAt));
+  }
+
+  async getActiveAdvertisements(filters?: {
+    displayLocation?: string;
+    limit?: number;
+  }): Promise<PaidAdvertisement[]> {
+    const now = new Date();
+    const whereConditions = [
+      eq(paidAdvertisements.isActive, true),
+      sql`${paidAdvertisements.startDate} <= ${now}`,
+      sql`${paidAdvertisements.endDate} >= ${now}`
+    ];
+    
+    if (filters?.displayLocation) {
+      whereConditions.push(eq(paidAdvertisements.displayLocation, filters.displayLocation as any));
+    }
+
+    return await db
+      .select()
+      .from(paidAdvertisements)
+      .where(and(...whereConditions))
+      .orderBy(desc(paidAdvertisements.createdAt))
+      .limit(filters?.limit || 5);
+  }
+
+  async updateAdvertisement(id: string, updates: Partial<PaidAdvertisement>): Promise<PaidAdvertisement> {
+    const [updatedAdvertisement] = await db
+      .update(paidAdvertisements)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(paidAdvertisements.id, id))
+      .returning();
+    return updatedAdvertisement;
+  }
+
+  async deleteAdvertisement(id: string): Promise<void> {
+    await db.delete(paidAdvertisements).where(eq(paidAdvertisements.id, id));
+  }
+
+  async incrementAdvertisementClicks(id: string): Promise<boolean> {
+    const result = await db
+      .update(paidAdvertisements)
+      .set({ 
+        clickCount: sql`${paidAdvertisements.clickCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(paidAdvertisements.id, id))
+      .returning({ id: paidAdvertisements.id });
+    
+    return result.length > 0;
+  }
+
+  async incrementAdvertisementImpressions(id: string): Promise<boolean> {
+    const result = await db
+      .update(paidAdvertisements)
+      .set({ 
+        impressionCount: sql`${paidAdvertisements.impressionCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(paidAdvertisements.id, id))
+      .returning({ id: paidAdvertisements.id });
+    
+    return result.length > 0;
   }
 }
 
