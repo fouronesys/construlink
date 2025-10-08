@@ -138,7 +138,7 @@ export const subscriptions = pgTable("subscriptions", {
   supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
   plan: varchar("plan", { enum: ["basic", "professional", "enterprise"] }).default("basic"),
   status: varchar("status", { enum: ["active", "inactive", "cancelled", "trialing"] }).default("inactive"),
-  paymentGateway: paymentGatewayEnum("payment_gateway").default("azul"),
+  paymentGateway: paymentGatewayEnum("payment_gateway"), // Sin default, será explícito
   gatewaySubscriptionId: varchar("gateway_subscription_id"), // ID genérico del gateway
   verifoneSubscriptionId: varchar("verifone_subscription_id"), // Mantener por compatibilidad
   currentPeriodStart: timestamp("current_period_start"),
@@ -156,7 +156,7 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("DOP"),
   status: varchar("status", { enum: ["pending", "completed", "failed"] }).default("pending"),
-  gatewayName: paymentGatewayEnum("gateway_name").default("azul"),
+  gatewayName: paymentGatewayEnum("gateway_name"), // Sin default, será explícito
   gatewayTransactionId: varchar("gateway_transaction_id"), // ID de transacción del gateway
   gatewayAuthCode: varchar("gateway_auth_code"), // Código de autorización
   gatewayResponseCode: varchar("gateway_response_code"), // Código de respuesta
