@@ -96,6 +96,33 @@ interface SupplierBanner {
   impressionCount: number;
 }
 
+interface SupplierPublication {
+  id: string;
+  supplierId: string;
+  title: string;
+  content: string;
+  imageUrl?: string | null;
+  category?: string | null;
+  isActive: boolean;
+  viewCount: string;
+  createdAt: string;
+}
+
+interface PaidAdvertisement {
+  id: string;
+  supplierId: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  linkUrl?: string | null;
+  displayLocation: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  clickCount: string;
+  impressionCount: string;
+}
+
 
 const categories = [
   { name: "Construcción General", icon: Building2, color: "bg-blue-100 text-blue-800" },
@@ -216,6 +243,14 @@ export default function Landing() {
   }>({
     queryKey: ['/api/fuel-prices'],
     refetchInterval: 3600000, // Refetch every hour
+  });
+
+  const { data: publications } = useQuery<SupplierPublication[]>({
+    queryKey: ['/api/publications'],
+  });
+
+  const { data: advertisements } = useQuery<PaidAdvertisement[]>({
+    queryKey: ['/api/advertisements'],
   });
 
   // Track banner impression
@@ -648,6 +683,127 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Publicaciones de Proveedores */}
+      {publications && publications.length > 0 && (
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Publicaciones de Proveedores
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Mantente al día con las últimas novedades, productos y servicios de nuestros proveedores
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {publications.slice(0, 6).map((publication) => (
+                <Card 
+                  key={publication.id} 
+                  className="hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                  onClick={async () => {
+                    await fetch(`/api/publications/${publication.id}/view`, { method: 'POST' });
+                    setLocation(`/directory?id=${publication.supplierId}`);
+                  }}
+                  data-testid={`publication-${publication.id}`}
+                >
+                  {publication.imageUrl && (
+                    <div className="relative h-48 overflow-hidden rounded-t-lg">
+                      <img 
+                        src={publication.imageUrl} 
+                        alt={publication.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        data-testid={`img-publication-${publication.id}`}
+                      />
+                    </div>
+                  )}
+                  <CardContent className="p-6">
+                    {publication.category && (
+                      <Badge className="mb-3" data-testid={`badge-category-${publication.id}`}>
+                        {publication.category}
+                      </Badge>
+                    )}
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-primary transition-colors" data-testid={`title-publication-${publication.id}`}>
+                      {publication.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4 line-clamp-3" data-testid={`content-publication-${publication.id}`}>
+                      {publication.content}
+                    </p>
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>{new Date(publication.createdAt).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1">
+                        <Eye className="w-4 h-4" />
+                        {publication.viewCount} vistas
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Publicidad Pagada */}
+      {advertisements && advertisements.length > 0 && (
+        <section className="py-16 bg-gradient-to-br from-orange-50 to-yellow-50">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Ofertas Especiales
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Aprovecha estas promociones exclusivas de nuestros proveedores destacados
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {advertisements.slice(0, 3).map((ad) => (
+                <Card 
+                  key={ad.id} 
+                  className="hover:shadow-2xl transition-all duration-300 cursor-pointer group border-2 border-orange-200 hover:border-orange-400"
+                  onClick={async () => {
+                    await fetch(`/api/advertisements/${ad.id}/click`, { method: 'POST' });
+                    if (ad.linkUrl) {
+                      window.open(ad.linkUrl, '_blank');
+                    } else {
+                      setLocation(`/directory?id=${ad.supplierId}`);
+                    }
+                  }}
+                  data-testid={`advertisement-${ad.id}`}
+                >
+                  <div className="relative h-56 overflow-hidden rounded-t-lg bg-gradient-to-br from-orange-100 to-yellow-100">
+                    <img 
+                      src={ad.imageUrl} 
+                      alt={ad.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      data-testid={`img-advertisement-${ad.id}`}
+                    />
+                    <div className="absolute top-4 right-4">
+                      <Badge className="bg-orange text-white" data-testid={`badge-sponsored-${ad.id}`}>
+                        Patrocinado
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-orange transition-colors" data-testid={`title-advertisement-${ad.id}`}>
+                      {ad.title}
+                    </h3>
+                    <p className="text-gray-700 mb-4" data-testid={`description-advertisement-${ad.id}`}>
+                      {ad.description}
+                    </p>
+                    <Button className="w-full bg-orange hover:bg-orange/90 text-white" data-testid={`button-learn-more-${ad.id}`}>
+                      Conocer Más
+                      <ArrowUpRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-20 bg-gradient-to-br from-blue-50 to-orange-50 animate-on-scroll">
