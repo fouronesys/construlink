@@ -1644,6 +1644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...supplier,
             specialties: specialties.map(s => s.specialty),
             subscription,
+            planType: subscription?.plan || 'basic',
             stats,
           };
         })

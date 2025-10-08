@@ -182,30 +182,32 @@ export async function createAzulRefund(params: CreateAzulRefundParams) {
     throw new Error('Azul payment gateway is not configured or not enabled');
   }
 
-  const currency = params.currency || 'DOP';
-  const amountFormatted = formatAmountForAzul(params.refundAmount);
-
   const refundOrderNumber = `REFUND_${params.originalOrderNumber}_${Date.now()}`;
+  const amountFormatted = Math.round(params.refundAmount * 100).toString();
+  const currencyCode = params.currency || '$';
 
-  const authHash = generateAzulHash({
-    merchantId: config.merchantId,
-    merchantName: config.merchantName,
-    merchantType: config.merchantType,
-    orderNumber: refundOrderNumber,
-    amount: amountFormatted,
-    currency: currency,
-    authToken: config.authToken,
-  });
+  const refundParams: Record<string, string> = {
+    MerchantId: config.merchantId,
+    MerchantName: config.merchantName,
+    MerchantType: config.merchantType,
+    CurrencyCode: currencyCode,
+    OrderNumber: refundOrderNumber,
+    Amount: amountFormatted,
+    OriginalOrderNumber: params.originalOrderNumber,
+    OriginalAuthCode: params.originalAuthCode,
+  };
+
+  const authHash = generateAzulAuthHash(refundParams, config.secretKey);
 
   return {
     refundOrderNumber,
-    merchantId: config.merchantId,
-    merchantName: config.merchantName,
-    merchantType: config.merchantType,
-    amount: amountFormatted,
-    currency,
-    authHash,
-    originalOrderNumber: params.originalOrderNumber,
-    originalAuthCode: params.originalAuthCode,
+    refundData: {
+      ...refundParams,
+      AuthHash: authHash,
+    },
+    config: {
+      isSandbox: config.isSandbox,
+      merchantId: config.merchantId,
+    },
   };
 }
