@@ -15,6 +15,8 @@ import {
   insertQuoteRequestSchema,
   insertProductSchema,
   insertSupplierClaimSchema,
+  insertSupplierPublicationSchema,
+  insertPaidAdvertisementSchema,
   registerSchema, 
   loginSchema,
   logAdminActionSchema,
@@ -896,6 +898,275 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error recording advertisement impression:", error);
       res.status(500).json({ message: "Failed to record impression" });
+    }
+  });
+
+  // Create supplier publication (authenticated suppliers only)
+  app.post('/api/suppliers/publications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can create publications" });
+      }
+
+      const validationResult = insertSupplierPublicationSchema.safeParse({
+        ...req.body,
+        supplierId: supplier.id,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid publication data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const publication = await storage.createPublication(validationResult.data);
+      res.status(201).json(publication);
+    } catch (error) {
+      console.error("Error creating publication:", error);
+      res.status(500).json({ message: "Failed to create publication" });
+    }
+  });
+
+  // Get supplier's own publications
+  app.get('/api/suppliers/publications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can view their publications" });
+      }
+
+      const publications = await storage.getPublicationsBySupplierId(supplier.id);
+      res.json(publications);
+    } catch (error) {
+      console.error("Error fetching supplier publications:", error);
+      res.status(500).json({ message: "Failed to fetch publications" });
+    }
+  });
+
+  // Update supplier publication
+  app.patch('/api/suppliers/publications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can update publications" });
+      }
+
+      // Get the publication to verify ownership
+      const publications = await storage.getPublicationsBySupplierId(supplier.id);
+      const publication = publications.find(p => p.id === id);
+      
+      if (!publication) {
+        return res.status(404).json({ message: "Publication not found or you don't have permission to update it" });
+      }
+
+      // Validate updates with partial schema
+      const updateSchema = insertSupplierPublicationSchema.partial().pick({
+        title: true,
+        content: true,
+        imageUrl: true,
+        category: true,
+        isActive: true,
+      });
+
+      const validationResult = updateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid update data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const updatedPublication = await storage.updatePublication(id, validationResult.data);
+      res.json(updatedPublication);
+    } catch (error) {
+      console.error("Error updating publication:", error);
+      res.status(500).json({ message: "Failed to update publication" });
+    }
+  });
+
+  // Delete supplier publication
+  app.delete('/api/suppliers/publications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can delete publications" });
+      }
+
+      // Get the publication to verify ownership
+      const publications = await storage.getPublicationsBySupplierId(supplier.id);
+      const publication = publications.find(p => p.id === id);
+      
+      if (!publication) {
+        return res.status(404).json({ message: "Publication not found or you don't have permission to delete it" });
+      }
+
+      await storage.deletePublication(id);
+      res.json({ message: "Publication deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting publication:", error);
+      res.status(500).json({ message: "Failed to delete publication" });
+    }
+  });
+
+  // Create paid advertisement (authenticated suppliers only)
+  app.post('/api/suppliers/advertisements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can create advertisements" });
+      }
+
+      const validationResult = insertPaidAdvertisementSchema.safeParse({
+        ...req.body,
+        supplierId: supplier.id,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid advertisement data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const advertisement = await storage.createAdvertisement(validationResult.data);
+      res.status(201).json(advertisement);
+    } catch (error) {
+      console.error("Error creating advertisement:", error);
+      res.status(500).json({ message: "Failed to create advertisement" });
+    }
+  });
+
+  // Get supplier's own advertisements
+  app.get('/api/suppliers/advertisements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can view their advertisements" });
+      }
+
+      const advertisements = await storage.getAdvertisementsBySupplierId(supplier.id);
+      res.json(advertisements);
+    } catch (error) {
+      console.error("Error fetching supplier advertisements:", error);
+      res.status(500).json({ message: "Failed to fetch advertisements" });
+    }
+  });
+
+  // Update paid advertisement
+  app.patch('/api/suppliers/advertisements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can update advertisements" });
+      }
+
+      // Get the advertisement to verify ownership
+      const advertisements = await storage.getAdvertisementsBySupplierId(supplier.id);
+      const advertisement = advertisements.find(a => a.id === id);
+      
+      if (!advertisement) {
+        return res.status(404).json({ message: "Advertisement not found or you don't have permission to update it" });
+      }
+
+      // Validate updates with partial schema
+      const updateSchema = insertPaidAdvertisementSchema.partial().pick({
+        title: true,
+        description: true,
+        imageUrl: true,
+        linkUrl: true,
+        displayLocation: true,
+        startDate: true,
+        endDate: true,
+        isActive: true,
+      });
+
+      const validationResult = updateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid update data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const updatedAdvertisement = await storage.updateAdvertisement(id, validationResult.data);
+      res.json(updatedAdvertisement);
+    } catch (error) {
+      console.error("Error updating advertisement:", error);
+      res.status(500).json({ message: "Failed to update advertisement" });
+    }
+  });
+
+  // Delete paid advertisement
+  app.delete('/api/suppliers/advertisements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can delete advertisements" });
+      }
+
+      // Get the advertisement to verify ownership
+      const advertisements = await storage.getAdvertisementsBySupplierId(supplier.id);
+      const advertisement = advertisements.find(a => a.id === id);
+      
+      if (!advertisement) {
+        return res.status(404).json({ message: "Advertisement not found or you don't have permission to delete it" });
+      }
+
+      await storage.deleteAdvertisement(id);
+      res.json({ message: "Advertisement deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting advertisement:", error);
+      res.status(500).json({ message: "Failed to delete advertisement" });
     }
   });
 
