@@ -20,6 +20,7 @@ import {
   platformConfig,
   supplierPublications,
   paidAdvertisements,
+  advertisementRequests,
   type User,
   type UpsertUser,
   type Supplier,
@@ -62,6 +63,8 @@ import {
   type InsertSupplierPublication,
   type PaidAdvertisement,
   type InsertPaidAdvertisement,
+  type AdvertisementRequest,
+  type InsertAdvertisementRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -321,6 +324,18 @@ export interface IStorage {
   deleteAdvertisement(id: string): Promise<void>;
   incrementAdvertisementClicks(id: string): Promise<boolean>;
   incrementAdvertisementImpressions(id: string): Promise<boolean>;
+  
+  // Advertisement requests operations
+  createAdvertisementRequest(request: InsertAdvertisementRequest): Promise<AdvertisementRequest>;
+  getAdvertisementRequestsBySupplierId(supplierId: string): Promise<AdvertisementRequest[]>;
+  getAdvertisementRequest(id: string): Promise<AdvertisementRequest | undefined>;
+  getAllAdvertisementRequests(filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AdvertisementRequest[]>;
+  updateAdvertisementRequest(id: string, updates: Partial<AdvertisementRequest>): Promise<AdvertisementRequest>;
+  deleteAdvertisementRequest(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1952,6 +1967,70 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: paidAdvertisements.id });
     
     return result.length > 0;
+  }
+  
+  // Advertisement requests operations
+  async createAdvertisementRequest(request: InsertAdvertisementRequest): Promise<AdvertisementRequest> {
+    const [newRequest] = await db.insert(advertisementRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async getAdvertisementRequestsBySupplierId(supplierId: string): Promise<AdvertisementRequest[]> {
+    return await db
+      .select()
+      .from(advertisementRequests)
+      .where(eq(advertisementRequests.supplierId, supplierId))
+      .orderBy(desc(advertisementRequests.createdAt));
+  }
+
+  async getAdvertisementRequest(id: string): Promise<AdvertisementRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(advertisementRequests)
+      .where(eq(advertisementRequests.id, id));
+    return request;
+  }
+
+  async getAllAdvertisementRequests(filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AdvertisementRequest[]> {
+    const whereConditions = [];
+
+    if (filters?.status) {
+      whereConditions.push(eq(advertisementRequests.status, filters.status as "pending" | "approved" | "rejected"));
+    }
+
+    if (whereConditions.length > 0) {
+      return await db
+        .select()
+        .from(advertisementRequests)
+        .where(and(...whereConditions))
+        .orderBy(desc(advertisementRequests.createdAt))
+        .limit(filters?.limit || 100)
+        .offset(filters?.offset || 0);
+    }
+
+    return await db
+      .select()
+      .from(advertisementRequests)
+      .orderBy(desc(advertisementRequests.createdAt))
+      .limit(filters?.limit || 100)
+      .offset(filters?.offset || 0);
+  }
+
+  async updateAdvertisementRequest(id: string, updates: Partial<AdvertisementRequest>): Promise<AdvertisementRequest> {
+    const [updatedRequest] = await db
+      .update(advertisementRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(advertisementRequests.id, id))
+      .returning();
+    return updatedRequest;
+  }
+
+  async deleteAdvertisementRequest(id: string): Promise<void> {
+    await db.delete(advertisementRequests).where(eq(advertisementRequests.id, id));
   }
 }
 

@@ -17,6 +17,7 @@ import {
   insertSupplierClaimSchema,
   insertSupplierPublicationSchema,
   insertPaidAdvertisementSchema,
+  insertAdvertisementRequestSchema,
   registerSchema, 
   loginSchema,
   logAdminActionSchema,
@@ -1031,6 +1032,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting publication:", error);
       res.status(500).json({ message: "Failed to delete publication" });
+    }
+  });
+
+  // Create advertisement request (suppliers only)
+  app.post('/api/advertisement-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can request advertisements" });
+      }
+
+      const validationResult = insertAdvertisementRequestSchema.safeParse({
+        ...req.body,
+        supplierId: supplier.id,
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      // Verify the publication belongs to this supplier
+      const publication = await storage.getPublication(validationResult.data.publicationId);
+      if (!publication || publication.supplierId !== supplier.id) {
+        return res.status(403).json({ message: "Publication not found or doesn't belong to you" });
+      }
+
+      // Check for existing pending request for this publication
+      const existingRequests = await storage.getAdvertisementRequestsBySupplierId(supplier.id);
+      const hasPendingRequest = existingRequests.some(
+        req => req.publicationId === validationResult.data.publicationId && req.status === 'pending'
+      );
+      
+      if (hasPendingRequest) {
+        return res.status(400).json({ 
+          message: "You already have a pending advertisement request for this publication" 
+        });
+      }
+
+      const request = await storage.createAdvertisementRequest(validationResult.data);
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating advertisement request:", error);
+      res.status(500).json({ message: "Failed to create advertisement request" });
+    }
+  });
+
+  // Get supplier's own advertisement requests
+  app.get('/api/advertisement-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can view advertisement requests" });
+      }
+
+      const requests = await storage.getAdvertisementRequestsBySupplierId(supplier.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching advertisement requests:", error);
+      res.status(500).json({ message: "Failed to fetch advertisement requests" });
+    }
+  });
+
+  // Get single advertisement request
+  app.get('/api/advertisement-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(403).json({ message: "Only suppliers can view advertisement requests" });
+      }
+
+      const request = await storage.getAdvertisementRequest(id);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Advertisement request not found" });
+      }
+
+      // Verify ownership
+      if (request.supplierId !== supplier.id) {
+        return res.status(403).json({ message: "You don't have permission to view this request" });
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching advertisement request:", error);
+      res.status(500).json({ message: "Failed to fetch advertisement request" });
     }
   });
 
