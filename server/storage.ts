@@ -304,11 +304,13 @@ export interface IStorage {
   // Supplier publications operations
   createPublication(publication: InsertSupplierPublication): Promise<SupplierPublication>;
   getPublicationsBySupplierId(supplierId: string): Promise<SupplierPublication[]>;
+  getPublicationsCountBySupplierId(supplierId: string): Promise<number>;
   getActivePublications(filters?: {
     limit?: number;
     offset?: number;
     category?: string;
   }): Promise<SupplierPublication[]>;
+  getDailyRotationPublications(limit?: number): Promise<SupplierPublication[]>;
   updatePublication(id: string, updates: Partial<SupplierPublication>): Promise<SupplierPublication>;
   deletePublication(id: string): Promise<void>;
   incrementPublicationViews(id: string): Promise<boolean>;
@@ -1847,6 +1849,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(supplierPublications.createdAt));
   }
 
+  async getPublicationsCountBySupplierId(supplierId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(supplierPublications)
+      .where(eq(supplierPublications.supplierId, supplierId));
+    
+    return Number(result[0]?.count || 0);
+  }
+
   async getActivePublications(filters?: {
     limit?: number;
     offset?: number;
@@ -1865,6 +1876,51 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(supplierPublications.createdAt))
       .limit(filters?.limit || 10)
       .offset(filters?.offset || 0);
+  }
+
+  async getDailyRotationPublications(limit: number = 10): Promise<SupplierPublication[]> {
+    // Obtener todas las publicaciones activas
+    const allPublications = await db
+      .select()
+      .from(supplierPublications)
+      .where(eq(supplierPublications.isActive, true))
+      .orderBy(desc(supplierPublications.createdAt));
+
+    // Agrupar por proveedor
+    const publicationsBySupplier = new Map<string, SupplierPublication[]>();
+    
+    for (const pub of allPublications) {
+      if (!publicationsBySupplier.has(pub.supplierId)) {
+        publicationsBySupplier.set(pub.supplierId, []);
+      }
+      publicationsBySupplier.get(pub.supplierId)!.push(pub);
+    }
+
+    // Crear un seed basado en la fecha actual (cambia diariamente)
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateSeed = today.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+
+    // Seleccionar 1 publicación por proveedor de forma determinística
+    const selectedPublications: SupplierPublication[] = [];
+    
+    Array.from(publicationsBySupplier.entries()).forEach(([supplierId, pubs]) => {
+      if (pubs.length > 0) {
+        // Crear un índice basado en el seed de la fecha y el ID del proveedor
+        const supplierSeed = supplierId.charCodeAt(0) + supplierId.charCodeAt(supplierId.length - 1);
+        const index = (dateSeed + supplierSeed) % pubs.length;
+        selectedPublications.push(pubs[index]);
+      }
+    });
+
+    // Ordenar por fecha de creación (más recientes primero)
+    selectedPublications.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    // Retornar al menos 'limit' publicaciones (o todas si hay menos)
+    return selectedPublications.slice(0, Math.max(limit, selectedPublications.length));
   }
 
   async updatePublication(id: string, updates: Partial<SupplierPublication>): Promise<SupplierPublication> {
