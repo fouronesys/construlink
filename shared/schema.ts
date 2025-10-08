@@ -697,6 +697,12 @@ export const insertPlatformConfigSchema = createInsertSchema(platformConfig).omi
   updatedAt: true,
 });
 
+export const insertPaymentGatewayConfigSchema = createInsertSchema(paymentGatewayConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSupplierClaimSchema = createInsertSchema(supplierClaims).omit({
   id: true,
   status: true,
@@ -829,6 +835,7 @@ export type ReviewReport = typeof reviewReports.$inferSelect;
 export type PlanUsage = typeof planUsage.$inferSelect;
 export type AdminAction = typeof adminActions.$inferSelect;
 export type PlatformConfig = typeof platformConfig.$inferSelect;
+export type PaymentGatewayConfig = typeof paymentGatewayConfig.$inferSelect;
 export type SupplierPublication = typeof supplierPublications.$inferSelect;
 export type PaidAdvertisement = typeof paidAdvertisements.$inferSelect;
 export type AdvertisementRequest = typeof advertisementRequests.$inferSelect;
@@ -854,6 +861,7 @@ export type InsertReviewReport = z.infer<typeof insertReviewReportSchema>;
 export type InsertPlanUsage = z.infer<typeof insertPlanUsageSchema>;
 export type InsertAdminAction = z.infer<typeof insertAdminActionSchema>;
 export type InsertPlatformConfig = z.infer<typeof insertPlatformConfigSchema>;
+export type InsertPaymentGatewayConfig = z.infer<typeof insertPaymentGatewayConfigSchema>;
 export type InsertSupplierPublication = z.infer<typeof insertSupplierPublicationSchema>;
 export type InsertPaidAdvertisement = z.infer<typeof insertPaidAdvertisementSchema>;
 export type InsertAdvertisementRequest = z.infer<typeof insertAdvertisementRequestSchema>;
