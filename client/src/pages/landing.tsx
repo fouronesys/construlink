@@ -212,6 +212,8 @@ export default function Landing() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const [viewedBanners, setViewedBanners] = useState<Set<string>>(new Set());
+  const [viewedAdvertisements, setViewedAdvertisements] = useState<Set<string>>(new Set());
+  const [viewedPublications, setViewedPublications] = useState<Set<string>>(new Set());
 
   const { data: featuredSuppliers, isLoading: isFeaturedLoading } = useQuery<FeaturedSupplier[]>({
     queryKey: ['/api/suppliers/featured'],
@@ -280,6 +282,34 @@ export default function Landing() {
     }
   };
 
+  // Track advertisement impression
+  const trackAdvertisementImpression = async (adId: string) => {
+    if (!adId || viewedAdvertisements.has(adId)) return;
+    
+    try {
+      await fetch(`/api/advertisements/${adId}/impression`, {
+        method: 'POST',
+      });
+      setViewedAdvertisements(prev => new Set(prev).add(adId));
+    } catch (error) {
+      console.error('Failed to track advertisement impression:', error);
+    }
+  };
+
+  // Track publication view (optimized to prevent duplicates)
+  const trackPublicationView = async (publicationId: string) => {
+    if (!publicationId || viewedPublications.has(publicationId)) return;
+    
+    try {
+      await fetch(`/api/publications/${publicationId}/view`, {
+        method: 'POST',
+      });
+      setViewedPublications(prev => new Set(prev).add(publicationId));
+    } catch (error) {
+      console.error('Failed to track publication view:', error);
+    }
+  };
+
   // Track impressions when carousel slides change
   useEffect(() => {
     if (!carouselApi || !featuredSuppliers?.length) return;
@@ -302,6 +332,31 @@ export default function Landing() {
       carouselApi.off('select', onSelect);
     };
   }, [carouselApi, featuredSuppliers]);
+
+  // Track advertisement impressions when they come into view
+  useEffect(() => {
+    if (!advertisements?.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const adId = entry.target.getAttribute('data-ad-id');
+            if (adId) {
+              trackAdvertisementImpression(adId);
+            }
+          }
+        });
+      },
+      { threshold: 0.5 } // Track when 50% of the ad is visible
+    );
+
+    // Observe all advertisement elements
+    const adElements = document.querySelectorAll('[data-ad-id]');
+    adElements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [advertisements, viewedAdvertisements]);
 
   const handleBannerClick = async (supplier: FeaturedSupplier) => {
     // Check if this is a valid custom banner or placeholder
@@ -640,6 +695,126 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Publicidad Pagada */}
+      {advertisements && advertisements.length > 0 && (
+        <section className="relative py-20 overflow-hidden">
+          {/* Animated background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 opacity-95">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoNnYtNmgtNnYtNmgtNnY2aC02djZoNnY2aDZ2LTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
+          </div>
+          
+          <div className="container mx-auto px-6 relative z-10">
+            {/* Premium Header */}
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full mb-6">
+                <Sparkles className="w-5 h-5 text-yellow-300 motion-reduce:animate-none animate-pulse" />
+                <span className="text-white font-semibold tracking-wider uppercase text-sm">Promociones Exclusivas</span>
+                <Sparkles className="w-5 h-5 text-yellow-300 motion-reduce:animate-none animate-pulse" />
+              </div>
+              
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
+                Ofertas Premium
+              </h2>
+              <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+                Descubre oportunidades únicas de nuestros proveedores verificados y certificados
+              </p>
+            </div>
+
+            {/* Premium Cards Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {advertisements.slice(0, 3).map((ad) => (
+                <button
+                  key={ad.id}
+                  className="group relative cursor-pointer text-left w-full focus:outline-none focus-visible:ring-4 focus-visible:ring-yellow-400 focus-visible:ring-offset-4 rounded-2xl transition-all"
+                  onClick={async () => {
+                    await fetch(`/api/advertisements/${ad.id}/click`, { method: 'POST' });
+                    if (ad.linkUrl) {
+                      window.open(ad.linkUrl, '_blank');
+                    } else {
+                      setLocation(`/directory?id=${ad.supplierId}`);
+                    }
+                  }}
+                  data-ad-id={ad.id}
+                  data-testid={`advertisement-${ad.id}`}
+                  aria-label={`Ver oferta: ${ad.title}`}
+                >
+                  {/* Glow effect on hover - respects prefers-reduced-motion */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 rounded-2xl blur-lg opacity-0 group-hover:opacity-75 transition-opacity duration-500 motion-reduce:transition-none"></div>
+                  
+                  <Card className="relative bg-white overflow-hidden rounded-2xl shadow-2xl transition-all duration-500 group-hover:shadow-3xl group-hover:-translate-y-2 motion-reduce:transition-none motion-reduce:group-hover:transform-none border-0">
+                    {/* Premium badge ribbon */}
+                    <div className="absolute top-4 right-4 z-20">
+                      <div className="relative">
+                        <Badge className="bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 font-bold px-4 py-1.5 shadow-lg border-2 border-white/50" data-testid={`badge-sponsored-${ad.id}`}>
+                          <Star className="w-3 h-3 mr-1 inline fill-current" />
+                          PREMIUM
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Image container with overlay effect */}
+                    <div className="relative h-64 overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50">
+                      <img 
+                        src={ad.imageUrl} 
+                        alt={ad.title}
+                        className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700 ease-out motion-reduce:transition-none motion-reduce:group-hover:transform-none"
+                        data-testid={`img-advertisement-${ad.id}`}
+                      />
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 motion-reduce:transition-none"></div>
+                      
+                      {/* Animated corner accent */}
+                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-br from-indigo-500 to-transparent opacity-60"></div>
+                    </div>
+
+                    <CardContent className="p-8">
+                      {/* Title with gradient on hover */}
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 motion-reduce:transition-none" data-testid={`title-advertisement-${ad.id}`}>
+                        {ad.title}
+                      </h3>
+                      
+                      <p className="text-gray-700 mb-6 leading-relaxed line-clamp-3" data-testid={`description-advertisement-${ad.id}`}>
+                        {ad.description}
+                      </p>
+
+                      {/* Premium CTA button */}
+                      <Button 
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 motion-reduce:transition-none group/btn" 
+                        data-testid={`button-learn-more-${ad.id}`}
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          Ver Oferta Exclusiva
+                          <ArrowUpRight className="w-4 h-4 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform duration-300 motion-reduce:transition-none motion-reduce:group-hover/btn:transform-none" />
+                        </span>
+                      </Button>
+                    </CardContent>
+
+                    {/* Bottom accent line */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600"></div>
+                  </Card>
+                </button>
+              ))}
+            </div>
+
+            {/* Premium features badges */}
+            <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-white">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Shield className="w-5 h-5 text-yellow-300" />
+                <span className="text-sm font-medium">Proveedores Verificados</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Award className="w-5 h-5 text-yellow-300" />
+                <span className="text-sm font-medium">Ofertas Exclusivas</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Zap className="w-5 h-5 text-yellow-300" />
+                <span className="text-sm font-medium">Promociones Limitadas</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Publicaciones de Proveedores */}
       {publications && publications.length > 0 && (
         <section className="py-16 bg-white">
@@ -659,7 +834,7 @@ export default function Landing() {
                   key={publication.id} 
                   className="hover:shadow-xl transition-all duration-300 cursor-pointer group"
                   onClick={async () => {
-                    await fetch(`/api/publications/${publication.id}/view`, { method: 'POST' });
+                    await trackPublicationView(publication.id);
                     setLocation(`/directory?id=${publication.supplierId}`);
                   }}
                   data-testid={`publication-${publication.id}`}
@@ -696,125 +871,6 @@ export default function Landing() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Publicidad Pagada */}
-      {advertisements && advertisements.length > 0 && (
-        <section className="relative py-20 overflow-hidden">
-          {/* Animated background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-red-500 to-pink-600 opacity-95">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoNnYtNmgtNnYtNmgtNnY2aC02djZoNnY2aDZ2LTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
-          </div>
-          
-          <div className="container mx-auto px-6 relative z-10">
-            {/* Premium Header */}
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full mb-6">
-                <Sparkles className="w-5 h-5 text-yellow-300 motion-reduce:animate-none animate-pulse" />
-                <span className="text-white font-semibold tracking-wider uppercase text-sm">Promociones Exclusivas</span>
-                <Sparkles className="w-5 h-5 text-yellow-300 motion-reduce:animate-none animate-pulse" />
-              </div>
-              
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
-                Ofertas Premium
-              </h2>
-              <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-                Descubre oportunidades únicas de nuestros proveedores verificados y certificados
-              </p>
-            </div>
-
-            {/* Premium Cards Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {advertisements.slice(0, 3).map((ad) => (
-                <button
-                  key={ad.id}
-                  className="group relative cursor-pointer text-left w-full focus:outline-none focus-visible:ring-4 focus-visible:ring-yellow-400 focus-visible:ring-offset-4 rounded-2xl transition-all"
-                  onClick={async () => {
-                    await fetch(`/api/advertisements/${ad.id}/click`, { method: 'POST' });
-                    if (ad.linkUrl) {
-                      window.open(ad.linkUrl, '_blank');
-                    } else {
-                      setLocation(`/directory?id=${ad.supplierId}`);
-                    }
-                  }}
-                  data-testid={`advertisement-${ad.id}`}
-                  aria-label={`Ver oferta: ${ad.title}`}
-                >
-                  {/* Glow effect on hover - respects prefers-reduced-motion */}
-                  <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 rounded-2xl blur-lg opacity-0 group-hover:opacity-75 transition-opacity duration-500 motion-reduce:transition-none"></div>
-                  
-                  <Card className="relative bg-white overflow-hidden rounded-2xl shadow-2xl transition-all duration-500 group-hover:shadow-3xl group-hover:-translate-y-2 motion-reduce:transition-none motion-reduce:group-hover:transform-none border-0">
-                    {/* Premium badge ribbon */}
-                    <div className="absolute top-4 right-4 z-20">
-                      <div className="relative">
-                        <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold px-4 py-1.5 shadow-lg border-2 border-white/50" data-testid={`badge-sponsored-${ad.id}`}>
-                          <Star className="w-3 h-3 mr-1 inline fill-current" />
-                          PREMIUM
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Image container with overlay effect */}
-                    <div className="relative h-64 overflow-hidden bg-gradient-to-br from-orange-100 to-pink-100">
-                      <img 
-                        src={ad.imageUrl} 
-                        alt={ad.title}
-                        className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700 ease-out motion-reduce:transition-none motion-reduce:group-hover:transform-none"
-                        data-testid={`img-advertisement-${ad.id}`}
-                      />
-                      {/* Gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 motion-reduce:transition-none"></div>
-                      
-                      {/* Animated corner accent */}
-                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-br from-orange-500 to-transparent opacity-60"></div>
-                    </div>
-
-                    <CardContent className="p-8">
-                      {/* Title with gradient on hover */}
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:bg-gradient-to-r group-hover:from-orange-600 group-hover:to-pink-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 motion-reduce:transition-none" data-testid={`title-advertisement-${ad.id}`}>
-                        {ad.title}
-                      </h3>
-                      
-                      <p className="text-gray-700 mb-6 leading-relaxed line-clamp-3" data-testid={`description-advertisement-${ad.id}`}>
-                        {ad.description}
-                      </p>
-
-                      {/* Premium CTA button */}
-                      <Button 
-                        className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 motion-reduce:transition-none group/btn" 
-                        data-testid={`button-learn-more-${ad.id}`}
-                      >
-                        <span className="flex items-center justify-center gap-2">
-                          Ver Oferta Exclusiva
-                          <ArrowUpRight className="w-4 h-4 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform duration-300 motion-reduce:transition-none motion-reduce:group-hover/btn:transform-none" />
-                        </span>
-                      </Button>
-                    </CardContent>
-
-                    {/* Bottom accent line */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500"></div>
-                  </Card>
-                </button>
-              ))}
-            </div>
-
-            {/* Premium features badges */}
-            <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-white">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-                <Shield className="w-5 h-5 text-yellow-300" />
-                <span className="text-sm font-medium">Proveedores Verificados</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-                <Award className="w-5 h-5 text-yellow-300" />
-                <span className="text-sm font-medium">Ofertas Exclusivas</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-                <Zap className="w-5 h-5 text-yellow-300" />
-                <span className="text-sm font-medium">Promociones Limitadas</span>
-              </div>
             </div>
           </div>
         </section>
