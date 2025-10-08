@@ -129,13 +129,18 @@ export const supplierBanners = pgTable("supplier_banners", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Payment gateway enum
+export const paymentGatewayEnum = pgEnum("payment_gateway", ["azul", "verifone", "manual"]);
+
 // Subscriptions
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
   plan: varchar("plan", { enum: ["basic", "professional", "enterprise"] }).default("basic"),
   status: varchar("status", { enum: ["active", "inactive", "cancelled", "trialing"] }).default("inactive"),
-  verifoneSubscriptionId: varchar("verifone_subscription_id"),
+  paymentGateway: paymentGatewayEnum("payment_gateway").default("azul"),
+  gatewaySubscriptionId: varchar("gateway_subscription_id"), // ID genérico del gateway
+  verifoneSubscriptionId: varchar("verifone_subscription_id"), // Mantener por compatibilidad
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   trialEndDate: timestamp("trial_end_date"),
@@ -151,7 +156,12 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("DOP"),
   status: varchar("status", { enum: ["pending", "completed", "failed"] }).default("pending"),
-  verifoneTransactionId: varchar("verifone_transaction_id"),
+  gatewayName: paymentGatewayEnum("gateway_name").default("azul"),
+  gatewayTransactionId: varchar("gateway_transaction_id"), // ID de transacción del gateway
+  gatewayAuthCode: varchar("gateway_auth_code"), // Código de autorización
+  gatewayResponseCode: varchar("gateway_response_code"), // Código de respuesta
+  gatewayMetadata: jsonb("gateway_metadata"), // Datos adicionales del gateway
+  verifoneTransactionId: varchar("verifone_transaction_id"), // Mantener por compatibilidad
   paymentDate: timestamp("payment_date").defaultNow(),
 });
 
@@ -163,7 +173,8 @@ export const refunds = pgTable("refunds", {
   reason: text("reason"),
   status: varchar("status", { enum: ["pending", "approved", "rejected", "completed"] }).default("pending"),
   processedBy: varchar("processed_by").references(() => users.id),
-  verifoneRefundId: varchar("verifone_refund_id"),
+  gatewayRefundId: varchar("gateway_refund_id"), // ID de reembolso del gateway
+  verifoneRefundId: varchar("verifone_refund_id"), // Mantener por compatibilidad
   createdAt: timestamp("created_at").defaultNow(),
   processedAt: timestamp("processed_at"),
 });
@@ -309,6 +320,24 @@ export const platformConfig = pgTable("platform_config", {
   configKey: varchar("config_key", { length: 100 }).unique().notNull(),
   configValue: jsonb("config_value").notNull(),
   description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+});
+
+// Payment Gateway Configuration
+export const paymentGatewayConfig = pgTable("payment_gateway_config", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  gatewayName: paymentGatewayEnum("gateway_name").notNull().unique(),
+  isEnabled: boolean("is_enabled").default(true),
+  isSandbox: boolean("is_sandbox").default(true),
+  merchantId: varchar("merchant_id", { length: 100 }),
+  merchantName: varchar("merchant_name", { length: 255 }),
+  authToken: varchar("auth_token", { length: 500 }),
+  secretKey: varchar("secret_key", { length: 500 }),
+  baseUrl: varchar("base_url", { length: 500 }),
+  callbackUrls: jsonb("callback_urls"), // { approved, declined, cancel }
+  additionalConfig: jsonb("additional_config"), // Configuración adicional específica del gateway
+  createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by").references(() => users.id),
 });
