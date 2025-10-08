@@ -22,14 +22,20 @@ Implementar un sistema que muestre publicaciones de proveedores de forma equitat
 - El campo `plan` existe en la tabla `subscriptions` con valores: basic, professional, enterprise
 - Los tipos TypeScript `SupplierPublication` e `InsertSupplierPublication` ya están definidos en `shared/schema.ts`
 
-### Fase 2: Lógica de Selección en Backend ⏳ PENDIENTE
-- [ ] Crear función para obtener publicaciones rotativas
-- [ ] Implementar algoritmo de selección:
+### Fase 2: Lógica de Selección en Backend ✅ COMPLETADA
+- [x] Crear función para obtener publicaciones rotativas
+- [x] Implementar algoritmo de selección:
   - Obtener todas las publicaciones activas
   - Agrupar por proveedor
   - Seleccionar 1 por proveedor usando seed basado en fecha
   - Retornar mínimo 10 (o todas si hay menos proveedores)
-- [ ] Crear endpoint `/api/publications/daily-rotation`
+- [x] Crear endpoint `/api/publications/daily-rotation`
+
+**Notas de implementación:**
+- La función `getDailyRotationPublications()` ya estaba implementada en `server/storage.ts`
+- Implementa el algoritmo de rotación usando seed de fecha: `new Date().toISOString().split('T')[0]`
+- El índice se calcula con: `(dateSeed + supplierSeed) % pubs.length`
+- Creado endpoint GET `/api/publications/daily-rotation` en `server/routes.ts`
 
 ### Fase 3: Validación de Límites ⏳ PENDIENTE
 - [ ] Implementar validación al crear publicación:
@@ -58,5 +64,5 @@ Implementar un sistema que muestre publicaciones de proveedores de forma equitat
   - Enterprise: Ilimitado
 
 ## Estado Actual
-**Fase activa**: Fase 2 - Lógica de Selección en Backend
+**Fase activa**: Fase 3 - Validación de Límites
 **Última actualización**: 2025-10-08

@@ -819,6 +819,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get daily rotating publications (public endpoint)
+  app.get('/api/publications/daily-rotation', async (req, res) => {
+    try {
+      const { limit = '10' } = req.query;
+      
+      const publications = await storage.getDailyRotationPublications(parseInt(limit as string));
+
+      res.json(publications);
+    } catch (error) {
+      console.error("Error fetching daily rotation publications:", error);
+      res.status(500).json({ message: "Failed to fetch daily rotation publications" });
+    }
+  });
+
   // Track publication view (public endpoint)
   app.post('/api/publications/:id/view', async (req, res) => {
     try {
