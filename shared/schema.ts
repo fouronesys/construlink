@@ -347,6 +347,22 @@ export const paidAdvertisements = pgTable("paid_advertisements", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Advertisement requests (suppliers request to promote their publications)
+export const advertisementRequests = pgTable("advertisement_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  publicationId: uuid("publication_id").references(() => supplierPublications.id, { onDelete: "cascade" }).notNull(),
+  requestedDuration: integer("requested_duration").notNull(), // days
+  budget: decimal("budget", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
+  adminNotes: text("admin_notes"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  advertisementId: uuid("advertisement_id").references(() => paidAdvertisements.id), // Link to created ad if approved
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   user: one(users, {
@@ -673,6 +689,17 @@ export const insertPaidAdvertisementSchema = createInsertSchema(paidAdvertisemen
   updatedAt: true,
 });
 
+export const insertAdvertisementRequestSchema = createInsertSchema(advertisementRequests).omit({
+  id: true,
+  status: true,
+  adminNotes: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  advertisementId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -775,6 +802,7 @@ export type AdminAction = typeof adminActions.$inferSelect;
 export type PlatformConfig = typeof platformConfig.$inferSelect;
 export type SupplierPublication = typeof supplierPublications.$inferSelect;
 export type PaidAdvertisement = typeof paidAdvertisements.$inferSelect;
+export type AdvertisementRequest = typeof advertisementRequests.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
@@ -799,6 +827,7 @@ export type InsertAdminAction = z.infer<typeof insertAdminActionSchema>;
 export type InsertPlatformConfig = z.infer<typeof insertPlatformConfigSchema>;
 export type InsertSupplierPublication = z.infer<typeof insertSupplierPublicationSchema>;
 export type InsertPaidAdvertisement = z.infer<typeof insertPaidAdvertisementSchema>;
+export type InsertAdvertisementRequest = z.infer<typeof insertAdvertisementRequestSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 
