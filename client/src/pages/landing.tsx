@@ -640,50 +640,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Categorías de Productos y Servicios */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Busca por Categoría
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Encuentra exactamente lo que necesitas para tu proyecto de construcción
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12">
-            {categories.map((category, index) => (
-              <Card 
-                key={index} 
-                className="hover:shadow-lg transition-all duration-300 cursor-pointer group hover:-translate-y-2"
-                onClick={() => handleQuickSearch(category.name)}
-                data-testid={`category-${category.name.toLowerCase().replace(/ /g, '-')}`}
-              >
-                <CardContent className="p-6 text-center">
-                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 ${category.color} group-hover:scale-110 transition-transform duration-300`}>
-                    <category.icon className="w-8 h-8" />
-                  </div>
-                  <h3 className="font-semibold mb-2 text-gray-900">{category.name}</h3>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="text-center">
-            <Button 
-              size="lg" 
-              onClick={() => setLocation('/directory')}
-              className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
-              data-testid="button-view-all-providers"
-            >
-              Ver Todos los Proveedores
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* Publicaciones de Proveedores */}
       {publications && publications.length > 0 && (
         <section className="py-16 bg-white">
@@ -804,6 +760,50 @@ export default function Landing() {
           </div>
         </section>
       )}
+
+      {/* Categorías de Productos y Servicios */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Busca por Categoría
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Encuentra exactamente lo que necesitas para tu proyecto de construcción
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12">
+            {categories.map((category, index) => (
+              <Card 
+                key={index} 
+                className="hover:shadow-lg transition-all duration-300 cursor-pointer group hover:-translate-y-2"
+                onClick={() => handleQuickSearch(category.name)}
+                data-testid={`category-${category.name.toLowerCase().replace(/ /g, '-')}`}
+              >
+                <CardContent className="p-6 text-center">
+                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 ${category.color} group-hover:scale-110 transition-transform duration-300`}>
+                    <category.icon className="w-8 h-8" />
+                  </div>
+                  <h3 className="font-semibold mb-2 text-gray-900">{category.name}</h3>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Button 
+              size="lg" 
+              onClick={() => setLocation('/directory')}
+              className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
+              data-testid="button-view-all-providers"
+            >
+              Ver Todos los Proveedores
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="py-20 bg-gradient-to-br from-blue-50 to-orange-50 animate-on-scroll">
