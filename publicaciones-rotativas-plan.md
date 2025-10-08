@@ -12,10 +12,15 @@ Implementar un sistema que muestre publicaciones de proveedores de forma equitat
 
 ## Fases de Implementación
 
-### Fase 1: Actualizar Schema y Validaciones ⏳ EN PROGRESO
-- [ ] Añadir validación de límite de publicaciones por plan en el schema
-- [ ] Verificar que el campo de plan existe en suppliers
-- [ ] Actualizar tipos TypeScript
+### Fase 1: Actualizar Schema y Validaciones ✅ COMPLETADA
+- [x] Añadir validación de límite de publicaciones por plan en el schema
+- [x] Verificar que el campo de plan existe en suppliers
+- [x] Actualizar tipos TypeScript
+
+**Notas de implementación:**
+- Los límites están definidos en `shared/plan-limits.ts` con funciones `getPublicationLimit()` y `canCreatePublication()`
+- El campo `plan` existe en la tabla `subscriptions` con valores: basic, professional, enterprise
+- Los tipos TypeScript `SupplierPublication` e `InsertSupplierPublication` ya están definidos en `shared/schema.ts`
 
 ### Fase 2: Lógica de Selección en Backend ⏳ PENDIENTE
 - [ ] Crear función para obtener publicaciones rotativas
@@ -53,5 +58,5 @@ Implementar un sistema que muestre publicaciones de proveedores de forma equitat
   - Enterprise: Ilimitado
 
 ## Estado Actual
-**Fase activa**: Fase 1 - Actualizar Schema y Validaciones
+**Fase activa**: Fase 2 - Lógica de Selección en Backend
 **Última actualización**: 2025-10-08
