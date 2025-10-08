@@ -303,6 +303,7 @@ export interface IStorage {
   
   // Supplier publications operations
   createPublication(publication: InsertSupplierPublication): Promise<SupplierPublication>;
+  getPublication(id: string): Promise<SupplierPublication | undefined>;
   getPublicationsBySupplierId(supplierId: string): Promise<SupplierPublication[]>;
   getPublicationsCountBySupplierId(supplierId: string): Promise<number>;
   getActivePublications(filters?: {
@@ -1839,6 +1840,15 @@ export class DatabaseStorage implements IStorage {
   async createPublication(publication: InsertSupplierPublication): Promise<SupplierPublication> {
     const [newPublication] = await db.insert(supplierPublications).values(publication).returning();
     return newPublication;
+  }
+
+  async getPublication(id: string): Promise<SupplierPublication | undefined> {
+    const [publication] = await db
+      .select()
+      .from(supplierPublications)
+      .where(eq(supplierPublications.id, id))
+      .limit(1);
+    return publication;
   }
 
   async getPublicationsBySupplierId(supplierId: string): Promise<SupplierPublication[]> {

@@ -39,6 +39,7 @@ import { z } from "zod";
 import { isAuthenticated, hasRole, hashPassword, comparePassword, checkEnvAdminCredentials } from "./auth";
 import { storage } from "./storage";
 import { upload } from "./upload";
+import { canCreatePublication, getPublicationLimit } from "@shared/plan-limits";
 
 // Simulate Verifone payment processing (replace with actual API integration)
 async function simulateVerifonePayment(paymentData: any) {
@@ -927,6 +928,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const supplier = await storage.getSupplierByUserId(userId);
       if (!supplier) {
         return res.status(403).json({ message: "Only suppliers can create publications" });
+      }
+
+      // Verificar el límite de publicaciones según el plan
+      const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
+      const plan = subscription?.plan || 'basic';
+      const currentCount = await storage.getPublicationsCountBySupplierId(supplier.id);
+      
+      if (!canCreatePublication(plan, currentCount)) {
+        const limit = getPublicationLimit(plan);
+        return res.status(403).json({ 
+          message: `Has alcanzado el límite de ${limit} publicaciones para tu plan ${plan}. Actualiza tu plan para crear más publicaciones.` 
+        });
       }
 
       const validationResult = insertSupplierPublicationSchema.safeParse({

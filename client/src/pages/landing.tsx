@@ -248,7 +248,7 @@ export default function Landing() {
   });
 
   const { data: publications } = useQuery<SupplierPublication[]>({
-    queryKey: ['/api/publications'],
+    queryKey: ['/api/publications/daily-rotation'],
   });
 
   const { data: advertisements } = useQuery<PaidAdvertisement[]>({
@@ -825,7 +825,7 @@ export default function Landing() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {publications.slice(0, 6).map((publication) => (
+              {publications.map((publication) => (
                 <Card 
                   key={publication.id} 
                   className="hover:shadow-xl transition-all duration-300 cursor-pointer group"

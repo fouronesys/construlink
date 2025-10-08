@@ -37,17 +37,28 @@ Implementar un sistema que muestre publicaciones de proveedores de forma equitat
 - El índice se calcula con: `(dateSeed + supplierSeed) % pubs.length`
 - Creado endpoint GET `/api/publications/daily-rotation` en `server/routes.ts`
 
-### Fase 3: Validación de Límites ⏳ PENDIENTE
-- [ ] Implementar validación al crear publicación:
+### Fase 3: Validación de Límites ✅ COMPLETADA
+- [x] Implementar validación al crear publicación:
   - Verificar plan del proveedor
   - Plan Básico: máximo 5 publicaciones
   - Plan Premium/Enterprise: sin límite o límite mayor
-- [ ] Retornar error apropiado si se excede el límite
+- [x] Retornar error apropiado si se excede el límite
 
-### Fase 4: Actualizar Frontend ⏳ PENDIENTE
-- [ ] Cambiar endpoint en landing.tsx a `/api/publications/daily-rotation`
-- [ ] Ajustar UI para mostrar las 10+ publicaciones
-- [ ] Mantener diseño responsive
+**Notas de implementación:**
+- Validación implementada en endpoint POST `/api/suppliers/publications`
+- Se obtiene el plan a través de la suscripción del proveedor
+- Se usa `canCreatePublication()` de `shared/plan-limits.ts` para validar
+- Error 403 con mensaje claro al exceder límite: "Has alcanzado el límite de X publicaciones para tu plan"
+
+### Fase 4: Actualizar Frontend ✅ COMPLETADA
+- [x] Cambiar endpoint en landing.tsx a `/api/publications/daily-rotation`
+- [x] Ajustar UI para mostrar las 10+ publicaciones
+- [x] Mantener diseño responsive
+
+**Notas de implementación:**
+- Cambiado queryKey de `/api/publications` a `/api/publications/daily-rotation` en `client/src/pages/landing.tsx`
+- Eliminado límite de `.slice(0, 6)` para mostrar todas las publicaciones rotativas
+- El diseño responsive (grid 2 columnas en tablet, 3 en desktop) ya soporta 10+ publicaciones
 
 ### Fase 5: Testing y Ajustes ⏳ PENDIENTE
 - [ ] Probar rotación diaria
@@ -64,5 +75,5 @@ Implementar un sistema que muestre publicaciones de proveedores de forma equitat
   - Enterprise: Ilimitado
 
 ## Estado Actual
-**Fase activa**: Fase 3 - Validación de Límites
+**Fase activa**: Fase 5 - Testing y Ajustes
 **Última actualización**: 2025-10-08
