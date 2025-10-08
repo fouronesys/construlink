@@ -699,7 +699,7 @@ export default function Landing() {
       {advertisements && advertisements.length > 0 && (
         <section className="relative py-20 overflow-hidden">
           {/* Animated background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 opacity-95">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange via-orange-600 to-red-600 opacity-95">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoNnYtNmgtNnYtNmgtNnY2aC02djZoNnY2aDZ2LTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
           </div>
           
@@ -739,7 +739,7 @@ export default function Landing() {
                   aria-label={`Ver oferta: ${ad.title}`}
                 >
                   {/* Glow effect on hover - respects prefers-reduced-motion */}
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 rounded-2xl blur-lg opacity-0 group-hover:opacity-75 transition-opacity duration-500 motion-reduce:transition-none"></div>
+                  <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 via-orange-500 to-red-500 rounded-2xl blur-lg opacity-0 group-hover:opacity-75 transition-opacity duration-500 motion-reduce:transition-none"></div>
                   
                   <Card className="relative bg-white overflow-hidden rounded-2xl shadow-2xl transition-all duration-500 group-hover:shadow-3xl group-hover:-translate-y-2 motion-reduce:transition-none motion-reduce:group-hover:transform-none border-0">
                     {/* Premium badge ribbon */}
@@ -753,7 +753,7 @@ export default function Landing() {
                     </div>
 
                     {/* Image container with overlay effect */}
-                    <div className="relative h-64 overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50">
+                    <div className="relative h-64 overflow-hidden bg-gradient-to-br from-orange-50 to-red-50">
                       <img 
                         src={ad.imageUrl} 
                         alt={ad.title}
@@ -764,12 +764,12 @@ export default function Landing() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 motion-reduce:transition-none"></div>
                       
                       {/* Animated corner accent */}
-                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-br from-indigo-500 to-transparent opacity-60"></div>
+                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-br from-orange-500 to-transparent opacity-60"></div>
                     </div>
 
                     <CardContent className="p-8">
                       {/* Title with gradient on hover */}
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 motion-reduce:transition-none" data-testid={`title-advertisement-${ad.id}`}>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:bg-gradient-to-r group-hover:from-orange-600 group-hover:to-red-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 motion-reduce:transition-none" data-testid={`title-advertisement-${ad.id}`}>
                         {ad.title}
                       </h3>
                       
@@ -779,7 +779,7 @@ export default function Landing() {
 
                       {/* Premium CTA styled div */}
                       <div 
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 group-hover:from-blue-700 group-hover:to-purple-700 text-white font-semibold shadow-lg group-hover:shadow-xl transition-all duration-300 motion-reduce:transition-none rounded-md h-10 px-4 py-2" 
+                        className="w-full bg-gradient-to-r from-orange to-red-600 group-hover:from-orange-600 group-hover:to-red-700 text-white font-semibold shadow-lg group-hover:shadow-xl transition-all duration-300 motion-reduce:transition-none rounded-md h-10 px-4 py-2" 
                         data-testid={`button-learn-more-${ad.id}`}
                       >
                         <span className="flex items-center justify-center gap-2 h-full">
@@ -790,7 +790,7 @@ export default function Landing() {
                     </CardContent>
 
                     {/* Bottom accent line */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600"></div>
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orange via-orange-500 to-red-600"></div>
                   </Card>
                 </button>
               ))}
