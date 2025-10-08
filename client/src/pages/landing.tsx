@@ -777,16 +777,16 @@ export default function Landing() {
                         {ad.description}
                       </p>
 
-                      {/* Premium CTA button */}
-                      <Button 
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 motion-reduce:transition-none group/btn" 
+                      {/* Premium CTA styled div */}
+                      <div 
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 group-hover:from-blue-700 group-hover:to-purple-700 text-white font-semibold shadow-lg group-hover:shadow-xl transition-all duration-300 motion-reduce:transition-none rounded-md h-10 px-4 py-2" 
                         data-testid={`button-learn-more-${ad.id}`}
                       >
-                        <span className="flex items-center justify-center gap-2">
+                        <span className="flex items-center justify-center gap-2 h-full">
                           Ver Oferta Exclusiva
-                          <ArrowUpRight className="w-4 h-4 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform duration-300 motion-reduce:transition-none motion-reduce:group-hover/btn:transform-none" />
+                          <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300 motion-reduce:transition-none" />
                         </span>
-                      </Button>
+                      </div>
                     </CardContent>
 
                     {/* Bottom accent line */}
