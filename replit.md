@@ -26,7 +26,7 @@ Preferred communication style: Simple, everyday language.
 ### Feature Specifications
 - **Authentication & Authorization**: Replit Auth, session management, and role-based access (client, supplier, admin, superadmin).
 - **Supplier Management**: Unified registration, tiered subscription plans (Basic, Professional, Enterprise) with real-time usage validation, administrative verification workflow, and status management (pending, approved, suspended, rejected).
-- **Payment System**: Verifone integration for monthly recurring payments, 7-day trial period, and Dominican Peso (DOP) currency. Includes a comprehensive admin panel for payment, refund, and invoice management with fiscal compliance (NCF, ITBIS calculation).
+- **Payment System**: Multi-gateway support with Azul (primary) and Verifone for monthly recurring payments, 7-day trial period, and Dominican Peso (DOP) currency. Schema supports multiple payment gateways with explicit gateway identification. Includes a comprehensive admin panel for payment, refund, and invoice management with fiscal compliance (NCF, ITBIS calculation). **Status**: Fase 1 completada (schema preparado para Azul).
 - **Business Claim System**: Allows users to claim ownership of existing company listings through an admin-approved workflow, leading to ownership transfer and role upgrade.
 - **Admin Panel**: Features include banner management, analytics dashboard (clicks, impressions, CTR with charts and CSV export), user management (role and status), and audit logging.
 - **Quote Request Process**: Clients can browse and filter suppliers to submit quote requests, with notifications for suppliers.
@@ -37,10 +37,21 @@ Preferred communication style: Simple, everyday language.
 - **Modular Architecture**: Clear separation between frontend and backend.
 - **Robust Validation**: Zod used for all form and API validations.
 
+## Recent Changes (2025-10-08)
+
+### Sistema de Pagos con Azul - Fase 1 Completada ✅
+- **Schema actualizado** para soportar múltiples gateways de pago (Azul, Verifone, Manual)
+- **Nueva tabla** `paymentGatewayConfig` para almacenar credenciales de diferentes gateways
+- **Campos genéricos** agregados: `paymentGateway`, `gatewayTransactionId`, `gatewayAuthCode`, etc.
+- **Compatibilidad** mantenida con campos legacy de Verifone
+- **Archivo de configuración** `shared/azul-config.ts` con tipos, constantes y helpers para Azul
+- **Próximos pasos**: Fase 2 - Integración con Azul Payment Gateway API
+
 ## External Dependencies
 
 - **@neondatabase/serverless**: PostgreSQL connection
-- **verifone**: Payment processing
+- **azul**: Payment gateway (República Dominicana - Banco Popular) - En implementación
+- **verifone**: Payment processing (legacy support)
 - **drizzle-orm**: Database ORM
 - **express**: Web server framework
 - **@tanstack/react-query**: Server state management
