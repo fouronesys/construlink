@@ -90,6 +90,7 @@ export const azulCallbackSchema = z.object({
   ResponseCode: z.string().optional(),
   ResponseMessage: z.string().optional(),
   IsoCode: z.string().optional(),
+  ErrorDescription: z.string().optional(),
   AzulOrderId: z.string().optional(),
   CardNumber: z.string().optional(),
   CustomOrderId: z.string().optional(),
