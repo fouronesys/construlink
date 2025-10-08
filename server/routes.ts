@@ -798,6 +798,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get active publications (public endpoint)
+  app.get('/api/publications', async (req, res) => {
+    try {
+      const { limit = '10', offset = '0', category } = req.query;
+      
+      const publications = await storage.getActivePublications({
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+        category: category as string,
+      });
+
+      res.json(publications);
+    } catch (error) {
+      console.error("Error fetching publications:", error);
+      res.status(500).json({ message: "Failed to fetch publications" });
+    }
+  });
+
+  // Track publication view (public endpoint)
+  app.post('/api/publications/:id/view', async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Publication ID is required" });
+      }
+      
+      const success = await storage.incrementPublicationViews(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Publication not found" });
+      }
+      
+      res.json({ message: "View recorded" });
+    } catch (error) {
+      console.error("Error recording publication view:", error);
+      res.status(500).json({ message: "Failed to record view" });
+    }
+  });
+
+  // Get active advertisements (public endpoint)
+  app.get('/api/advertisements', async (req, res) => {
+    try {
+      const { displayLocation = 'content', limit = '5' } = req.query;
+      
+      const advertisements = await storage.getActiveAdvertisements({
+        displayLocation: displayLocation as string,
+        limit: parseInt(limit as string),
+      });
+
+      res.json(advertisements);
+    } catch (error) {
+      console.error("Error fetching advertisements:", error);
+      res.status(500).json({ message: "Failed to fetch advertisements" });
+    }
+  });
+
+  // Track advertisement click (public endpoint)
+  app.post('/api/advertisements/:id/click', async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Advertisement ID is required" });
+      }
+      
+      const success = await storage.incrementAdvertisementClicks(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Advertisement not found" });
+      }
+      
+      res.json({ message: "Click recorded" });
+    } catch (error) {
+      console.error("Error recording advertisement click:", error);
+      res.status(500).json({ message: "Failed to record click" });
+    }
+  });
+
+  // Track advertisement impression (public endpoint)
+  app.post('/api/advertisements/:id/impression', async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Advertisement ID is required" });
+      }
+      
+      const success = await storage.incrementAdvertisementImpressions(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Advertisement not found" });
+      }
+      
+      res.json({ message: "Impression recorded" });
+    } catch (error) {
+      console.error("Error recording advertisement impression:", error);
+      res.status(500).json({ message: "Failed to record impression" });
+    }
+  });
+
   // Get suppliers (public endpoint with filters)
   app.get('/api/suppliers', async (req, res) => {
     try {
