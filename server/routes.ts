@@ -2628,6 +2628,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check trial reminders (can be called by cron job or admin)
+  app.post('/api/subscriptions/check-trial-reminders', async (req, res) => {
+    try {
+      const { checkTrialReminders } = await import('./notification-service');
+      await checkTrialReminders(storage);
+      res.json({ success: true, message: "Trial reminders checked successfully" });
+    } catch (error) {
+      console.error("Error checking trial reminders:", error);
+      res.status(500).json({ message: "Failed to check trial reminders" });
+    }
+  });
+
   // Admin get all refunds
   app.get('/api/admin/refunds', isAuthenticated, async (req: any, res) => {
     try {

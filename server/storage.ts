@@ -123,6 +123,7 @@ export interface IStorage {
   updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription>;
   updateSubscriptionStatus(id: string, status: "active" | "inactive" | "cancelled" | "trialing"): Promise<Subscription>;
   getActiveSubscriptions(): Promise<Subscription[]>;
+  getTrialingSubscriptions(): Promise<Subscription[]>;
   getAllSubscriptions(filters?: {
     status?: string;
     plan?: string;
@@ -1280,6 +1281,13 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.status, 'active'));
+  }
+
+  async getTrialingSubscriptions(): Promise<Subscription[]> {
+    return await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'trialing'));
   }
 
   async getAllSubscriptions(filters?: {
