@@ -447,6 +447,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calculate prorated amount for plan change
+  app.post('/api/subscriptions/:id/calculate-prorate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { newPlan, newBillingCycle } = req.body;
+      
+      const subscription = await storage.getSubscription(id);
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      const { calculateProratedAmount } = await import('./subscription-service');
+      const calculation = calculateProratedAmount(subscription, newPlan, newBillingCycle || "monthly");
+      
+      res.json({ success: true, calculation });
+    } catch (error) {
+      console.error("Error calculating prorate:", error);
+      res.status(500).json({ message: "Failed to calculate prorated amount" });
+    }
+  });
+
+  // Change subscription plan (upgrade/downgrade)
+  app.post('/api/subscriptions/:id/change-plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { newPlan, newBillingCycle } = req.body;
+      
+      const subscription = await storage.getSubscription(id);
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      // Verify user owns this subscription
+      const supplier = await storage.getSupplier(subscription.supplierId);
+      if (!supplier || supplier.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const { changePlan } = await import('./subscription-service');
+      const result = await changePlan(storage, id, newPlan, newBillingCycle || "monthly");
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error changing plan:", error);
+      res.status(500).json({ message: "Failed to change plan" });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/subscriptions/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { immediate } = req.body;
+      
+      const subscription = await storage.getSubscription(id);
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      // Verify user owns this subscription
+      const supplier = await storage.getSupplier(subscription.supplierId);
+      if (!supplier || supplier.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const { cancelSubscription } = await import('./subscription-service');
+      const result = await cancelSubscription(storage, id, immediate || false);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // Reactivate subscription
+  app.post('/api/subscriptions/:id/reactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const subscription = await storage.getSubscription(id);
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      // Verify user owns this subscription
+      const supplier = await storage.getSupplier(subscription.supplierId);
+      if (!supplier || supplier.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const { reactivateSubscription } = await import('./subscription-service');
+      const result = await reactivateSubscription(storage, id);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error reactivating subscription:", error);
+      res.status(500).json({ message: "Failed to reactivate subscription" });
+    }
+  });
+
+  // Extend trial (admin only)
+  app.post('/api/admin/subscriptions/:id/extend-trial', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { additionalDays } = req.body;
+      
+      if (!additionalDays || additionalDays <= 0) {
+        return res.status(400).json({ message: "Invalid number of days" });
+      }
+
+      const { extendTrial } = await import('./subscription-service');
+      const result = await extendTrial(storage, id, additionalDays);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      // Log admin action
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'extend_trial',
+          entityType: 'subscription',
+          entityId: id,
+          details: { additionalDays },
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error extending trial:", error);
+      res.status(500).json({ message: "Failed to extend trial" });
+    }
+  });
+
   // Card validation function
   function validateCreditCard(cardNumber: string, expiryDate: string, cvv: string) {
     // Basic Luhn algorithm check
