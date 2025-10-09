@@ -3778,6 +3778,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Azul payment endpoints
+  // Create Azul payment request
+  app.post('/api/payments/azul/create', isAuthenticated, async (req: any, res) => {
+    try {
+      const { subscriptionId, amount, plan } = req.body;
+      const userId = req.session.userId!;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Import Azul service
+      const { createAzulPaymentRequest } = await import('./azul-service');
+
+      // Generate unique order number
+      const orderNumber = `ORD_${Date.now()}_${supplier.id.substring(0, 8)}`;
+
+      // Calculate ITBIS (18%)
+      const subtotal = amount;
+      const itbis = Math.round(subtotal * 0.18);
+      const total = subtotal + itbis;
+
+      // Create payment record
+      const paymentData = {
+        subscriptionId,
+        amount: total.toString(),
+        currency: '$',
+        status: 'pending' as const,
+        gatewayName: 'azul' as const,
+        gatewayTransactionId: orderNumber,
+      };
+
+      const payment = await storage.createPayment(paymentData);
+
+      // Create Azul payment request
+      const azulRequest = await createAzulPaymentRequest({
+        orderNumber,
+        amount: total,
+        itbis,
+        currency: '$',
+        customOrderId: JSON.stringify({
+          paymentId: payment.id,
+          supplierId: supplier.id,
+          subscriptionId,
+          plan,
+        }),
+      });
+
+      res.json({
+        success: true,
+        paymentId: payment.id,
+        orderNumber,
+        azulPaymentUrl: azulRequest.paymentUrl,
+        azulPaymentData: azulRequest.paymentData,
+        amount: total,
+        subtotal,
+        itbis,
+        message: "Azul payment request created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating Azul payment:", error);
+      res.status(500).json({ message: "Failed to create payment request" });
+    }
+  });
+
+  // Azul approved callback
+  app.post('/api/payments/azul/approved', async (req, res) => {
+    try {
+      const { processAzulCallback } = await import('./azul-service');
+      const authHash = req.body.AuthHash;
+      
+      const result = await processAzulCallback(req.body, authHash);
+
+      if (!result.success) {
+        console.error("Azul payment not approved:", result);
+        return res.redirect('/subscription-selection?payment=failed');
+      }
+
+      // Extract custom data
+      let customData: any = {};
+      try {
+        if (req.body.CustomOrderId) {
+          customData = JSON.parse(req.body.CustomOrderId);
+        }
+      } catch (e) {
+        console.error("Error parsing CustomOrderId:", e);
+      }
+
+      // Update payment status
+      if (customData.paymentId) {
+        await storage.updatePayment(customData.paymentId, {
+          status: 'completed',
+          gatewayAuthCode: result.authorizationCode,
+          gatewayResponseCode: result.responseCode,
+          gatewayMetadata: result.transactionDetails,
+        });
+
+        // Update subscription status
+        if (customData.subscriptionId) {
+          const subscription = await storage.getSubscription(customData.subscriptionId);
+          if (subscription) {
+            const currentPeriodEnd = new Date();
+            currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+            
+            await storage.updateSubscription(subscription.id, {
+              status: 'active',
+              paymentGateway: 'azul',
+              gatewaySubscriptionId: result.orderNumber,
+              currentPeriodEnd,
+            });
+
+            // Generate invoice
+            const invoiceNumber = `INV-${Date.now()}`;
+            await storage.createInvoice({
+              subscriptionId: subscription.id,
+              paymentId: customData.paymentId,
+              invoiceNumber,
+              amount: result.amount?.toString() || subscription.monthlyAmount,
+              currency: 'DOP',
+              status: 'paid',
+              dueDate: new Date(),
+              paidAt: new Date(),
+              ncf: null,
+            });
+          }
+        }
+      }
+
+      res.redirect('/supplier-dashboard?payment=success');
+    } catch (error) {
+      console.error("Error processing Azul approved callback:", error);
+      res.redirect('/subscription-selection?payment=error');
+    }
+  });
+
+  // Azul declined callback
+  app.post('/api/payments/azul/declined', async (req, res) => {
+    try {
+      const { processAzulCallback } = await import('./azul-service');
+      
+      const result = await processAzulCallback(req.body, req.body.AuthHash);
+      
+      // Extract custom data
+      let customData: any = {};
+      try {
+        if (req.body.CustomOrderId) {
+          customData = JSON.parse(req.body.CustomOrderId);
+        }
+      } catch (e) {
+        console.error("Error parsing CustomOrderId:", e);
+      }
+
+      // Update payment status
+      if (customData.paymentId) {
+        await storage.updatePayment(customData.paymentId, {
+          status: 'failed',
+          gatewayResponseCode: result.responseCode,
+          gatewayMetadata: result.transactionDetails,
+        });
+      }
+
+      res.redirect(`/subscription-selection?payment=declined&reason=${encodeURIComponent(result.message)}`);
+    } catch (error) {
+      console.error("Error processing Azul declined callback:", error);
+      res.redirect('/subscription-selection?payment=error');
+    }
+  });
+
+  // Azul cancelled callback
+  app.post('/api/payments/azul/cancelled', async (req, res) => {
+    try {
+      // Extract custom data
+      let customData: any = {};
+      try {
+        if (req.body.CustomOrderId) {
+          customData = JSON.parse(req.body.CustomOrderId);
+        }
+      } catch (e) {
+        console.error("Error parsing CustomOrderId:", e);
+      }
+
+      // Update payment status
+      if (customData.paymentId) {
+        await storage.updatePayment(customData.paymentId, {
+          status: 'cancelled',
+        });
+      }
+
+      res.redirect('/subscription-selection?payment=cancelled');
+    } catch (error) {
+      console.error("Error processing Azul cancelled callback:", error);
+      res.redirect('/subscription-selection?payment=error');
+    }
+  });
+
+  // Azul refund endpoint
+  app.post('/api/payments/azul/refund', isAuthenticated, hasRole('admin'), async (req: any, res) => {
+    try {
+      const { paymentId, amount, reason } = req.body;
+
+      if (!paymentId || !amount) {
+        return res.status(400).json({ message: "Payment ID and amount are required" });
+      }
+
+      const payment = await storage.getPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      if (payment.gatewayName !== 'azul') {
+        return res.status(400).json({ message: "This payment was not processed through Azul" });
+      }
+
+      const { createAzulRefund } = await import('./azul-service');
+
+      const refundResult = await createAzulRefund({
+        originalOrderNumber: payment.gatewayTransactionId || '',
+        originalAuthCode: payment.gatewayAuthCode || '',
+        refundAmount: parseFloat(amount),
+        currency: '$',
+      });
+
+      if (!refundResult.success) {
+        return res.status(400).json({ 
+          success: false, 
+          message: refundResult.message 
+        });
+      }
+
+      // Create refund record
+      await storage.createRefund({
+        paymentId,
+        amount: amount.toString(),
+        status: 'completed',
+        reason: reason || 'Admin refund',
+        gatewayRefundId: refundResult.refundOrderNumber,
+      });
+
+      // Update payment status
+      await storage.updatePayment(paymentId, {
+        status: 'refunded',
+      });
+
+      res.json({
+        success: true,
+        refundId: refundResult.refundOrderNumber,
+        message: "Refund processed successfully"
+      });
+    } catch (error) {
+      console.error("Error processing Azul refund:", error);
+      res.status(500).json({ message: "Failed to process refund" });
+    }
+  });
+
   // Exchange rates endpoint
   app.get('/api/exchange-rates', async (_req, res) => {
     try {
