@@ -758,9 +758,6 @@ export default function Landing() {
                       />
                       {/* Gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 motion-reduce:transition-none"></div>
-                      
-                      {/* Animated corner accent */}
-                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-br from-primary/40 to-transparent"></div>
                     </div>
 
                     <CardContent className="p-8">
