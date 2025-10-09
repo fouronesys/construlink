@@ -132,6 +132,9 @@ export const supplierBanners = pgTable("supplier_banners", {
 // Payment gateway enum
 export const paymentGatewayEnum = pgEnum("payment_gateway", ["azul", "verifone", "manual"]);
 
+// Billing cycle enum
+export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "annual"]);
+
 // Subscriptions
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -141,6 +144,8 @@ export const subscriptions = pgTable("subscriptions", {
   paymentGateway: paymentGatewayEnum("payment_gateway"), // Sin default, será explícito
   gatewaySubscriptionId: varchar("gateway_subscription_id"), // ID genérico del gateway
   verifoneSubscriptionId: varchar("verifone_subscription_id"), // Mantener por compatibilidad
+  billingCycle: billingCycleEnum("billing_cycle").default("monthly"), // Ciclo de facturación
+  trialDays: integer("trial_days").default(7), // Días de prueba configurables por plan
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   trialEndDate: timestamp("trial_end_date"),
