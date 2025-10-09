@@ -39,6 +39,33 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### 2025-10-09: Sistema de Suscripciones Mejorado - Fase 3 Completada ✅
+- **Página de selección de planes mejorada** (`client/src/pages/subscription-selection.tsx`):
+  - Toggle de facturación mensual/anual con 20% descuento anual
+  - Comparación visual de planes con features destacados
+  - Sección de FAQs con 8 preguntas frecuentes
+  - Destacado visual de plan recomendado (Professional)
+- **Sistema de trial flexible**:
+  - Configuración de días de prueba por plan (Basic: 7 días, Professional: 14 días, Enterprise: 30 días)
+  - Campo `trialDays` agregado al schema de subscriptions
+  - Recordatorios automáticos 3 días antes y el día del fin de trial
+- **Servicio de suscripciones** (`server/subscription-service.ts`) con:
+  - Cálculo prorrateado automático para upgrades/downgrades
+  - Aplicación de créditos por downgrade
+  - Actualización de billing cycle (mensual/anual)
+  - Validación de límites de uso por plan
+- **Servicio de notificaciones** (`server/notification-service.ts`):
+  - Templates de email para bienvenida, confirmación de pago, fallo de pago
+  - Recordatorios de trial y cancelación de suscripción
+  - Sistema preparado para integración con SMTP/SendGrid
+- **Panel de gestión de suscripción** (`client/src/pages/subscription-management.tsx`):
+  - Vista de plan actual, próximo pago y estado
+  - Upgrade/downgrade de planes con preview de cálculo prorrateado
+  - Cambio de billing cycle (mensual/anual)
+  - Cancelación y reactivación de suscripción
+  - Indicador de período de prueba con días restantes
+- **Próximos pasos**: Fase 4 - Sistema de facturación automática con NCF
+
 ### 2025-10-09: Sistema de Pagos con Azul - Fase 2 Completada ✅
 - **Servicio de integración** `server/azul-service.ts` implementado con:
   - Generación de hash SHA512 para autenticación
@@ -52,7 +79,6 @@ Preferred communication style: Simple, everyday language.
   - POST `/api/payments/azul/cancelled` - Callback de pago cancelado
   - POST `/api/payments/azul/refund` - Procesar reembolsos (admin)
 - **Integración automática**: Actualización de suscripciones y generación de facturas post-pago
-- **Próximos pasos**: Fase 3 - Mejorar flujo de suscripciones
 
 ### 2025-10-08: Sistema de Pagos con Azul - Fase 1 Completada ✅
 - **Schema actualizado** para soportar múltiples gateways de pago (Azul, Verifone, Manual)
