@@ -15,6 +15,7 @@ import SupplierDashboard from "@/pages/supplier-dashboard";
 import AdminPanel from "@/pages/admin-panel";
 import Payment from "@/pages/payment";
 import SubscriptionSelection from "@/pages/subscription-selection";
+import SubscriptionManagement from "@/pages/subscription-management";
 import Terms from "@/pages/terms";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import CookiePolicy from "@/pages/cookie-policy";
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/payment" component={Payment} />
           <Route path="/subscription-selection" component={SubscriptionSelection} />
+          <Route path="/subscription-management" component={SubscriptionManagement} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/cookie-policy" component={CookiePolicy} />
