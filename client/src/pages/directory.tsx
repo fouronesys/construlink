@@ -97,6 +97,7 @@ export default function Directory() {
     search: "",
     rating: "all",
   });
+  const [sortBy, setSortBy] = useState<string>("featured");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProvider, setSelectedProvider] = useState<Supplier | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -130,11 +131,12 @@ export default function Directory() {
   }, []);
 
   const { data: suppliersData, isLoading, error } = useQuery({
-    queryKey: ["/api/suppliers", filters, currentPage],
+    queryKey: ["/api/suppliers", filters, currentPage, sortBy],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: "12",
+        limit: "50",
+        sortBy: sortBy,
         ...Object.fromEntries(
           Object.entries(filters).filter(([, value]) => value !== "" && value !== "all")
         ),
@@ -295,16 +297,40 @@ export default function Directory() {
 
           {/* Provider Results */}
           <div className="w-full lg:w-3/4 order-1 lg:order-2">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Proveedores Verificados</h2>
-              <span className="text-sm sm:text-base text-gray-600">
-                {suppliers?.length || 0} resultados encontrados
-              </span>
+            {/* Header con información y ordenamiento */}
+            <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Proveedores Verificados</h2>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold text-primary">{totalResults}</span> proveedores disponibles
+                    {currentPage > 1 && <span> - Página {currentPage}</span>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Ordenar por:</label>
+                  <Select value={sortBy} onValueChange={(value) => {
+                    setSortBy(value);
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="featured">Destacados</SelectItem>
+                      <SelectItem value="rating">Mejor calificados</SelectItem>
+                      <SelectItem value="reviews">Más reseñas</SelectItem>
+                      <SelectItem value="newest">Más recientes</SelectItem>
+                      <SelectItem value="name">Nombre A-Z</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+                {Array.from({ length: 8 }).map((_, i) => (
                   <Card key={i} className="animate-pulse">
                     <CardContent className="p-4 sm:p-6">
                       <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -321,9 +347,26 @@ export default function Directory() {
                   <p className="text-red-600">Error al cargar los proveedores</p>
                 </CardContent>
               </Card>
+            ) : suppliers.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No se encontraron proveedores</h3>
+                  <p className="text-gray-600 mb-4">Intenta ajustar tus filtros de búsqueda</p>
+                  <Button 
+                    onClick={() => {
+                      setFilters({ specialty: "all", location: "all", search: "", rating: "all" });
+                      setCurrentPage(1);
+                    }}
+                    variant="outline"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </CardContent>
+              </Card>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
                   {suppliers?.map((supplier: Supplier) => (
                     <ProviderCard
                       key={supplier.id}
@@ -335,36 +378,39 @@ export default function Directory() {
                   ))}
                 </div>
 
-                {/* Pagination */}
-                <div className="flex justify-center mt-6 sm:mt-8">
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs sm:text-sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-primary text-primary-foreground text-xs sm:text-sm min-w-[40px]"
-                    >
-                      {currentPage}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs sm:text-sm"
-                      onClick={() => setCurrentPage(prev => prev + 1)}
-                      disabled={!suppliers || suppliers.length < 12}
-                    >
-                      Siguiente
-                    </Button>
+                {/* Paginación mejorada */}
+                {totalPages > 1 && (
+                  <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="text-sm text-gray-600">
+                        Mostrando <span className="font-semibold">{((currentPage - 1) * 50) + 1}</span> - <span className="font-semibold">{Math.min(currentPage * 50, totalResults)}</span> de <span className="font-semibold">{totalResults}</span> proveedores
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="font-medium"
+                        >
+                          ← Anterior
+                        </Button>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-md">
+                          <span className="text-sm font-semibold text-primary">Página {currentPage} de {totalPages}</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => prev + 1)}
+                          disabled={currentPage >= totalPages}
+                          className="font-medium"
+                        >
+                          Siguiente →
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </div>
