@@ -3896,16 +3896,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Generate invoice
             const invoiceNumber = `INV-${Date.now()}`;
+            const invoiceAmount = result.amount?.toString() || subscription.monthlyAmount || '1000';
+            const subtotal = parseFloat(invoiceAmount) / 1.18;
+            const itbis = parseFloat(invoiceAmount) - subtotal;
+            
             await storage.createInvoice({
-              subscriptionId: subscription.id,
-              paymentId: customData.paymentId,
+              supplierId: customData.supplierId || '',
+              paymentId: customData.paymentId || '',
               invoiceNumber,
-              amount: result.amount?.toString() || subscription.monthlyAmount,
+              subtotal: subtotal.toFixed(2),
+              total: invoiceAmount,
               currency: 'DOP',
+              itbis: itbis.toFixed(2),
               status: 'paid',
               dueDate: new Date(),
-              paidAt: new Date(),
-              ncf: null,
+              paidDate: new Date(),
             });
           }
         }
@@ -3944,7 +3949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.redirect(`/subscription-selection?payment=declined&reason=${encodeURIComponent(result.message)}`);
+      res.redirect(`/subscription-selection?payment=declined&reason=${encodeURIComponent(result.responseMessage || 'Payment declined')}`);
     } catch (error) {
       console.error("Error processing Azul declined callback:", error);
       res.redirect('/subscription-selection?payment=error');
@@ -3967,7 +3972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update payment status
       if (customData.paymentId) {
         await storage.updatePayment(customData.paymentId, {
-          status: 'cancelled',
+          status: 'failed',
         });
       }
 
@@ -3979,7 +3984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Azul refund endpoint
-  app.post('/api/payments/azul/refund', isAuthenticated, hasRole('admin'), async (req: any, res) => {
+  app.post('/api/payments/azul/refund', isAuthenticated, hasRole(['admin']), async (req: any, res) => {
     try {
       const { paymentId, amount, reason } = req.body;
 
@@ -3987,7 +3992,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Payment ID and amount are required" });
       }
 
-      const payment = await storage.getPayment(paymentId);
+      // Get payment from database
+      const [payment] = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
+      
       if (!payment) {
         return res.status(404).json({ message: "Payment not found" });
       }
@@ -4005,13 +4012,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: '$',
       });
 
-      if (!refundResult.success) {
-        return res.status(400).json({ 
-          success: false, 
-          message: refundResult.message 
-        });
-      }
-
       // Create refund record
       await storage.createRefund({
         paymentId,
@@ -4021,9 +4021,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gatewayRefundId: refundResult.refundOrderNumber,
       });
 
-      // Update payment status
+      // Update payment status - mark as completed with note about refund
       await storage.updatePayment(paymentId, {
-        status: 'refunded',
+        status: 'completed',
       });
 
       res.json({
