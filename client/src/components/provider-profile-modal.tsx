@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Star, 
   MapPin, 
@@ -52,6 +53,7 @@ interface Provider {
   phone?: string;
   email?: string;
   website?: string;
+  profileImageUrl?: string;
 }
 
 interface ProviderProfileModalProps {
@@ -160,17 +162,38 @@ export function ProviderProfileModal({
     ));
   };
 
+  const getProviderInitials = () => {
+    return provider.legalName
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  const isTestProvider = provider.email?.toLowerCase().includes('test');
+  const provisionalLogo = 'https://via.placeholder.com/100/FF6B35/FFFFFF?text=TEST';
+  const logoUrl = isTestProvider ? provisionalLogo : provider.profileImageUrl;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-            <div>
-              <DialogTitle className="text-xl sm:text-2xl">{provider.legalName}</DialogTitle>
-              <DialogDescription className="flex items-center mt-2 text-xs sm:text-sm">
-                <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0" />
-                Proveedor Verificado • RNC: {provider.rnc}
-              </DialogDescription>
+            <div className="flex items-start gap-3 flex-1">
+              <Avatar className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0" data-testid={`avatar-provider-modal-${provider.id}`}>
+                <AvatarImage src={logoUrl} alt={provider.legalName} />
+                <AvatarFallback className="bg-orange text-white text-2xl">
+                  {getProviderInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <DialogTitle className="text-xl sm:text-2xl">{provider.legalName}</DialogTitle>
+                <DialogDescription className="flex items-center mt-2 text-xs sm:text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0" />
+                  Proveedor Verificado • RNC: {provider.rnc}
+                </DialogDescription>
+              </div>
             </div>
             <Button 
               onClick={() => onRequestQuote(provider.id)}

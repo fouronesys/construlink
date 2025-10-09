@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Star, MapPin, MessageSquare, Eye, CheckCircle, Building2 } from "lucide-react";
 
 interface Provider {
@@ -13,6 +14,8 @@ interface Provider {
   averageRating: number;
   totalReviews: number;
   isClaimed?: boolean;
+  email?: string;
+  profileImageUrl?: string;
 }
 
 interface ProviderCardProps {
@@ -36,17 +39,38 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimB
     ));
   };
 
+  const getProviderInitials = () => {
+    return provider.legalName
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  const isTestProvider = provider.email?.toLowerCase().includes('test');
+  const provisionalLogo = 'https://via.placeholder.com/100/FF6B35/FFFFFF?text=TEST';
+  const logoUrl = isTestProvider ? provisionalLogo : provider.profileImageUrl;
+
   return (
     <Card className="h-full hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-3 sm:pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 line-clamp-2 leading-tight">
-              {provider.legalName}
-            </CardTitle>
-            <div className="flex items-center mt-2 text-xs sm:text-sm text-gray-600">
-              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 mr-1 flex-shrink-0" />
-              RNC: {provider.rnc}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 flex-1">
+            <Avatar className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0" data-testid={`avatar-provider-${provider.id}`}>
+              <AvatarImage src={logoUrl} alt={provider.legalName} />
+              <AvatarFallback className="bg-orange text-white">
+                {getProviderInitials()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 line-clamp-2 leading-tight">
+                {provider.legalName}
+              </CardTitle>
+              <div className="flex items-center mt-2 text-xs sm:text-sm text-gray-600">
+                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 mr-1 flex-shrink-0" />
+                RNC: {provider.rnc}
+              </div>
             </div>
           </div>
           {!provider.isClaimed && onClaimBusiness && (
