@@ -127,25 +127,25 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimB
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-6">
+        <div className="flex gap-3 mt-4 sm:mt-6">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => onViewProfile(provider)}
-            className="flex-1 text-xs sm:text-sm"
+            className="flex-1 h-10 sm:h-11 border-2 border-gray-300 hover:border-primary hover:bg-primary/5 hover:text-primary font-medium transition-all duration-200"
+            data-testid={`button-view-${provider.id}`}
           >
-            <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Ver Perfil</span>
-            <span className="sm:hidden">Ver</span>
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            <span>Ver Perfil</span>
           </Button>
           <Button 
             size="sm" 
             onClick={() => onRequestQuote(provider.id)}
-            className="flex-1 text-xs sm:text-sm"
+            className="flex-1 h-10 sm:h-11 bg-primary hover:bg-primary/90 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+            data-testid={`button-quote-${provider.id}`}
           >
-            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Cotizar</span>
-            <span className="sm:hidden">Cotizar</span>
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            <span>Cotizar</span>
           </Button>
         </div>
       </CardContent>
