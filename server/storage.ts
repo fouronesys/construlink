@@ -86,6 +86,7 @@ export interface IStorage {
     specialty?: string;
     location?: string;
     search?: string;
+    sortBy?: string;
     limit?: number;
     offset?: number;
   }): Promise<Supplier[]>;
@@ -424,6 +425,7 @@ export class DatabaseStorage implements IStorage {
     specialty?: string;
     location?: string;
     search?: string;
+    sortBy?: string;
     limit?: number;
     offset?: number;
   }): Promise<Supplier[]> {
@@ -503,7 +505,26 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    query = query.orderBy(desc(suppliers.createdAt)) as any;
+    // Apply sorting based on sortBy parameter
+    const sortBy = filters?.sortBy || 'featured';
+    switch (sortBy) {
+      case 'name':
+        query = query.orderBy(asc(suppliers.legalName)) as any;
+        break;
+      case 'newest':
+        query = query.orderBy(desc(suppliers.createdAt)) as any;
+        break;
+      case 'rating':
+        query = query.orderBy(desc(suppliers.averageRating), desc(suppliers.totalReviews)) as any;
+        break;
+      case 'reviews':
+        query = query.orderBy(desc(suppliers.totalReviews), desc(suppliers.averageRating)) as any;
+        break;
+      case 'featured':
+      default:
+        query = query.orderBy(desc(suppliers.isFeatured), desc(suppliers.averageRating), desc(suppliers.totalReviews)) as any;
+        break;
+    }
     
     if (filters?.limit) {
       query = query.limit(filters.limit) as any;

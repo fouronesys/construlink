@@ -1171,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get suppliers (public endpoint with filters)
   app.get('/api/suppliers', async (req, res) => {
     try {
-      const { status = 'approved', specialty, location, search, page = '1', limit = '12' } = req.query;
+      const { status = 'approved', specialty, location, search, sortBy = 'featured', page = '1', limit = '12' } = req.query;
       
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
       
@@ -1180,6 +1180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         specialty: specialty as string,
         location: location as string,
         search: search as string,
+        sortBy: sortBy as string,
         limit: parseInt(limit as string),
         offset,
       });
@@ -1190,6 +1191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         specialty: specialty as string,
         location: location as string,
         search: search as string,
+        sortBy: sortBy as string,
       });
       const total = allSuppliers.length;
       const totalPages = Math.ceil(total / parseInt(limit as string));
