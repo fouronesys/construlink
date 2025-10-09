@@ -37,15 +37,29 @@ Preferred communication style: Simple, everyday language.
 - **Modular Architecture**: Clear separation between frontend and backend.
 - **Robust Validation**: Zod used for all form and API validations.
 
-## Recent Changes (2025-10-08)
+## Recent Changes
 
-### Sistema de Pagos con Azul - Fase 1 Completada ✅
+### 2025-10-09: Sistema de Pagos con Azul - Fase 2 Completada ✅
+- **Servicio de integración** `server/azul-service.ts` implementado con:
+  - Generación de hash SHA512 para autenticación
+  - Creación de solicitudes de pago con Payment Page
+  - Validación y procesamiento de callbacks
+  - Sistema de reembolsos
+- **Endpoints de API** creados en `server/routes.ts`:
+  - POST `/api/payments/azul/create` - Iniciar pago
+  - POST `/api/payments/azul/approved` - Callback de pago aprobado
+  - POST `/api/payments/azul/declined` - Callback de pago declinado
+  - POST `/api/payments/azul/cancelled` - Callback de pago cancelado
+  - POST `/api/payments/azul/refund` - Procesar reembolsos (admin)
+- **Integración automática**: Actualización de suscripciones y generación de facturas post-pago
+- **Próximos pasos**: Fase 3 - Mejorar flujo de suscripciones
+
+### 2025-10-08: Sistema de Pagos con Azul - Fase 1 Completada ✅
 - **Schema actualizado** para soportar múltiples gateways de pago (Azul, Verifone, Manual)
 - **Nueva tabla** `paymentGatewayConfig` para almacenar credenciales de diferentes gateways
 - **Campos genéricos** agregados: `paymentGateway`, `gatewayTransactionId`, `gatewayAuthCode`, etc.
 - **Compatibilidad** mantenida con campos legacy de Verifone
 - **Archivo de configuración** `shared/azul-config.ts` con tipos, constantes y helpers para Azul
-- **Próximos pasos**: Fase 2 - Integración con Azul Payment Gateway API
 
 ## External Dependencies
 
