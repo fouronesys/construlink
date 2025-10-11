@@ -21,6 +21,7 @@ import {
   supplierPublications,
   paidAdvertisements,
   advertisementRequests,
+  ncfSeries,
   type User,
   type UpsertUser,
   type Supplier,
@@ -65,6 +66,8 @@ import {
   type InsertPaidAdvertisement,
   type AdvertisementRequest,
   type InsertAdvertisementRequest,
+  type NcfSeries,
+  type InsertNcfSeries,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -206,6 +209,15 @@ export interface IStorage {
   updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice>;
   getNextInvoiceNumber(): Promise<string>;
   getNextNCF(sequence: string): Promise<string>;
+  
+  // NCF Series operations
+  createNcfSeries(series: InsertNcfSeries): Promise<NcfSeries>;
+  getNcfSeries(id: string): Promise<NcfSeries | undefined>;
+  getActiveNcfSeries(seriesType: string): Promise<NcfSeries | undefined>;
+  getAllNcfSeries(): Promise<NcfSeries[]>;
+  updateNcfSeries(id: string, updates: Partial<NcfSeries>): Promise<NcfSeries>;
+  getNextNcfFromSeries(seriesType: string): Promise<{ ncf: string; seriesId: string } | null>;
+  checkNcfAvailability(seriesType: string): Promise<{ available: number; shouldAlert: boolean }>;
   
   // Product operations
   createProduct(product: InsertProduct): Promise<Product>;
@@ -2126,6 +2138,88 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAdvertisementRequest(id: string): Promise<void> {
     await db.delete(advertisementRequests).where(eq(advertisementRequests.id, id));
+  }
+
+  // NCF Series operations
+  async createNcfSeries(series: InsertNcfSeries): Promise<NcfSeries> {
+    const [newSeries] = await db.insert(ncfSeries).values(series).returning();
+    return newSeries;
+  }
+
+  async getNcfSeries(id: string): Promise<NcfSeries | undefined> {
+    const [series] = await db
+      .select()
+      .from(ncfSeries)
+      .where(eq(ncfSeries.id, id))
+      .limit(1);
+    return series;
+  }
+
+  async getActiveNcfSeries(seriesType: string): Promise<NcfSeries | undefined> {
+    const [series] = await db
+      .select()
+      .from(ncfSeries)
+      .where(
+        and(
+          eq(ncfSeries.seriesType, seriesType as any),
+          eq(ncfSeries.isActive, true),
+          eq(ncfSeries.status, "active")
+        )
+      )
+      .orderBy(desc(ncfSeries.createdAt))
+      .limit(1);
+    return series;
+  }
+
+  async getAllNcfSeries(): Promise<NcfSeries[]> {
+    return await db
+      .select()
+      .from(ncfSeries)
+      .orderBy(desc(ncfSeries.createdAt));
+  }
+
+  async updateNcfSeries(id: string, updates: Partial<NcfSeries>): Promise<NcfSeries> {
+    const [updatedSeries] = await db
+      .update(ncfSeries)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ncfSeries.id, id))
+      .returning();
+    return updatedSeries;
+  }
+
+  async getNextNcfFromSeries(seriesType: string): Promise<{ ncf: string; seriesId: string } | null> {
+    const series = await this.getActiveNcfSeries(seriesType);
+    
+    if (!series) {
+      return null;
+    }
+
+    const nextSequence = series.currentSequence + 1;
+    
+    if (nextSequence > series.endSequence) {
+      await this.updateNcfSeries(series.id, { status: "depleted" });
+      return null;
+    }
+
+    await this.updateNcfSeries(series.id, { currentSequence: nextSequence });
+    
+    const ncfNumber = nextSequence.toString().padStart(8, '0');
+    const ncf = `${series.prefix}${ncfNumber}`;
+    
+    return { ncf, seriesId: series.id };
+  }
+
+  async checkNcfAvailability(seriesType: string): Promise<{ available: number; shouldAlert: boolean }> {
+    const series = await this.getActiveNcfSeries(seriesType);
+    
+    if (!series) {
+      return { available: 0, shouldAlert: true };
+    }
+
+    const available = series.endSequence - series.currentSequence;
+    const shouldAlert = available <= (series.lowStockThreshold || 100);
+    
+    return { available, shouldAlert };
   }
 }
 

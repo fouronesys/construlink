@@ -4733,6 +4733,209 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Invoice management endpoints
+  app.get('/api/invoices', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(user.id);
+      if (!supplier) {
+        return res.status(403).json({ message: "Solo los proveedores pueden ver facturas" });
+      }
+
+      const result = await storage.getAllInvoices({
+        supplierId: supplier.id
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Error al obtener facturas" });
+    }
+  });
+
+  app.get('/api/invoices/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Factura no encontrada" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(user.id);
+      if (!supplier || supplier.id !== invoice.supplierId) {
+        return res.status(403).json({ message: "No tiene acceso a esta factura" });
+      }
+
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Error al obtener factura" });
+    }
+  });
+
+  app.get('/api/invoices/:id/download', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Factura no encontrada" });
+      }
+
+      const supplier = await storage.getSupplier(invoice.supplierId);
+      if (!supplier) {
+        return res.status(404).json({ message: "Proveedor no encontrado" });
+      }
+
+      const userSupplier = await storage.getSupplierByUserId(user.id);
+      if (!userSupplier || userSupplier.id !== invoice.supplierId) {
+        return res.status(403).json({ message: "No tiene acceso a esta factura" });
+      }
+
+      const { pdfGenerator } = await import("./pdf-generator");
+      const pdfBuffer = await pdfGenerator.generateInvoicePDFBuffer({
+        invoice,
+        supplier
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="factura-${invoice.invoiceNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ message: "Error al generar PDF" });
+    }
+  });
+
+  // Fiscal reports endpoints
+  app.get('/api/reports/monthly/:month', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(user.id);
+      if (!supplier) {
+        return res.status(403).json({ message: "Solo los proveedores pueden ver reportes" });
+      }
+
+      const { fiscalReports } = await import("./fiscal-reports");
+      const report = await fiscalReports.getMonthlyReport(supplier.id, req.params.month);
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating monthly report:", error);
+      res.status(500).json({ message: "Error al generar reporte mensual" });
+    }
+  });
+
+  app.get('/api/reports/dgii', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(user.id);
+      if (!supplier) {
+        return res.status(403).json({ message: "Solo los proveedores pueden ver reportes" });
+      }
+
+      const startDate = new Date(req.query.startDate as string);
+      const endDate = new Date(req.query.endDate as string);
+
+      const { fiscalReports } = await import("./fiscal-reports");
+      const data = await fiscalReports.getDGIIReport(supplier.id, startDate, endDate);
+      
+      const csv = fiscalReports.exportDGIIToCSV(data);
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="reporte-dgii.csv"');
+      res.send(csv);
+    } catch (error) {
+      console.error("Error generating DGII report:", error);
+      res.status(500).json({ message: "Error al generar reporte DGII" });
+    }
+  });
+
+  app.get('/api/reports/itbis/:year', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(user.id);
+      if (!supplier) {
+        return res.status(403).json({ message: "Solo los proveedores pueden ver reportes" });
+      }
+
+      const { fiscalReports } = await import("./fiscal-reports");
+      const report = await fiscalReports.getITBISReport(supplier.id, parseInt(req.params.year));
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating ITBIS report:", error);
+      res.status(500).json({ message: "Error al generar reporte de ITBIS" });
+    }
+  });
+
+  // NCF Series management endpoints (admin only)
+  app.get('/api/admin/ncf-series', isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      const series = await storage.getAllNcfSeries();
+      res.json(series);
+    } catch (error) {
+      console.error("Error fetching NCF series:", error);
+      res.status(500).json({ message: "Error al obtener series de NCF" });
+    }
+  });
+
+  app.post('/api/admin/ncf-series', isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      const { seriesType, prefix, startSequence, endSequence, authorizedDate, expiryDate } = req.body;
+
+      const newSeries = await storage.createNcfSeries({
+        seriesType,
+        prefix,
+        currentSequence: startSequence - 1,
+        startSequence,
+        endSequence,
+        authorizedDate: new Date(authorizedDate),
+        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+        status: "active",
+        isActive: true
+      });
+
+      res.status(201).json(newSeries);
+    } catch (error) {
+      console.error("Error creating NCF series:", error);
+      res.status(500).json({ message: "Error al crear serie de NCF" });
+    }
+  });
+
+  app.get('/api/admin/ncf-availability/:seriesType', isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    try {
+      const availability = await storage.checkNcfAvailability(req.params.seriesType);
+      res.json(availability);
+    } catch (error) {
+      console.error("Error checking NCF availability:", error);
+      res.status(500).json({ message: "Error al verificar disponibilidad de NCF" });
+    }
+  });
+
   // Create HTTP server
   const server = createServer(app);
 
