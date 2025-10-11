@@ -347,6 +347,37 @@ export const paymentGatewayConfig = pgTable("payment_gateway_config", {
   updatedBy: varchar("updated_by").references(() => users.id),
 });
 
+// NCF Series status enum
+export const ncfStatusEnum = pgEnum("ncf_status", ["active", "depleted", "expired"]);
+
+// NCF Series type enum (tipos de comprobante fiscal en RD)
+export const ncfTypeEnum = pgEnum("ncf_type", [
+  "B01", // Crédito Fiscal
+  "B02", // Consumidor Final
+  "B14", // Regímenes Especiales
+  "B15", // Gubernamental
+  "B16", // Exportaciones
+  "E31", // Factura Electrónica (e-NCF)
+]);
+
+// NCF Series (Número de Comprobante Fiscal - Dominican Republic)
+export const ncfSeries = pgTable("ncf_series", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  seriesType: ncfTypeEnum("series_type").notNull(), // Tipo de comprobante
+  prefix: varchar("prefix", { length: 3 }).notNull(), // B01, B02, E31, etc.
+  currentSequence: integer("current_sequence").notNull().default(0), // Secuencia actual
+  startSequence: integer("start_sequence").notNull(), // Inicio de secuencia autorizada
+  endSequence: integer("end_sequence").notNull(), // Fin de secuencia autorizada
+  status: ncfStatusEnum("status").default("active"),
+  authorizedBy: varchar("authorized_by", { length: 255 }).default("DGII"), // Entidad que autorizó
+  authorizedDate: timestamp("authorized_date"),
+  expiryDate: timestamp("expiry_date"), // Fecha de vencimiento de la serie
+  lowStockThreshold: integer("low_stock_threshold").default(100), // Alertar cuando queden X disponibles
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Supplier publications (posts/updates from suppliers)
 export const supplierPublications = pgTable("supplier_publications", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -471,6 +502,10 @@ export const invoicesRelations = relations(invoices, ({ one }) => ({
     fields: [invoices.supplierId],
     references: [suppliers.id],
   }),
+}));
+
+export const ncfSeriesRelations = relations(ncfSeries, ({ many }) => ({
+  invoices: many(invoices),
 }));
 
 export const productsRelations = relations(products, ({ one }) => ({
@@ -740,6 +775,12 @@ export const insertAdvertisementRequestSchema = createInsertSchema(advertisement
   updatedAt: true,
 });
 
+export const insertNcfSeriesSchema = createInsertSchema(ncfSeries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Authentication schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -844,6 +885,7 @@ export type PaymentGatewayConfig = typeof paymentGatewayConfig.$inferSelect;
 export type SupplierPublication = typeof supplierPublications.$inferSelect;
 export type PaidAdvertisement = typeof paidAdvertisements.$inferSelect;
 export type AdvertisementRequest = typeof advertisementRequests.$inferSelect;
+export type NcfSeries = typeof ncfSeries.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = Partial<InsertUser> & { id?: string; email: string; firstName: string; lastName: string; };
@@ -870,6 +912,7 @@ export type InsertPaymentGatewayConfig = z.infer<typeof insertPaymentGatewayConf
 export type InsertSupplierPublication = z.infer<typeof insertSupplierPublicationSchema>;
 export type InsertPaidAdvertisement = z.infer<typeof insertPaidAdvertisementSchema>;
 export type InsertAdvertisementRequest = z.infer<typeof insertAdvertisementRequestSchema>;
+export type InsertNcfSeries = z.infer<typeof insertNcfSeriesSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 
