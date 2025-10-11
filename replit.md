@@ -26,7 +26,7 @@ Preferred communication style: Simple, everyday language.
 ### Feature Specifications
 - **Authentication & Authorization**: Replit Auth, session management, and role-based access (client, supplier, admin, superadmin).
 - **Supplier Management**: Unified registration, tiered subscription plans (Basic, Professional, Enterprise) with real-time usage validation, administrative verification workflow, and status management (pending, approved, suspended, rejected).
-- **Payment System**: Multi-gateway support with Azul (primary) and Verifone for monthly recurring payments, 7-day trial period, and Dominican Peso (DOP) currency. Schema supports multiple payment gateways with explicit gateway identification. Includes a comprehensive admin panel for payment, refund, and invoice management with fiscal compliance (NCF, ITBIS calculation). **Status**: Fase 1 completada (schema preparado para Azul).
+- **Payment System**: Multi-gateway support with Azul (primary) and Verifone for monthly recurring payments, flexible trial periods by plan, and Dominican Peso (DOP) currency. Schema supports multiple payment gateways with explicit gateway identification. Includes automatic invoice generation with NCF (Número de Comprobante Fiscal), ITBIS tax calculation (18%), fiscal reports for DGII, and PDF generation. Comprehensive admin panel for payment, refund, NCF management, and fiscal compliance. **Status**: Fases 1-4 completadas (integración Azul, suscripciones mejoradas, facturación automática con NCF).
 - **Business Claim System**: Allows users to claim ownership of existing company listings through an admin-approved workflow, leading to ownership transfer and role upgrade.
 - **Admin Panel**: Features include banner management, analytics dashboard (clicks, impressions, CTR with charts and CSV export), user management (role and status), and audit logging.
 - **Quote Request Process**: Clients can browse and filter suppliers to submit quote requests, with notifications for suppliers.
@@ -38,6 +38,47 @@ Preferred communication style: Simple, everyday language.
 - **Robust Validation**: Zod used for all form and API validations.
 
 ## Recent Changes
+
+### 2025-10-11: Sistema de Facturación Automática y NCF - Fase 4 Completada ✅
+- **Tabla ncfSeries** (`shared/schema.ts`):
+  - Gestión de series autorizadas de NCF por tipo (B01, B02, B14, B15, B16, E31)
+  - Control de secuencias con alertas de agotamiento (threshold configurable)
+  - Tracking de NCF actual y próximo a asignar
+  - Estados: active, depleted, expired
+- **Servicio de facturación** (`server/invoice-service.ts`):
+  - Generación automática de facturas post-pago
+  - Asignación secuencial de NCF desde tabla ncfSeries
+  - Cálculo automático de ITBIS (18%) y totales
+  - Validación de series disponibles antes de asignar
+- **Generador de PDFs** (`server/pdf-generator.ts`):
+  - PDFs profesionales usando PDFKit
+  - Formato fiscal completo con NCF, RNC, ITBIS desglosado
+  - Diseño profesional con totales y subtotales
+- **Reportes fiscales** (`server/fiscal-reports.ts`):
+  - Reporte mensual de facturas con totales e ITBIS
+  - Exportación formato DGII (CSV) para declaraciones
+  - Reporte de ITBIS recaudado por año/mes
+- **Endpoints de API** (`server/routes.ts`):
+  - GET `/api/invoices` - Listar facturas con paginación
+  - GET `/api/invoices/:id` - Ver factura específica
+  - GET `/api/invoices/:id/download` - Descargar PDF
+  - GET `/api/admin/ncf-series` - Listar series NCF (admin)
+  - POST `/api/admin/ncf-series` - Crear serie NCF (admin)
+  - GET `/api/admin/ncf-availability/:seriesType` - Verificar disponibilidad
+  - GET `/api/reports/monthly/:month` - Reporte mensual
+  - GET `/api/reports/dgii` - Exportar DGII (CSV)
+  - GET `/api/reports/itbis/:year` - Reporte ITBIS
+- **Panel de facturas** (`client/src/pages/invoices.tsx`):
+  - Listado de facturas con filtros y búsqueda
+  - Estadísticas de ingresos totales e ITBIS
+  - Descarga de PDFs individuales
+  - Interfaz responsiva con tabla completa de datos fiscales
+- **Métodos de storage** (`server/storage.ts`):
+  - CRUD completo para series de NCF
+  - Asignación de próximo NCF disponible
+  - Verificación de disponibilidad por tipo de serie
+- **Nota importante**: Migración de BD pendiente (endpoint de Neon deshabilitado - ejecutar `npm run db:push --force` cuando esté disponible)
+- **Próximos pasos**: Fase 5 - Panel de administración de pagos
 
 ### 2025-10-09: Sistema de Suscripciones Mejorado - Fase 3 Completada ✅
 - **Página de selección de planes mejorada** (`client/src/pages/subscription-selection.tsx`):
@@ -90,8 +131,9 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 - **@neondatabase/serverless**: PostgreSQL connection
-- **azul**: Payment gateway (República Dominicana - Banco Popular) - En implementación
+- **azul**: Payment gateway (República Dominicana - Banco Popular) - Integrado (Fases 1-4)
 - **verifone**: Payment processing (legacy support)
+- **pdfkit**: PDF generation for invoices with fiscal data
 - **drizzle-orm**: Database ORM
 - **express**: Web server framework
 - **@tanstack/react-query**: Server state management
