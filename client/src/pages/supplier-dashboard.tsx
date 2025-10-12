@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,6 +19,7 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import PlanUsageWidget from "@/components/plan-usage-widget";
 import SubscriptionPlans from "@/components/subscription-plans";
+import { PREDEFINED_PRODUCTS, PRODUCTS_BY_CATEGORY } from "@shared/predefined-products";
 import {
   BarChart3,
   Eye,
@@ -117,6 +118,9 @@ export default function SupplierDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [productModalTab, setProductModalTab] = useState("catalog");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   if (!authLoading && user && user.role !== 'supplier') {
     return (
@@ -210,6 +214,9 @@ export default function SupplierDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/dashboard"] });
       setShowAddProductModal(false);
       productForm.reset();
+      setProductModalTab("catalog");
+      setSelectedCategory("");
+      setSearchTerm("");
     },
     onError: (error: Error) => {
       toast({
@@ -218,6 +225,22 @@ export default function SupplierDashboard() {
         variant: "destructive",
       });
     },
+  });
+
+  const handlePredefinedProductSelect = (product: typeof PREDEFINED_PRODUCTS[0]) => {
+    createProductMutation.mutate({
+      name: product.name,
+      description: product.description,
+      category: product.category,
+    });
+  };
+
+  const filteredPredefinedProducts = PREDEFINED_PRODUCTS.filter(product => {
+    const matchesCategory = !selectedCategory || product.category === selectedCategory;
+    const matchesSearch = !searchTerm || 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
   });
 
   const updateProfileMutation = useMutation({
@@ -348,42 +371,66 @@ export default function SupplierDashboard() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Cotizaciones Recibidas</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.totalQuotes || 0}</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cotizaciones</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalQuotes || 0}</p>
+                      <p className="text-xs text-gray-500 mt-1">Este mes</p>
                     </div>
-                    <FileText className="w-8 h-8 text-primary" />
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <FileText className="w-6 h-6 text-blue-600" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
+              <Card className="border-l-4 border-l-purple-500">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Vistas del Perfil</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.totalViews || 0}</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Vistas de Perfil</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalViews || 0}</p>
+                      <p className="text-xs text-gray-500 mt-1">Total acumulado</p>
                     </div>
-                    <Eye className="w-8 h-8 text-primary" />
+                    <div className="bg-purple-100 p-3 rounded-lg">
+                      <Eye className="w-6 h-6 text-purple-600" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
+              <Card className="border-l-4 border-l-yellow-500">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">Calificación Promedio</p>
-                      <div className="flex items-center">
-                        <p className="text-2xl font-bold text-gray-900">{stats.averageRating || 0}</p>
-                        <Star className="w-5 h-5 text-yellow-400 ml-1" />
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Calificación</p>
+                      <div className="flex items-baseline mt-1">
+                        <p className="text-3xl font-bold text-gray-900">{stats.averageRating?.toFixed(1) || "0.0"}</p>
+                        <Star className="w-5 h-5 text-yellow-400 ml-1 fill-yellow-400" />
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">{stats.totalReviews || 0} reseñas</p>
                     </div>
-                    <BarChart3 className="w-8 h-8 text-primary" />
+                    <div className="bg-yellow-100 p-3 rounded-lg">
+                      <Star className="w-6 h-6 text-yellow-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-green-500">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Productos</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalProducts || 0}</p>
+                      <p className="text-xs text-gray-500 mt-1">En tu catálogo</p>
+                    </div>
+                    <div className="bg-green-100 p-3 rounded-lg">
+                      <Package className="w-6 h-6 text-green-600" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -391,27 +438,57 @@ export default function SupplierDashboard() {
 
             {/* Recent Activity */}
             <Card>
-              <CardHeader>
-                <CardTitle>Actividad Reciente</CardTitle>
+              <CardHeader className="border-b bg-gray-50">
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2 text-orange" />
+                  Solicitudes de Cotización Recientes
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {quotes.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay cotizaciones</h3>
-                    <p className="text-gray-600">
-                      Las nuevas solicitudes de cotización aparecerán aquí.
+                  <div className="text-center py-12 px-4">
+                    <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Sin cotizaciones aún</h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      Cuando los clientes soliciten cotizaciones, aparecerán aquí. 
+                      Asegúrate de tener tu perfil completo y productos agregados.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="divide-y">
                     {quotes.slice(0, 5).map((quote: any) => (
-                      <div key={quote.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{quote.projectName}</p>
-                          <p className="text-sm text-gray-600">{quote.clientName}</p>
+                      <div key={quote.id} className="p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-gray-900">{quote.projectName || "Sin título"}</h4>
+                              <Badge variant={quote.status === 'pending' ? 'default' : 'secondary'}>
+                                {quote.status === 'pending' ? 'Nueva' : 
+                                 quote.status === 'responded' ? 'Respondida' : 'Cerrada'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <span className="flex items-center">
+                                <Users className="w-4 h-4 mr-1" />
+                                {quote.clientName}
+                              </span>
+                              <span className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                {new Date(quote.createdAt).toLocaleDateString('es-DO')}
+                              </span>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setActiveTab("quotes")}
+                            data-testid={`button-view-quote-${quote.id}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Badge>{quote.status}</Badge>
                       </div>
                     ))}
                   </div>
@@ -424,82 +501,193 @@ export default function SupplierDashboard() {
           <TabsContent value="products" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Catálogo de Productos</h2>
-              <Dialog open={showAddProductModal} onOpenChange={setShowAddProductModal}>
+              <Dialog open={showAddProductModal} onOpenChange={(open) => {
+                setShowAddProductModal(open);
+                if (!open) {
+                  setProductModalTab("catalog");
+                  setSelectedCategory("");
+                  setSearchTerm("");
+                }
+              }}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button data-testid="button-add-product">
                     <Plus className="w-4 h-4 mr-2" />
                     Agregar Producto
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+                <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-4 sm:p-6">
                   <DialogHeader>
-                    <DialogTitle className="text-lg sm:text-xl">Nuevo Producto</DialogTitle>
+                    <DialogTitle className="text-lg sm:text-xl">Agregar Producto</DialogTitle>
+                    <DialogDescription>
+                      Selecciona un producto de nuestro catálogo o crea uno personalizado
+                    </DialogDescription>
                   </DialogHeader>
-                  <Form {...productForm}>
-                    <form onSubmit={productForm.handleSubmit((data) => createProductMutation.mutate(data))} className="space-y-4">
-                      <FormField
-                        control={productForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nombre del Producto</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: Cemento Portland" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  
+                  <Tabs value={productModalTab} onValueChange={setProductModalTab} className="flex-1 flex flex-col min-h-0">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="catalog" data-testid="tab-catalog">Catálogo Predefinido</TabsTrigger>
+                      <TabsTrigger value="custom" data-testid="tab-custom">Crear Personalizado</TabsTrigger>
+                    </TabsList>
 
-                      <FormField
-                        control={productForm.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Categoría</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona una categoría" />
-                                </SelectTrigger>
-                              </FormControl>
+                    {/* Predefined Products Catalog */}
+                    <TabsContent value="catalog" className="flex-1 overflow-y-auto mt-4 space-y-4">
+                      {/* Filters */}
+                      <div className="space-y-3 sticky top-0 bg-white pb-3 border-b z-10">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">Buscar</label>
+                            <Input
+                              placeholder="Buscar producto..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              data-testid="input-search-product"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">Categoría</label>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                              <SelectTrigger data-testid="select-category-filter">
+                                <SelectValue placeholder="Todas las categorías" />
+                              </SelectTrigger>
                               <SelectContent>
-                                {categories.map((category) => (
+                                <SelectItem value="">Todas las categorías</SelectItem>
+                                {Object.keys(PRODUCTS_BY_CATEGORY).sort().map((category) => (
                                   <SelectItem key={category} value={category}>
-                                    {category}
+                                    {category} ({PRODUCTS_BY_CATEGORY[category].length})
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={productForm.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Descripción</FormLabel>
-                            <FormControl>
-                              <Textarea placeholder="Describe el producto..." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={() => setShowAddProductModal(false)}>
-                          Cancelar
-                        </Button>
-                        <Button type="submit" disabled={createProductMutation.isPending}>
-                          {createProductMutation.isPending ? "Creando..." : "Crear Producto"}
-                        </Button>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {filteredPredefinedProducts.length} productos disponibles
+                        </div>
                       </div>
-                    </form>
-                  </Form>
+
+                      {/* Products List */}
+                      <div className="grid grid-cols-1 gap-2 pb-4">
+                        {filteredPredefinedProducts.map((product, index) => (
+                          <Card 
+                            key={index} 
+                            className="hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handlePredefinedProductSelect(product)}
+                            data-testid={`card-predefined-product-${index}`}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-sm mb-1">{product.name}</h4>
+                                  <p className="text-xs text-gray-600 mb-2">{product.description}</p>
+                                  <Badge variant="outline" className="text-xs">
+                                    {product.category}
+                                  </Badge>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  disabled={createProductMutation.isPending}
+                                  data-testid={`button-select-product-${index}`}
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                        {filteredPredefinedProducts.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            No se encontraron productos. Intenta con otros filtros.
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    {/* Custom Product Form */}
+                    <TabsContent value="custom" className="flex-1 overflow-y-auto mt-4">
+                      <Form {...productForm}>
+                        <form onSubmit={productForm.handleSubmit((data) => createProductMutation.mutate(data))} className="space-y-4">
+                          <FormField
+                            control={productForm.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nombre del Producto</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Ej: Cemento Portland" 
+                                    {...field} 
+                                    data-testid="input-custom-product-name"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={productForm.control}
+                            name="category"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Categoría</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-custom-product-category">
+                                      <SelectValue placeholder="Selecciona una categoría" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {categories.map((category) => (
+                                      <SelectItem key={category} value={category}>
+                                        {category}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={productForm.control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Descripción (Opcional)</FormLabel>
+                                <FormControl>
+                                  <Textarea 
+                                    placeholder="Describe el producto..." 
+                                    {...field} 
+                                    data-testid="input-custom-product-description"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="flex justify-end space-x-2 pt-4">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setShowAddProductModal(false)}
+                              data-testid="button-cancel-custom-product"
+                            >
+                              Cancelar
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              disabled={createProductMutation.isPending}
+                              data-testid="button-submit-custom-product"
+                            >
+                              {createProductMutation.isPending ? "Creando..." : "Crear Producto"}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </TabsContent>
+                  </Tabs>
                 </DialogContent>
               </Dialog>
             </div>
@@ -507,24 +695,49 @@ export default function SupplierDashboard() {
             <Card>
               <CardContent className="p-6">
                 {products.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay productos</h3>
-                    <p className="text-gray-600 mb-4">
-                      Agrega productos a tu catálogo para que los clientes puedan encontrarte.
+                  <div className="text-center py-12">
+                    <div className="bg-orange/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Package className="w-10 h-10 text-orange" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay productos en tu catálogo</h3>
+                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                      Agrega productos a tu catálogo para que los clientes puedan conocer lo que ofreces. 
+                      Puedes seleccionar de nuestro catálogo predefinido o crear productos personalizados.
                     </p>
+                    <Button onClick={() => setShowAddProductModal(true)} data-testid="button-add-first-product">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Agregar tu Primer Producto
+                    </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {products.map((product: any) => (
-                      <Card key={product.id}>
-                        <CardContent className="p-4">
-                          <h3 className="font-medium mb-2">{product.name}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{product.category}</p>
-                          <p className="text-xs text-gray-500">{product.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <div>
+                    <div className="mb-4 flex justify-between items-center">
+                      <p className="text-sm text-gray-600">
+                        {products.length} producto{products.length !== 1 ? 's' : ''} en catálogo
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {products.map((product: any) => (
+                        <Card key={product.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
+                                <Badge variant="outline" className="text-xs mb-2">
+                                  {product.category}
+                                </Badge>
+                              </div>
+                            </div>
+                            {product.description && (
+                              <p className="text-sm text-gray-600 line-clamp-3 mb-3">{product.description}</p>
+                            )}
+                            <div className="flex items-center text-xs text-gray-500">
+                              <span>Agregado {new Date(product.createdAt).toLocaleDateString('es-DO')}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>

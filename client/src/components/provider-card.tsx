@@ -48,17 +48,13 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimB
       .toUpperCase();
   };
 
-  const isTestProvider = provider.email?.toLowerCase().includes('test');
-  const provisionalLogo = 'https://via.placeholder.com/100/FF6B35/FFFFFF?text=TEST';
-  const logoUrl = isTestProvider ? provisionalLogo : provider.profileImageUrl;
-
   return (
     <Card className="h-full hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-3 sm:pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
             <Avatar className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0" data-testid={`avatar-provider-${provider.id}`}>
-              <AvatarImage src={logoUrl} alt={provider.legalName} />
+              <AvatarImage src={provider.profileImageUrl} alt={provider.legalName} />
               <AvatarFallback className="bg-orange text-white">
                 {getProviderInitials()}
               </AvatarFallback>

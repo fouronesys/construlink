@@ -171,10 +171,6 @@ export function ProviderProfileModal({
       .toUpperCase();
   };
 
-  const isTestProvider = provider.email?.toLowerCase().includes('test');
-  const provisionalLogo = 'https://via.placeholder.com/100/FF6B35/FFFFFF?text=TEST';
-  const logoUrl = isTestProvider ? provisionalLogo : provider.profileImageUrl;
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[96vh] sm:max-h-[85vh] overflow-y-auto">
@@ -182,7 +178,7 @@ export function ProviderProfileModal({
           <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1">
               <Avatar className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0" data-testid={`avatar-provider-modal-${provider.id}`}>
-                <AvatarImage src={logoUrl} alt={provider.legalName} />
+                <AvatarImage src={provider.profileImageUrl} alt={provider.legalName} />
                 <AvatarFallback className="bg-orange text-white text-2xl">
                   {getProviderInitials()}
                 </AvatarFallback>
