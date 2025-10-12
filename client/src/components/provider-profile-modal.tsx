@@ -177,7 +177,7 @@ export function ProviderProfileModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] sm:max-w-[800px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="sm:max-w-[800px] max-h-[96vh] sm:max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1">
