@@ -1,5 +1,9 @@
 import { HfInference } from '@huggingface/inference';
 
+if (!process.env.HF_TOKEN) {
+  throw new Error('HF_TOKEN environment variable is required for semantic search functionality. Please add your Hugging Face API token.');
+}
+
 const hf = new HfInference(process.env.HF_TOKEN);
 
 const EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2';

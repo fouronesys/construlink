@@ -68,15 +68,20 @@ export async function initializeEmbeddings() {
 
 export async function ensureSupplierEmbedding(supplierId: string) {
   try {
-    // Check if supplier already has embedding
+    // Check if supplier exists and get its data
     const supplier = await db
       .select()
       .from(suppliers)
       .where(eq(suppliers.id, supplierId))
       .limit(1);
 
-    if (supplier.length === 0 || supplier[0].searchEmbedding) {
-      return; // Already has embedding or doesn't exist
+    if (supplier.length === 0) {
+      return; // Doesn't exist
+    }
+
+    // Skip if already has embedding
+    if (supplier[0].searchEmbedding) {
+      return;
     }
 
     // Get specialties
@@ -103,5 +108,6 @@ export async function ensureSupplierEmbedding(supplierId: string) {
     console.log(`✓ Embedding generado para proveedor: ${supplier[0].legalName}`);
   } catch (error) {
     console.error(`Error generando embedding para proveedor ${supplierId}:`, error);
+    throw error; // Re-throw to allow caller to handle
   }
 }

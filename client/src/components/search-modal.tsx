@@ -117,10 +117,11 @@ export function SearchModal() {
     return "Baja relevancia";
   };
 
-  // Group results by relevance
+  // Group results by relevance (4 tiers)
   const highRelevance = results.filter(r => r.similarity >= 0.7);
   const mediumRelevance = results.filter(r => r.similarity >= 0.5 && r.similarity < 0.7);
-  const lowRelevance = results.filter(r => r.similarity < 0.5);
+  const partialRelevance = results.filter(r => r.similarity >= 0.35 && r.similarity < 0.5);
+  const lowRelevance = results.filter(r => r.similarity < 0.35);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -300,6 +301,74 @@ export function SearchModal() {
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-2">
+                          {result.specialties && result.specialties.length > 0 && (
+                            <div className="flex flex-wrap gap-1 flex-1">
+                              {result.specialties.slice(0, 2).map((specialty, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs px-1.5 py-0">
+                                  {specialty}
+                                </Badge>
+                              ))}
+                              {result.specialties.length > 2 && (
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                  +{result.specialties.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          <Badge 
+                            className={cn("text-xs px-2 py-0.5 flex-shrink-0", getRelevanceColor(result.similarity))}
+                          >
+                            {getRelevanceLabel(result.similarity)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {partialRelevance.length > 0 && (
+              <CommandGroup heading="Coincidencia parcial">
+                {partialRelevance.map((result) => (
+                  <CommandItem
+                    key={result.id}
+                    value={result.id}
+                    onSelect={() => handleSelectResult(result.id, result.legalName)}
+                    className="cursor-pointer py-2"
+                    data-testid={`search-result-${result.id}`}
+                  >
+                    <div className="flex items-start gap-3 w-full">
+                      {result.profileImageUrl ? (
+                        <img
+                          src={result.profileImageUrl}
+                          alt={result.legalName}
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Building2 className="w-5 h-5 text-primary" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-sm truncate" data-testid={`text-name-${result.id}`}>
+                            {result.legalName}
+                          </h3>
+                          {result.averageRating && parseFloat(result.averageRating) > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-yellow-600">
+                              <Star className="w-3 h-3 fill-current" />
+                              <span>{parseFloat(result.averageRating).toFixed(1)}</span>
+                            </div>
+                          )}
+                        </div>
+                        {result.location && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                            <MapPin className="w-3 h-3" />
+                            <span>{result.location}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
                           {result.specialties && result.specialties.length > 0 && (
                             <div className="flex flex-wrap gap-1 flex-1">
                               {result.specialties.slice(0, 2).map((specialty, idx) => (

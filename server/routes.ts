@@ -346,21 +346,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user role
       await db.update(users).set({ role: 'supplier' }).where(eq(users.id, userId));
 
-      // Generate embedding for the new supplier
-      if (newSupplier[0].status === 'approved') {
-        const { generateSupplierEmbedding } = await import('./services/embedding-service.js');
-        try {
-          const embedding = await generateSupplierEmbedding(
-            newSupplier[0].legalName,
-            newSupplier[0].description,
-            specialtiesList,
-            newSupplier[0].location
-          );
-          await db.update(suppliers).set({ searchEmbedding: embedding as any }).where(eq(suppliers.id, newSupplier[0].id));
-        } catch (error) {
-          console.error('Error generating embedding for new supplier:', error);
-        }
-      }
+      // Generate embedding for the new supplier (asynchronously, don't wait)
+      const { ensureSupplierEmbedding } = await import('./services/init-embeddings.js');
+      ensureSupplierEmbedding(newSupplier[0].id).catch(err => {
+        console.error('Error generating embedding for new supplier:', err);
+      });
 
       res.json(newSupplier[0]);
     } catch (error) {
@@ -1866,22 +1856,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Auto-generate embedding when supplier is approved
       if (status === 'approved') {
-        const { generateSupplierEmbedding } = await import('./services/embedding-service.js');
-        try {
-          const supplier = await storage.getSupplier(id);
-          if (supplier) {
-            const specialties = await storage.getSupplierSpecialties(id);
-            const embedding = await generateSupplierEmbedding(
-              supplier.legalName,
-              supplier.description,
-              specialties.map(s => s.specialty),
-              supplier.location
-            );
-            await db.update(suppliers).set({ searchEmbedding: embedding as any }).where(eq(suppliers.id, id));
-          }
-        } catch (error) {
-          console.error('Error generating embedding for approved supplier:', error);
-        }
+        const { ensureSupplierEmbedding } = await import('./services/init-embeddings.js');
+        ensureSupplierEmbedding(id).catch(err => {
+          console.error('Error generating embedding for approved supplier:', err);
+        });
       }
 
       // TODO: Send email notification to supplier about status change
