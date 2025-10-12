@@ -268,23 +268,7 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
               className={`relative cursor-pointer ${getPlanColorClasses(plan, isSelected, isHovered)}`}
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
-              onClick={() => {
-                setSelected(plan.id);
-                onPlanSelect(plan.id);
-                
-                // Proceed directly to payment
-                if (!user) {
-                  toast({
-                    title: "Sesión requerida",
-                    description: "Debes iniciar sesión para continuar con la suscripción.",
-                    variant: "destructive",
-                  });
-                  setLocation("/login?redirect=subscription-selection");
-                  return;
-                }
-                
-                createSubscriptionMutation.mutate(plan.id);
-              }}
+              onClick={() => handlePlanSelect(plan.id)}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -354,14 +338,20 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
                   variant={isSelected ? "default" : "outline"}
                   disabled={createSubscriptionMutation.isPending && selected === plan.id}
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handlePlanSelect(plan.id);
+                    e.stopPropagation(); // Prevent card click when clicking button
+                    if (isSelected) {
+                      // Already selected, proceed to payment
+                      handleContinue();
+                    } else {
+                      // First click - select the plan
+                      handlePlanSelect(plan.id);
+                    }
                   }}
                 >
                   {createSubscriptionMutation.isPending && selected === plan.id 
                     ? "Procesando..." 
                     : isSelected 
-                      ? "Procesando Pago..." 
+                      ? "Continuar al Pago" 
                       : "Seleccionar Plan"
                   }
                 </Button>
