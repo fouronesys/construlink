@@ -39,31 +39,41 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### 2025-10-12: Sistema de Búsqueda Semántica con Hugging Face ✅
-- **Eliminación de búsqueda con IA**: Removido todo el código de DeepSeek AI (ai-service.ts, página ai-test, rutas /api/ai/*)
+### 2025-10-12: Sistema de Búsqueda Semántica Mejorado con Embeddings Automáticos ✅
 - **Servicio de embeddings** (`server/services/embedding-service.ts`):
-  - Integración con Hugging Face Inference API (modelo gratuito sentence-transformers/all-MiniLM-L6-v2)
-  - Generación de embeddings de 384 dimensiones sin necesidad de API keys
+  - Integración con Hugging Face Inference API (modelo sentence-transformers/all-MiniLM-L6-v2)
+  - Requiere HF_TOKEN configurado (validación al iniciar con fail-fast)
+  - Generación de embeddings de 384 dimensiones
   - Combinación de nombre legal, descripción, especialidades y ubicación del proveedor
 - **Schema actualizado** (`shared/schema.ts`):
-  - Columna `searchEmbedding` tipo JSONB en tabla suppliers (pgvector no disponible en el entorno)
+  - Columna `searchEmbedding` tipo JSONB en tabla suppliers
   - Almacenamiento de vectores de embeddings para búsqueda semántica
+- **Sistema de auto-generación** (`server/services/init-embeddings.ts`):
+  - Generación automática de embeddings al iniciar la aplicación para proveedores aprobados sin embeddings
+  - Auto-generación asíncrona al registrar nuevos proveedores
+  - Auto-generación asíncrona al aprobar proveedores
+  - Función `ensureSupplierEmbedding()` para generar embeddings on-demand
 - **Endpoints de API** (`server/routes.ts`):
-  - GET `/api/search/semantic?q={query}` - Búsqueda semántica con similitud coseno
+  - POST `/api/search/semantic` - Búsqueda semántica con similitud coseno
   - POST `/api/suppliers/:id/generate-embedding` - Generar embedding para proveedor específico (admin)
   - POST `/api/suppliers/generate-embeddings-bulk` - Generar embeddings masivos para todos los proveedores (admin)
-- **Auto-generación de embeddings**:
-  - Generación automática cuando un proveedor es aprobado por admin
-  - Endpoint bulk para generar embeddings de proveedores existentes
-- **Componente SearchModal** (`client/src/components/search-modal.tsx`):
-  - Modal de búsqueda con CommandDialog de Radix UI
+- **SearchModal mejorado** (`client/src/components/search-modal.tsx`):
+  - Modal de búsqueda inteligente con CommandDialog de Radix UI
   - Atajo de teclado Cmd+K (Mac) / Ctrl+K (Windows/Linux)
-  - Búsqueda con debounce para optimizar rendimiento
-  - Resultados con id, nombre, producto/servicio, ubicación y precio
+  - Búsqueda con debounce (500ms) para optimizar rendimiento
+  - **4 niveles de relevancia con agrupación visual**:
+    - "Resultados más relevantes" (similitud ≥0.7) - verde
+    - "Otros resultados relevantes" (0.5-0.7) - azul
+    - "Coincidencia parcial" (0.35-0.5) - amarillo
+    - "Resultados adicionales" (<0.35) - gris
+  - **Historial de búsquedas recientes** guardado en localStorage (últimas 5)
+  - Indicadores visuales de relevancia con badges de colores y etiquetas
+  - Descripciones mostradas en resultados de alta y media relevancia
+  - Imágenes de perfil, rating, ubicación y especialidades
 - **Integración en App.tsx**:
-  - Modal accesible desde cualquier página con atajo de teclado
+  - Modal accesible desde cualquier página con atajo de teclado global
   - Estado global de apertura/cierre del modal
-- **Nota técnica**: Implementación usa JSONB para almacenar embeddings y calcula similitud coseno en código de aplicación (alternativa a pgvector que no está disponible). Funcional y escalable para el tamaño actual del directorio.
+- **Nota técnica**: Implementación usa JSONB para almacenar embeddings y calcula similitud coseno en código de aplicación (alternativa a pgvector que no está disponible). Sistema escalable y eficiente para el directorio actual.
 
 ### 2025-10-12: Corrección de Problemas de Seguridad Críticos - Fase 1 ✅
 - **Configuración SSL/TLS segura** (`server/db.ts`):
