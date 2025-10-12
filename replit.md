@@ -39,6 +39,32 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### 2025-10-12: Sistema de Búsqueda Semántica con Hugging Face ✅
+- **Eliminación de búsqueda con IA**: Removido todo el código de DeepSeek AI (ai-service.ts, página ai-test, rutas /api/ai/*)
+- **Servicio de embeddings** (`server/services/embedding-service.ts`):
+  - Integración con Hugging Face Inference API (modelo gratuito sentence-transformers/all-MiniLM-L6-v2)
+  - Generación de embeddings de 384 dimensiones sin necesidad de API keys
+  - Combinación de nombre legal, descripción, especialidades y ubicación del proveedor
+- **Schema actualizado** (`shared/schema.ts`):
+  - Columna `searchEmbedding` tipo JSONB en tabla suppliers (pgvector no disponible en el entorno)
+  - Almacenamiento de vectores de embeddings para búsqueda semántica
+- **Endpoints de API** (`server/routes.ts`):
+  - GET `/api/search/semantic?q={query}` - Búsqueda semántica con similitud coseno
+  - POST `/api/suppliers/:id/generate-embedding` - Generar embedding para proveedor específico (admin)
+  - POST `/api/suppliers/generate-embeddings-bulk` - Generar embeddings masivos para todos los proveedores (admin)
+- **Auto-generación de embeddings**:
+  - Generación automática cuando un proveedor es aprobado por admin
+  - Endpoint bulk para generar embeddings de proveedores existentes
+- **Componente SearchModal** (`client/src/components/search-modal.tsx`):
+  - Modal de búsqueda con CommandDialog de Radix UI
+  - Atajo de teclado Cmd+K (Mac) / Ctrl+K (Windows/Linux)
+  - Búsqueda con debounce para optimizar rendimiento
+  - Resultados con id, nombre, producto/servicio, ubicación y precio
+- **Integración en App.tsx**:
+  - Modal accesible desde cualquier página con atajo de teclado
+  - Estado global de apertura/cierre del modal
+- **Nota técnica**: Implementación usa JSONB para almacenar embeddings y calcula similitud coseno en código de aplicación (alternativa a pgvector que no está disponible). Funcional y escalable para el tamaño actual del directorio.
+
 ### 2025-10-12: Corrección de Problemas de Seguridad Críticos - Fase 1 ✅
 - **Configuración SSL/TLS segura** (`server/db.ts`):
   - Configuración condicional de SSL: `NODE_TLS_REJECT_UNAUTHORIZED='0'` solo en desarrollo
