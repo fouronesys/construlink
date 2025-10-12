@@ -245,6 +245,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'supplier') {
         const supplierData = await db.select().from(suppliers).where(eq(suppliers.userId, user.id)).limit(1);
         supplier = supplierData.length > 0 ? supplierData[0] : null;
+        
+        // Check if supplier has an active subscription
+        if (supplier) {
+          const activeSubscription = await db.select().from(subscriptions)
+            .where(and(
+              eq(subscriptions.supplierId, supplier.id),
+              eq(subscriptions.status, 'active')
+            )).limit(1);
+          
+          // Allow bypass in test mode
+          const testMode = process.env.TEST_MODE === 'true';
+          (supplier as any).hasActiveSubscription = testMode || activeSubscription.length > 0;
+        }
       }
       
       res.json({ 
