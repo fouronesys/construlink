@@ -96,7 +96,7 @@ export default function Navigation() {
           {/* Logo and brand */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <img src={logoPath} alt="ConstruLink" className="h-8 w-8 sm:h-10 sm:w-10" />
+              <img src={logoPath} alt="ConstruLink" className="h-10 w-10 sm:h-12 sm:w-12" />
               <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                 ConstruLink
               </span>
