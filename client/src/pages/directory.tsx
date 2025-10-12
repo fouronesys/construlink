@@ -133,20 +133,83 @@ export default function Directory() {
   const { data: suppliersData, isLoading, error } = useQuery({
     queryKey: ["/api/suppliers", filters, currentPage, sortBy],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: "50",
-        sortBy: sortBy,
-        ...Object.fromEntries(
-          Object.entries(filters).filter(([, value]) => value !== "" && value !== "all")
-        ),
-      });
-      
-      const response = await fetch(`/api/suppliers?${params}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch suppliers");
+      // Si hay un término de búsqueda, usar búsqueda semántica con embeddings
+      if (filters.search && filters.search.trim().length >= 2) {
+        const response = await fetch("/api/search/semantic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: filters.search }),
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to perform semantic search");
+        }
+        
+        const data = await response.json();
+        let results = data.results || [];
+        
+        // Aplicar filtros adicionales a los resultados semánticos
+        if (filters.specialty !== "all") {
+          results = results.filter((supplier: Supplier) => 
+            supplier.specialties?.some(s => s === filters.specialty)
+          );
+        }
+        
+        if (filters.location !== "all") {
+          results = results.filter((supplier: Supplier) => 
+            supplier.location?.toLowerCase().includes(filters.location.toLowerCase())
+          );
+        }
+        
+        // Aplicar ordenamiento
+        switch (sortBy) {
+          case "rating":
+            results.sort((a: Supplier, b: Supplier) => (b.averageRating || 0) - (a.averageRating || 0));
+            break;
+          case "reviews":
+            results.sort((a: Supplier, b: Supplier) => (b.totalReviews || 0) - (a.totalReviews || 0));
+            break;
+          case "name":
+            results.sort((a: Supplier, b: Supplier) => a.legalName.localeCompare(b.legalName));
+            break;
+          case "newest":
+            results.sort((a: Supplier, b: Supplier) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            break;
+          // 'featured' ya viene ordenado por similarity del embedding
+        }
+        
+        // Paginación manual para resultados semánticos
+        const pageSize = 50;
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedResults = results.slice(startIndex, endIndex);
+        
+        return {
+          suppliers: paginatedResults,
+          total: results.length,
+          totalPages: Math.ceil(results.length / pageSize),
+        };
+      } else {
+        // Sin búsqueda semántica, usar endpoint tradicional
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: "50",
+          sortBy: sortBy,
+          ...Object.fromEntries(
+            Object.entries(filters).filter(([key, value]) => 
+              key !== 'search' && value !== "" && value !== "all"
+            )
+          ),
+        });
+        
+        const response = await fetch(`/api/suppliers?${params}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch suppliers");
+        }
+        return response.json();
       }
-      return response.json();
     },
   });
 
@@ -220,19 +283,23 @@ export default function Directory() {
               <CardContent className="space-y-6">
                 {/* Search */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     Buscar
+                    <Badge variant="secondary" className="text-xs">IA Semántica</Badge>
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Buscar empresa, material, categoría..."
+                      placeholder="Ej: 'electricista certificado', 'materiales de construcción'..."
                       value={filters.search}
                       onChange={(e) => handleFilterChange("search", e.target.value)}
                       className="pl-10"
                       data-testid="input-search"
                     />
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Búsqueda inteligente que entiende el contexto de tu consulta
+                  </p>
                 </div>
 
                 {/* Specialty Filter */}
