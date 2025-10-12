@@ -3237,6 +3237,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment Gateway Configuration endpoints
+  // Get all payment gateway configs
+  app.get('/api/admin/payment-gateways', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Only admins can view payment gateway configurations" });
+      }
+
+      const configs = await storage.getAllPaymentGatewayConfigs();
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching payment gateway configs:", error);
+      res.status(500).json({ message: "Failed to fetch payment gateway configurations" });
+    }
+  });
+
+  // Get specific payment gateway config
+  app.get('/api/admin/payment-gateway/:gatewayName', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Only admins can view payment gateway configurations" });
+      }
+
+      const { gatewayName } = req.params;
+      
+      if (!['azul', 'verifone', 'manual'].includes(gatewayName)) {
+        return res.status(400).json({ message: "Invalid gateway name" });
+      }
+
+      const config = await storage.getPaymentGatewayConfig(gatewayName as 'azul' | 'verifone' | 'manual');
+      
+      if (!config) {
+        return res.status(404).json({ message: "Configuration not found" });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching payment gateway config:", error);
+      res.status(500).json({ message: "Failed to fetch payment gateway configuration" });
+    }
+  });
+
+  // Update/create payment gateway config
+  app.put('/api/admin/payment-gateway/:gatewayName', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Only admins can update payment gateway configurations" });
+      }
+
+      const { gatewayName } = req.params;
+      
+      if (!['azul', 'verifone', 'manual'].includes(gatewayName)) {
+        return res.status(400).json({ message: "Invalid gateway name" });
+      }
+
+      const config = await storage.upsertPaymentGatewayConfig({
+        gatewayName: gatewayName as 'azul' | 'verifone' | 'manual',
+        ...req.body,
+        updatedBy: user.id,
+      });
+
+      // Log admin action (without sensitive credentials)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        const { secretKey, authToken, ...safeDetails } = req.body;
+        await storage.logAdminAction({
+          adminId: user.id,
+          actionType: 'update_payment_gateway_config',
+          entityType: 'payment_gateway_config',
+          entityId: gatewayName,
+          details: { 
+            gatewayName, 
+            ...safeDetails,
+            // Indicate that sensitive fields were updated without exposing them
+            secretKeyUpdated: !!secretKey,
+            authTokenUpdated: !!authToken,
+          },
+        });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating payment gateway config:", error);
+      res.status(500).json({ message: "Failed to update payment gateway configuration" });
+    }
+  });
+
   // Get reviews for supplier
   app.get('/api/suppliers/:id/reviews', async (req, res) => {
     try {

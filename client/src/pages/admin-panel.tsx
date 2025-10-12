@@ -550,6 +550,261 @@ function ImportSuppliersSection() {
   );
 }
 
+function AzulPaymentConfig() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    isEnabled: true,
+    isSandbox: true,
+    merchantId: '',
+    merchantName: '',
+    authToken: '',
+    secretKey: '',
+    baseUrl: 'https://pruebas.azul.com.do/paymentpage',
+    callbackUrls: {
+      approved: `${window.location.origin}/api/payments/azul/approved`,
+      declined: `${window.location.origin}/api/payments/azul/declined`,
+      cancel: `${window.location.origin}/api/payments/azul/cancelled`,
+    },
+  });
+
+  const { data: azulConfig, isLoading } = useQuery<any>({
+    queryKey: ['/api/admin/payment-gateway/azul'],
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (azulConfig) {
+      setFormData({
+        isEnabled: azulConfig.isEnabled ?? true,
+        isSandbox: azulConfig.isSandbox ?? true,
+        merchantId: azulConfig.merchantId || '',
+        merchantName: azulConfig.merchantName || '',
+        authToken: azulConfig.authToken || '',
+        secretKey: azulConfig.secretKey || '',
+        baseUrl: azulConfig.baseUrl || 'https://pruebas.azul.com.do/paymentpage',
+        callbackUrls: azulConfig.callbackUrls || {
+          approved: `${window.location.origin}/api/payments/azul/approved`,
+          declined: `${window.location.origin}/api/payments/azul/declined`,
+          cancel: `${window.location.origin}/api/payments/azul/cancelled`,
+        },
+      });
+    }
+  }, [azulConfig]);
+
+  const updateConfigMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return await apiRequest('PUT', '/api/admin/payment-gateway/azul', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Configuración actualizada",
+        description: "La configuración de Azul se ha guardado correctamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/payment-gateway/azul'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo guardar la configuración",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateConfigMutation.mutate(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuración de Azul Payment Gateway</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isEnabled"
+                checked={formData.isEnabled}
+                onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
+                data-testid="switch-enabled"
+              />
+              <Label htmlFor="isEnabled">Gateway habilitado</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isSandbox"
+                checked={formData.isSandbox}
+                onCheckedChange={(checked) => {
+                  const baseUrl = checked 
+                    ? 'https://pruebas.azul.com.do/paymentpage'
+                    : 'https://pagos.azul.com.do/paymentpage';
+                  setFormData({ ...formData, isSandbox: checked, baseUrl });
+                }}
+                data-testid="switch-sandbox"
+              />
+              <Label htmlFor="isSandbox">Modo Sandbox (Pruebas)</Label>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="merchantId">Merchant ID *</Label>
+              <Input
+                id="merchantId"
+                value={formData.merchantId}
+                onChange={(e) => setFormData({ ...formData, merchantId: e.target.value })}
+                placeholder="Ej: 12345678"
+                required
+                data-testid="input-merchant-id"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="merchantName">Merchant Name *</Label>
+              <Input
+                id="merchantName"
+                value={formData.merchantName}
+                onChange={(e) => setFormData({ ...formData, merchantName: e.target.value })}
+                placeholder="Ej: Mi Negocio"
+                required
+                data-testid="input-merchant-name"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="authToken">Auth Token (Auth1 y Auth2) *</Label>
+              <Input
+                id="authToken"
+                type="password"
+                value={formData.authToken}
+                onChange={(e) => setFormData({ ...formData, authToken: e.target.value })}
+                placeholder="Token de autenticación"
+                required
+                data-testid="input-auth-token"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="secretKey">Secret Key *</Label>
+              <Input
+                id="secretKey"
+                type="password"
+                value={formData.secretKey}
+                onChange={(e) => setFormData({ ...formData, secretKey: e.target.value })}
+                placeholder="Llave secreta"
+                required
+                data-testid="input-secret-key"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="baseUrl">Base URL</Label>
+              <Input
+                id="baseUrl"
+                value={formData.baseUrl}
+                onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
+                disabled
+                data-testid="input-base-url"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>URLs de Callback</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="callbackApproved">URL Aprobada</Label>
+            <Input
+              id="callbackApproved"
+              value={formData.callbackUrls.approved}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                callbackUrls: { ...formData.callbackUrls, approved: e.target.value }
+              })}
+              data-testid="input-callback-approved"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="callbackDeclined">URL Declinada</Label>
+            <Input
+              id="callbackDeclined"
+              value={formData.callbackUrls.declined}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                callbackUrls: { ...formData.callbackUrls, declined: e.target.value }
+              })}
+              data-testid="input-callback-declined"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="callbackCancel">URL Cancelada</Label>
+            <Input
+              id="callbackCancel"
+              value={formData.callbackUrls.cancel}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                callbackUrls: { ...formData.callbackUrls, cancel: e.target.value }
+              })}
+              data-testid="input-callback-cancel"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-blue-900">Datos de Prueba Azul</h4>
+              <p className="text-sm text-blue-800 mt-1">
+                Para pruebas en modo Sandbox, solicita las credenciales de prueba a Azul:
+              </p>
+              <ul className="text-sm text-blue-800 mt-2 space-y-1">
+                <li>• Contacta a Azul para obtener Merchant ID y Auth Token de prueba</li>
+                <li>• Usa tarjetas de prueba proporcionadas por Azul</li>
+                <li>• Las URLs de callback deben ser accesibles públicamente</li>
+                <li>• Más información: <a href="https://dev.azul.com.do" target="_blank" rel="noopener noreferrer" className="underline">dev.azul.com.do</a></li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          disabled={updateConfigMutation.isPending || isLoading}
+          data-testid="button-save-config"
+        >
+          {updateConfigMutation.isPending ? (
+            <>
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+              Guardando...
+            </>
+          ) : (
+            <>
+              <Settings className="w-4 h-4 mr-2" />
+              Guardar Configuración
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -1831,6 +2086,10 @@ export default function AdminPanel() {
               <TabsTrigger value="invoices" data-testid="tab-invoices" className="text-xs sm:text-sm whitespace-nowrap">
                 <Receipt className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                 Facturas
+              </TabsTrigger>
+              <TabsTrigger value="payment-config" data-testid="tab-payment-config" className="text-xs sm:text-sm whitespace-nowrap">
+                <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                Config Pagos
               </TabsTrigger>
               <TabsTrigger value="moderation" data-testid="tab-moderation" className="text-xs sm:text-sm whitespace-nowrap">
                 <Flag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -4211,6 +4470,18 @@ export default function AdminPanel() {
               </Card>
             </TabsContent>
           )}
+
+          {/* Payment Gateway Configuration Tab */}
+          <TabsContent value="payment-config" className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold" data-testid="heading-payment-config">Configuración de Gateway de Pagos</h2>
+              <p className="text-sm text-gray-600 mt-1" data-testid="text-payment-config-description">
+                Configura las credenciales de Azul Payment Gateway para procesar pagos
+              </p>
+            </div>
+
+            <AzulPaymentConfig />
+          </TabsContent>
 
           {/* Moderation Tab */}
           <TabsContent value="moderation" className="space-y-6">

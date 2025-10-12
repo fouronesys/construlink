@@ -68,6 +68,9 @@ import {
   type InsertAdvertisementRequest,
   type NcfSeries,
   type InsertNcfSeries,
+  paymentGatewayConfig,
+  type PaymentGatewayConfig,
+  type InsertPaymentGatewayConfig,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, ilike, sql, inArray } from "drizzle-orm";
@@ -353,6 +356,11 @@ export interface IStorage {
   }): Promise<AdvertisementRequest[]>;
   updateAdvertisementRequest(id: string, updates: Partial<AdvertisementRequest>): Promise<AdvertisementRequest>;
   deleteAdvertisementRequest(id: string): Promise<void>;
+  
+  // Payment Gateway Config operations
+  getPaymentGatewayConfig(gatewayName: 'azul' | 'verifone' | 'manual'): Promise<PaymentGatewayConfig | undefined>;
+  getAllPaymentGatewayConfigs(): Promise<PaymentGatewayConfig[]>;
+  upsertPaymentGatewayConfig(config: Omit<InsertPaymentGatewayConfig, 'createdAt' | 'updatedAt'> & { updatedBy?: string }): Promise<PaymentGatewayConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2138,6 +2146,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAdvertisementRequest(id: string): Promise<void> {
     await db.delete(advertisementRequests).where(eq(advertisementRequests.id, id));
+  }
+
+  // Payment Gateway Config operations
+  async getPaymentGatewayConfig(gatewayName: 'azul' | 'verifone' | 'manual'): Promise<PaymentGatewayConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(paymentGatewayConfig)
+      .where(eq(paymentGatewayConfig.gatewayName, gatewayName))
+      .limit(1);
+    return config;
+  }
+
+  async getAllPaymentGatewayConfigs(): Promise<PaymentGatewayConfig[]> {
+    return await db.select().from(paymentGatewayConfig).orderBy(paymentGatewayConfig.gatewayName);
+  }
+
+  async upsertPaymentGatewayConfig(config: Omit<InsertPaymentGatewayConfig, 'createdAt' | 'updatedAt'> & { updatedBy?: string }): Promise<PaymentGatewayConfig> {
+    const [result] = await db
+      .insert(paymentGatewayConfig)
+      .values({
+        ...config,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: paymentGatewayConfig.gatewayName,
+        set: {
+          ...config,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
   }
 
   // NCF Series operations
