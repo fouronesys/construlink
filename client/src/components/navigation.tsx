@@ -25,7 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import logoPath from "@assets/ConstruLink_20251004_013258_0000_1759557121076.png";
+import logoPath from "@assets/Untitled design_20251011_210521_0000_1760248117556.png";
 
 export default function Navigation() {
   const [location, setLocation] = useLocation();

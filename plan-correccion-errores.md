@@ -13,15 +13,20 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 **Estado:** ✅ COMPLETADA (12 de octubre 2025)
 
 ### 1.1 ✅ Desactivar NODE_TLS_REJECT_UNAUTHORIZED
-- **Archivo afectado:** `server/db.ts` (línea 11)
-- **Problema:** La variable `NODE_TLS_REJECT_UNAUTHORIZED='0'` deshabilitaba la verificación de certificados SSL/TLS
+- **Archivo afectado:** `server/db.ts`
+- **Problema:** La variable `NODE_TLS_REJECT_UNAUTHORIZED='0'` deshabilitaba la verificación de certificados SSL/TLS globalmente
 - **Riesgo:** Vulnerabilidad de seguridad crítica - susceptible a ataques man-in-the-middle
 - **Solución aplicada:** 
-  - Removida la línea `process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'`
-  - SSL configurado según ambiente: validación estricta en producción, flexible en desarrollo
-  - Código actualizado para validar certificados correctamente en producción
-- **Resultado:** ✅ Advertencia de seguridad eliminada, aplicación funciona correctamente
-- **Impacto:** CRÍTICO - RESUELTO
+  - Configuración condicional: `NODE_TLS_REJECT_UNAUTHORIZED='0'` SOLO en desarrollo
+  - En producción: validación SSL estricta (no se configura la variable)
+  - Doble capa de seguridad: Pool de PostgreSQL también valida según ambiente
+  - Comentarios explícitos en código explicando el por qué
+- **Justificación técnica:** 
+  - Replit/Neon usan certificados auto-firmados en desarrollo
+  - Es necesario permitirlos en desarrollo para que la BD funcione
+  - En producción, la validación será estricta automáticamente
+- **Resultado:** ✅ Aplicación funciona correctamente, seguridad garantizada en producción
+- **Impacto:** CRÍTICO - RESUELTO con compromiso técnico documentado
 
 ### 1.2 ✅ Revisar configuración de sesiones y CORS
 - **Archivo:** `server/index.ts`

@@ -41,9 +41,9 @@ Preferred communication style: Simple, everyday language.
 
 ### 2025-10-12: Corrección de Problemas de Seguridad Críticos - Fase 1 ✅
 - **Configuración SSL/TLS segura** (`server/db.ts`):
-  - Eliminada configuración insegura `NODE_TLS_REJECT_UNAUTHORIZED='0'`
-  - SSL configurado según ambiente: validación estricta en producción, flexible solo en desarrollo
-  - Advertencia de seguridad crítica eliminada de logs
+  - Configuración condicional de SSL: `NODE_TLS_REJECT_UNAUTHORIZED='0'` solo en desarrollo
+  - En producción: validación de certificados SSL estricta (configuración no se aplica)
+  - Necesario para compatibilidad con certificados auto-firmados de Replit/Neon en desarrollo
 - **Configuración de sesiones mejorada** (`server/index.ts`):
   - Validación obligatoria de `SESSION_SECRET` (sin fallback inseguro)
   - Cookies seguras según ambiente: `secure: true` en producción

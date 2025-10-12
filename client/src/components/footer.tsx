@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Building2, Mail, Phone, MapPin, Shield, FileText } from "lucide-react";
-import logoPath from "@assets/ConstruLink_20251004_013258_0000_1759557121076.png";
+import logoPath from "@assets/Untitled design_20251011_210521_0000_1760248117556.png";
 
 export default function Footer() {
   return (

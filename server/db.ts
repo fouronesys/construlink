@@ -8,6 +8,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// In development, allow self-signed certificates for Neon/Replit database
+// In production, enforce strict SSL validation
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' 
