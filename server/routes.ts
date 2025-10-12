@@ -4937,15 +4937,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Search routes
-  const { 
-    parseNaturalLanguageSearch, 
-    generateSearchSuggestions, 
-    testAIConnection 
-  } = await import('./services/ai-service.js');
-
+  // AI Search routes - import at the top level instead of dynamic import
   // Test AI connection
   app.get('/api/ai/test', async (req, res) => {
+    const { testAIConnection } = await import('./services/ai-service.js');
     try {
       const result = await testAIConnection();
       res.json(result);
@@ -4957,6 +4952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Parse natural language search query
   app.post('/api/ai/search/parse', async (req, res) => {
+    const { parseNaturalLanguageSearch } = await import('./services/ai-service.js');
     try {
       const { query } = req.body;
       
@@ -4974,6 +4970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Generate search suggestions
   app.post('/api/ai/search/suggestions', async (req, res) => {
+    const { generateSearchSuggestions } = await import('./services/ai-service.js');
     try {
       const { query } = req.body;
       
@@ -5000,6 +4997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Enhanced search with AI
   app.get('/api/ai/search', async (req, res) => {
+    const { parseNaturalLanguageSearch } = await import('./services/ai-service.js');
     try {
       const { query, page = '1', limit = '50', sortBy = 'featured' } = req.query;
       
