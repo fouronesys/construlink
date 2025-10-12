@@ -283,9 +283,8 @@ export default function Directory() {
               <CardContent className="space-y-6">
                 {/* Search */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Buscar
-                    <Badge variant="secondary" className="text-xs">IA Semántica</Badge>
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -297,9 +296,6 @@ export default function Directory() {
                       data-testid="input-search"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Búsqueda inteligente que entiende el contexto de tu consulta
-                  </p>
                 </div>
 
                 {/* Specialty Filter */}
