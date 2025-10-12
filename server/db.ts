@@ -8,13 +8,11 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: true }
+    : { rejectUnauthorized: false }
 });
 
 export const db = drizzle({ client: pool, schema });
