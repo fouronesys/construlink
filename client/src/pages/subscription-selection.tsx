@@ -147,28 +147,46 @@ export default function SubscriptionSelection() {
 
       const amount = isAnnual ? plan.annualPrice : plan.monthlyPrice;
 
-      // Create subscription with selected plan
-      const response = await apiRequest("POST", "/api/create-subscription", {
+      // Step 1: Create subscription record
+      const subscriptionResponse = await apiRequest("POST", "/api/create-subscription", {
         planId: plan.id,
         planName: plan.name,
         monthlyAmount: plan.monthlyPrice,
         billingCycle: isAnnual ? "annual" : "monthly"
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Redirect to payment with Azul
-        window.location.href = `/payment?subscriptionId=${data.subscriptionId}&planId=${planId}&amount=${amount}&billingCycle=${isAnnual ? 'annual' : 'monthly'}`;
-      } else {
+      if (!subscriptionResponse.ok) {
         throw new Error("Error creating subscription");
       }
+
+      const subscriptionData = await subscriptionResponse.json();
+
+      // Step 2: Create Azul payment request
+      const paymentResponse = await apiRequest("POST", "/api/payments/azul/create", {
+        subscriptionId: subscriptionData.subscriptionId,
+        amount: amount,
+        plan: plan.id
+      });
+
+      if (!paymentResponse.ok) {
+        throw new Error("Error creating payment request");
+      }
+
+      const paymentData = await paymentResponse.json();
+
+      // Step 3: Redirect to Azul payment page
+      if (paymentData.azulPaymentUrl) {
+        window.location.href = paymentData.azulPaymentUrl;
+      } else {
+        throw new Error("No se recibió URL de pago");
+      }
     } catch (error) {
+      console.error("Payment error:", error);
       toast({
         title: "Error",
-        description: "Error al crear suscripción. Inténtalo de nuevo.",
+        description: "Error al procesar el pago. Inténtalo de nuevo.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
