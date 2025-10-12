@@ -196,7 +196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               eq(subscriptions.status, 'active')
             )).limit(1);
           
-          (supplier as any).hasActiveSubscription = activeSubscription.length > 0;
+          // Allow bypass in test mode
+          const testMode = process.env.TEST_MODE === 'true';
+          (supplier as any).hasActiveSubscription = testMode || activeSubscription.length > 0;
         } else if (user[0].role === 'supplier') {
           // Supplier role but no supplier profile - needs setup
           supplier = { hasActiveSubscription: false, needsSetup: true };
@@ -1582,7 +1584,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
-      const hasActiveSubscription = subscription && subscription.status === 'active';
+      
+      // Allow bypass in test mode
+      const testMode = process.env.TEST_MODE === 'true';
+      const hasActiveSubscription = testMode || (subscription && subscription.status === 'active');
 
       res.json({
         hasActiveSubscription,
