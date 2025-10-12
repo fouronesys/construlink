@@ -130,6 +130,11 @@ export default function Directory() {
     }
   }, []);
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
+
   const { data: suppliersData, isLoading, error } = useQuery({
     queryKey: ["/api/suppliers", filters, currentPage, sortBy],
     queryFn: async () => {
@@ -220,6 +225,8 @@ export default function Directory() {
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
+    // Scroll to top of results
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleViewProfile = async (supplierId: string) => {
