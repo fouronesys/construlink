@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { SearchModal } from "@/components/search-modal";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Directory from "@/pages/directory";
@@ -20,7 +21,6 @@ import InvoicesPage from "@/pages/invoices";
 import Terms from "@/pages/terms";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import CookiePolicy from "@/pages/cookie-policy";
-import AITestPage from "@/pages/ai-test";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -49,7 +49,6 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/cookie-policy" component={CookiePolicy} />
-          <Route path="/ai-test" component={AITestPage} />
         </>
       ) : (
         <>
@@ -63,7 +62,6 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/cookie-policy" component={CookiePolicy} />
-          <Route path="/ai-test" component={AITestPage} />
           {user?.role === 'supplier' && (
             <Route path="/supplier-dashboard" component={SupplierDashboard} />
           )}
@@ -82,6 +80,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <SearchModal />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>

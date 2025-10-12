@@ -74,6 +74,7 @@ export const suppliers = pgTable("suppliers", {
   addedByAdmin: boolean("added_by_admin").default(false),
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default(sql`0`),
   totalReviews: integer("total_reviews").default(0),
+  searchEmbedding: jsonb("search_embedding"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

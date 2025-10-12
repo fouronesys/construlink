@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { eq, and, desc, ilike, inArray } from "drizzle-orm";
+import { eq, and, desc, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
 import { 
   suppliers, 
@@ -1843,6 +1843,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const subscription = await storage.getSubscriptionBySupplierId(id);
         if (subscription) {
           await storage.updateSubscription(subscription.id, { status: 'inactive' });
+        }
+      }
+
+      // Auto-generate embedding when supplier is approved
+      if (status === 'approved') {
+        const { generateSupplierEmbedding } = await import('./services/embedding-service.js');
+        try {
+          const supplier = await storage.getSupplier(id);
+          if (supplier) {
+            const specialties = await storage.getSupplierSpecialties(id);
+            const embedding = await generateSupplierEmbedding(
+              supplier.legalName,
+              supplier.description,
+              specialties.map(s => s.specialty),
+              supplier.location
+            );
+            await db.update(suppliers).set({ searchEmbedding: embedding as any }).where(eq(suppliers.id, id));
+          }
+        } catch (error) {
+          console.error('Error generating embedding for approved supplier:', error);
         }
       }
 
@@ -4937,22 +4957,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Search routes - import at the top level instead of dynamic import
-  // Test AI connection
-  app.get('/api/ai/test', async (req, res) => {
-    const { testAIConnection } = await import('./services/ai-service.js');
-    try {
-      const result = await testAIConnection();
-      res.json(result);
-    } catch (error: any) {
-      console.error("AI test error:", error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
-
-  // Parse natural language search query
-  app.post('/api/ai/search/parse', async (req, res) => {
-    const { parseNaturalLanguageSearch } = await import('./services/ai-service.js');
+  // Semantic search endpoint
+  app.post('/api/search/semantic', async (req, res) => {
+    const { generateEmbedding, cosineSimilarity } = await import('./services/embedding-service.js');
     try {
       const { query } = req.body;
       
@@ -4960,89 +4967,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query is required" });
       }
 
-      const result = await parseNaturalLanguageSearch(query);
-      res.json(result);
+      // Generate embedding for search query
+      const queryEmbedding = await generateEmbedding(query);
+
+      // Get all approved suppliers with embeddings
+      const suppliersWithEmbeddings = await db
+        .select({
+          id: suppliers.id,
+          legalName: suppliers.legalName,
+          location: suppliers.location,
+          description: suppliers.description,
+          searchEmbedding: suppliers.searchEmbedding,
+          averageRating: suppliers.averageRating,
+          totalReviews: suppliers.totalReviews,
+          profileImageUrl: suppliers.profileImageUrl,
+        })
+        .from(suppliers)
+        .where(and(
+          eq(suppliers.status, 'approved'),
+          sql`${suppliers.searchEmbedding} IS NOT NULL`
+        ))
+        .limit(100);
+
+      // Get specialties for each supplier
+      const suppliersWithSpecialties = await Promise.all(
+        suppliersWithEmbeddings.map(async (supplier) => {
+          const specs = await db
+            .select({ specialty: supplierSpecialties.specialty })
+            .from(supplierSpecialties)
+            .where(eq(supplierSpecialties.supplierId, supplier.id));
+          
+          return {
+            ...supplier,
+            specialties: specs.map(s => s.specialty),
+          };
+        })
+      );
+
+      // Calculate similarity scores
+      const results = suppliersWithSpecialties
+        .map((supplier) => {
+          const embedding = supplier.searchEmbedding as number[];
+          if (!embedding || !Array.isArray(embedding)) {
+            return { ...supplier, similarity: 0 };
+          }
+
+          const similarity = cosineSimilarity(queryEmbedding, embedding);
+          return {
+            id: supplier.id,
+            legalName: supplier.legalName,
+            location: supplier.location,
+            description: supplier.description,
+            specialties: supplier.specialties,
+            averageRating: supplier.averageRating,
+            totalReviews: supplier.totalReviews,
+            profileImageUrl: supplier.profileImageUrl,
+            similarity,
+          };
+        })
+        .filter(r => r.similarity > 0.3)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 10);
+
+      res.json({ results });
     } catch (error: any) {
-      console.error("AI parse error:", error);
-      res.status(500).json({ message: "Error processing search query" });
+      console.error("Semantic search error:", error);
+      res.status(500).json({ message: "Error performing semantic search" });
     }
   });
 
-  // Generate search suggestions
-  app.post('/api/ai/search/suggestions', async (req, res) => {
-    const { generateSearchSuggestions } = await import('./services/ai-service.js');
+  // Generate embeddings for suppliers (utility endpoint)
+  app.post('/api/suppliers/:id/generate-embedding', isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    const { generateSupplierEmbedding } = await import('./services/embedding-service.js');
     try {
-      const { query } = req.body;
-      
-      if (!query || typeof query !== 'string') {
-        return res.status(400).json({ message: "Query is required" });
+      const supplierId = req.params.id;
+
+      // Get supplier details
+      const supplier = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.id, supplierId))
+        .limit(1);
+
+      if (supplier.length === 0) {
+        return res.status(404).json({ message: "Supplier not found" });
       }
 
-      // Get available specialties from database
-      const allSpecialties = await db
+      // Get specialties
+      const specs = await db
         .select({ specialty: supplierSpecialties.specialty })
         .from(supplierSpecialties)
-        .groupBy(supplierSpecialties.specialty)
-        .limit(50);
+        .where(eq(supplierSpecialties.supplierId, supplierId));
 
-      const specialties = allSpecialties.map(s => s.specialty);
+      const specialties = specs.map(s => s.specialty);
 
-      const suggestions = await generateSearchSuggestions(query, specialties);
-      res.json({ suggestions });
+      // Generate embedding
+      const embedding = await generateSupplierEmbedding(
+        supplier[0].legalName,
+        supplier[0].description,
+        specialties,
+        supplier[0].location
+      );
+
+      // Update supplier with embedding
+      await db
+        .update(suppliers)
+        .set({ searchEmbedding: embedding as any })
+        .where(eq(suppliers.id, supplierId));
+
+      res.json({ message: "Embedding generated successfully", embedding });
     } catch (error: any) {
-      console.error("AI suggestions error:", error);
-      res.status(500).json({ message: "Error generating suggestions" });
+      console.error("Error generating embedding:", error);
+      res.status(500).json({ message: "Error generating embedding" });
     }
   });
 
-  // Enhanced search with AI
-  app.get('/api/ai/search', async (req, res) => {
-    const { parseNaturalLanguageSearch } = await import('./services/ai-service.js');
+  // Bulk generate embeddings for all suppliers
+  app.post('/api/suppliers/generate-embeddings-bulk', isAuthenticated, hasRole(['admin', 'superadmin']), async (req, res) => {
+    const { generateSupplierEmbedding } = await import('./services/embedding-service.js');
     try {
-      const { query, page = '1', limit = '50', sortBy = 'featured' } = req.query;
-      
-      if (!query || typeof query !== 'string') {
-        return res.status(400).json({ message: "Query is required" });
+      // Get all approved suppliers
+      const allSuppliers = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.status, 'approved'));
+
+      let count = 0;
+      for (const supplier of allSuppliers) {
+        // Get specialties
+        const specs = await db
+          .select({ specialty: supplierSpecialties.specialty })
+          .from(supplierSpecialties)
+          .where(eq(supplierSpecialties.supplierId, supplier.id));
+
+        const specialties = specs.map(s => s.specialty);
+
+        // Generate embedding
+        const embedding = await generateSupplierEmbedding(
+          supplier.legalName,
+          supplier.description,
+          specialties,
+          supplier.location
+        );
+
+        // Update supplier
+        await db
+          .update(suppliers)
+          .set({ searchEmbedding: embedding as any })
+          .where(eq(suppliers.id, supplier.id));
+
+        count++;
       }
 
-      // Parse natural language query
-      const parsed = await parseNaturalLanguageSearch(query);
-      
-      // Build filters from AI-extracted data
-      const filters: any = {
-        search: parsed.enhancedQuery,
-      };
-
-      if (parsed.extractedFilters.specialty) {
-        filters.specialty = parsed.extractedFilters.specialty;
-      }
-
-      if (parsed.extractedFilters.location) {
-        filters.location = parsed.extractedFilters.location;
-      }
-
-      // Get suppliers using traditional search with AI-enhanced filters
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-      const suppliers = await storage.getSuppliers({
-        ...filters,
-        limit: parseInt(limit as string),
-        offset,
-        sortBy: sortBy as string,
-      });
-
-      // Count total results
-      const totalSuppliers = await storage.getSuppliers({ ...filters });
-
-      res.json({
-        suppliers,
-        total: totalSuppliers.length,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        aiParsed: parsed,
-      });
+      res.json({ message: `Generated embeddings for ${count} suppliers` });
     } catch (error: any) {
-      console.error("AI search error:", error);
-      res.status(500).json({ message: "Error performing AI search" });
+      console.error("Error generating bulk embeddings:", error);
+      res.status(500).json({ message: "Error generating bulk embeddings" });
     }
   });
 
