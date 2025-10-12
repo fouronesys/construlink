@@ -4937,6 +4937,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Search routes
+  const { 
+    parseNaturalLanguageSearch, 
+    generateSearchSuggestions, 
+    testAIConnection 
+  } = await import('./services/ai-service.js');
+
+  // Test AI connection
+  app.get('/api/ai/test', async (req, res) => {
+    try {
+      const result = await testAIConnection();
+      res.json(result);
+    } catch (error: any) {
+      console.error("AI test error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Parse natural language search query
+  app.post('/api/ai/search/parse', async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      const result = await parseNaturalLanguageSearch(query);
+      res.json(result);
+    } catch (error: any) {
+      console.error("AI parse error:", error);
+      res.status(500).json({ message: "Error processing search query" });
+    }
+  });
+
+  // Generate search suggestions
+  app.post('/api/ai/search/suggestions', async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      // Get available specialties from database
+      const allSpecialties = await db
+        .select({ specialty: supplierSpecialties.specialty })
+        .from(supplierSpecialties)
+        .groupBy(supplierSpecialties.specialty)
+        .limit(50);
+
+      const specialties = allSpecialties.map(s => s.specialty);
+
+      const suggestions = await generateSearchSuggestions(query, specialties);
+      res.json({ suggestions });
+    } catch (error: any) {
+      console.error("AI suggestions error:", error);
+      res.status(500).json({ message: "Error generating suggestions" });
+    }
+  });
+
+  // Enhanced search with AI
+  app.get('/api/ai/search', async (req, res) => {
+    try {
+      const { query, page = '1', limit = '50', sortBy = 'featured' } = req.query;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      // Parse natural language query
+      const parsed = await parseNaturalLanguageSearch(query);
+      
+      // Build filters from AI-extracted data
+      const filters: any = {
+        search: parsed.enhancedQuery,
+      };
+
+      if (parsed.extractedFilters.specialty) {
+        filters.specialty = parsed.extractedFilters.specialty;
+      }
+
+      if (parsed.extractedFilters.location) {
+        filters.location = parsed.extractedFilters.location;
+      }
+
+      // Get suppliers using traditional search with AI-enhanced filters
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      const suppliers = await storage.getSuppliers({
+        ...filters,
+        limit: parseInt(limit as string),
+        offset,
+        sortBy: sortBy as string,
+      });
+
+      // Count total results
+      const totalSuppliers = await storage.getSuppliers({ ...filters });
+
+      res.json({
+        suppliers,
+        total: totalSuppliers.length,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        aiParsed: parsed,
+      });
+    } catch (error: any) {
+      console.error("AI search error:", error);
+      res.status(500).json({ message: "Error performing AI search" });
+    }
+  });
+
   // Create HTTP server
   const server = createServer(app);
 

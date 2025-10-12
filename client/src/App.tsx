@@ -20,6 +20,7 @@ import InvoicesPage from "@/pages/invoices";
 import Terms from "@/pages/terms";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import CookiePolicy from "@/pages/cookie-policy";
+import AITestPage from "@/pages/ai-test";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,6 +49,7 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/cookie-policy" component={CookiePolicy} />
+          <Route path="/ai-test" component={AITestPage} />
         </>
       ) : (
         <>
@@ -61,6 +63,7 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/cookie-policy" component={CookiePolicy} />
+          <Route path="/ai-test" component={AITestPage} />
           {user?.role === 'supplier' && (
             <Route path="/supplier-dashboard" component={SupplierDashboard} />
           )}
