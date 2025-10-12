@@ -891,6 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             bannerImageUrlMobile: mobileBanner?.imageUrl || tabletBanner?.imageUrl || fallbackBanner?.imageUrl || supplier.bannerImageUrl,
             specialties: specialties.map(s => s.specialty),
             bannerId: desktopBanner?.id || fallbackBanner?.id, // Include banner ID for tracking (use desktop banner for tracking)
+            bannerLinkUrl: desktopBanner?.linkUrl || fallbackBanner?.linkUrl, // Include link URL for navigation
           };
         })
       );

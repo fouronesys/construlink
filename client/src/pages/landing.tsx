@@ -80,6 +80,7 @@ interface FeaturedSupplier {
   bannerImageUrlMobile?: string | null;
   specialties: string[];
   bannerId?: string;
+  bannerLinkUrl?: string | null;
 }
 
 interface SupplierBanner {
@@ -359,6 +360,17 @@ export default function Landing() {
   }, [advertisements, viewedAdvertisements]);
 
   const handleBannerClick = async (supplier: FeaturedSupplier) => {
+    // Track click if banner ID exists
+    if (supplier.bannerId) {
+      await trackClick(supplier.bannerId);
+    }
+    
+    // If banner has a custom link URL, use it
+    if (supplier.bannerLinkUrl) {
+      setLocation(supplier.bannerLinkUrl);
+      return;
+    }
+    
     // Check if this is a valid custom banner or placeholder
     const isValidBannerUrl = (url: string | null | undefined) => {
       if (!url) return false;
@@ -377,10 +389,7 @@ export default function Landing() {
       return;
     }
     
-    // Otherwise, track click and go to directory
-    if (supplier.bannerId) {
-      await trackClick(supplier.bannerId);
-    }
+    // Otherwise, go to directory
     setLocation(`/directory?id=${supplier.id}`);
   };
 
