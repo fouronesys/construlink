@@ -39,6 +39,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### 2025-10-12: Corrección de Flujo de Pago en Suscripciones ✅
+- **Problema identificado**: El flujo de suscripción intentaba usar Azul Payment Gateway que no estaba configurado, dejando al usuario en "Procesando pago..."
+- **Solución implementada**:
+  - Restaurado flujo de Verifone con simulación de pagos (funcional)
+  - Mejorado manejo de errores en `subscription-selection.tsx`
+  - Gateway Azul queda preparado para futura configuración
+- **Flujo actual**:
+  1. Usuario selecciona plan → llama `/api/create-subscription`
+  2. Redirige a `/payment` con subscriptionId
+  3. Procesa pago simulado con `/api/process-verifone-payment`
+  4. Activa suscripción y redirige al dashboard
+- **Estado**: Verifone funcional, Azul requiere credenciales para activación futura
+
 ### 2025-10-12: Sistema de Búsqueda Semántica Mejorado con Embeddings Automáticos ✅
 - **Servicio de embeddings** (`server/services/embedding-service.ts`):
   - Integración con Hugging Face Inference API (modelo sentence-transformers/all-MiniLM-L6-v2)
