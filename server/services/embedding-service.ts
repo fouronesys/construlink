@@ -38,16 +38,29 @@ export async function generateSupplierEmbedding(
   legalName: string,
   description: string | null,
   specialties: string[],
-  location: string | null
+  location: string | null,
+  products?: Array<{ name: string; category: string | null; description: string | null }>
 ): Promise<number[]> {
   const parts = [
     legalName,
     description || '',
     specialties.join(' '),
     location || '',
-  ].filter(Boolean);
+  ];
 
-  const searchText = parts.join(' ');
+  // Include product information for better search results
+  if (products && products.length > 0) {
+    const productInfo = products.map(p => {
+      const productParts = [p.name, p.category, p.description].filter(Boolean);
+      return productParts.join(' ');
+    }).join(' ');
+    
+    if (productInfo) {
+      parts.push(productInfo);
+    }
+  }
+
+  const searchText = parts.filter(Boolean).join(' ');
   return generateEmbedding(searchText);
 }
 

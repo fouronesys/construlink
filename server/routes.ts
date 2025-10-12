@@ -11,6 +11,7 @@ import {
   reviews, 
   verifications,
   supplierClaims,
+  products,
   insertSupplierSchema,
   insertQuoteRequestSchema,
   insertProductSchema,
@@ -5057,12 +5058,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const specialties = specs.map(s => s.specialty);
 
+      // Get products
+      const prods = await db
+        .select({
+          name: products.name,
+          category: products.category,
+          description: products.description
+        })
+        .from(products)
+        .where(and(
+          eq(products.supplierId, supplierId),
+          eq(products.isActive, true)
+        ))
+        .limit(50);
+
       // Generate embedding
       const embedding = await generateSupplierEmbedding(
         supplier[0].legalName,
         supplier[0].description,
         specialties,
-        supplier[0].location
+        supplier[0].location,
+        prods
       );
 
       // Update supplier with embedding
@@ -5098,12 +5114,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const specialties = specs.map(s => s.specialty);
 
+        // Get products
+        const prods = await db
+          .select({
+            name: products.name,
+            category: products.category,
+            description: products.description
+          })
+          .from(products)
+          .where(and(
+            eq(products.supplierId, supplier.id),
+            eq(products.isActive, true)
+          ))
+          .limit(50);
+
         // Generate embedding
         const embedding = await generateSupplierEmbedding(
           supplier.legalName,
           supplier.description,
           specialties,
-          supplier.location
+          supplier.location,
+          prods
         );
 
         // Update supplier

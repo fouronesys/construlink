@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { suppliers, supplierSpecialties } from "@shared/schema";
+import { suppliers, supplierSpecialties, products } from "@shared/schema";
 import { eq, sql, and } from "drizzle-orm";
 import { generateSupplierEmbedding } from "./embedding-service";
 
@@ -38,12 +38,27 @@ export async function initializeEmbeddings() {
 
         const specialties = specs.map(s => s.specialty);
 
+        // Get products
+        const prods = await db
+          .select({
+            name: products.name,
+            category: products.category,
+            description: products.description
+          })
+          .from(products)
+          .where(and(
+            eq(products.supplierId, supplier.id),
+            eq(products.isActive, true)
+          ))
+          .limit(50); // Limit to avoid token issues
+
         // Generate embedding
         const embedding = await generateSupplierEmbedding(
           supplier.legalName,
           supplier.description,
           specialties,
-          supplier.location
+          supplier.location,
+          prods
         );
 
         // Update supplier
@@ -53,7 +68,7 @@ export async function initializeEmbeddings() {
           .where(eq(suppliers.id, supplier.id));
 
         successCount++;
-        console.log(`  ✓ Embedding generado para: ${supplier.legalName}`);
+        console.log(`  ✓ Embedding generado para: ${supplier.legalName} (con ${prods.length} productos)`);
       } catch (error) {
         errorCount++;
         console.error(`  ✗ Error generando embedding para ${supplier.legalName}:`, error);
@@ -92,12 +107,27 @@ export async function ensureSupplierEmbedding(supplierId: string) {
 
     const specialties = specs.map(s => s.specialty);
 
+    // Get products
+    const prods = await db
+      .select({
+        name: products.name,
+        category: products.category,
+        description: products.description
+      })
+      .from(products)
+      .where(and(
+        eq(products.supplierId, supplierId),
+        eq(products.isActive, true)
+      ))
+      .limit(50); // Limit to avoid token issues
+
     // Generate and update embedding
     const embedding = await generateSupplierEmbedding(
       supplier[0].legalName,
       supplier[0].description,
       specialties,
-      supplier[0].location
+      supplier[0].location,
+      prods
     );
 
     await db
@@ -105,7 +135,7 @@ export async function ensureSupplierEmbedding(supplierId: string) {
       .set({ searchEmbedding: embedding as any })
       .where(eq(suppliers.id, supplierId));
 
-    console.log(`✓ Embedding generado para proveedor: ${supplier[0].legalName}`);
+    console.log(`✓ Embedding generado para proveedor: ${supplier[0].legalName} (con ${prods.length} productos)`);
   } catch (error) {
     console.error(`Error generando embedding para proveedor ${supplierId}:`, error);
     throw error; // Re-throw to allow caller to handle
