@@ -95,12 +95,14 @@ export default function Navigation() {
         <div className="flex justify-between h-16">
           {/* Logo and brand */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <img src={logoPath} alt="ConstruLink" className="h-8 w-auto object-contain sm:h-9" />
+            <div className="flex items-center space-x-2">
+              <Link href="/" className="flex items-center space-x-2">
+                <img src={logoPath} alt="ConstruLink" className="h-8 w-auto object-contain sm:h-9" />
+              </Link>
               <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                ConstruLink
+                Constru<a href="https://fourone.com.do" target="_blank" rel="noopener noreferrer" className="text-gray-900 dark:text-white hover:text-orange dark:hover:text-orange transition-colors">Link</a>
               </span>
-            </Link>
+            </div>
           </div>
 
           {/* Desktop navigation */}
