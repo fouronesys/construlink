@@ -667,24 +667,43 @@ export default function Landing() {
             <div className="max-w-2xl mx-auto mb-12">
               <div className="bg-white rounded-2xl p-2 shadow-2xl">
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex-1">
+                  <div className="flex-1 relative">
                     <Input 
-                      placeholder="¿Qué necesitas? (ej: cemento, hierro, plomería...)"
+                      placeholder="Busca de forma inteligente: 'electricista certificado', 'materiales de construcción'..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearch();
+                        }
+                      }}
                       className="border-0 text-lg py-4 px-6 text-gray-900 placeholder-gray-500 focus:ring-0"
+                      data-testid="input-landing-search"
                     />
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0"
+                    >
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      IA Semántica
+                    </Badge>
                   </div>
                   <Button 
                     size="lg" 
                     className="bg-orange hover:bg-orange/90 text-white px-8 py-4 rounded-xl font-semibold"
                     onClick={handleSearch}
+                    data-testid="button-landing-search"
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Buscar
                   </Button>
                 </div>
               </div>
+              
+              <p className="text-sm text-blue-100 mt-3 text-center">
+                <Sparkles className="w-4 h-4 inline mr-1" />
+                Búsqueda inteligente que entiende el contexto de tu consulta
+              </p>
               
               {/* Quick search tags */}
               <div className="flex flex-wrap justify-center gap-2 mt-6">
