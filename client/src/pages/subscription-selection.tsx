@@ -143,48 +143,35 @@ export default function SubscriptionSelection() {
     setLoading(true);
     try {
       const plan = subscriptionPlans.find(p => p.id === planId);
-      if (!plan) return;
+      if (!plan) {
+        setLoading(false);
+        return;
+      }
 
       const amount = isAnnual ? plan.annualPrice : plan.monthlyPrice;
 
-      // Step 1: Create subscription record
-      const subscriptionResponse = await apiRequest("POST", "/api/create-subscription", {
+      // Create subscription with selected plan
+      const response = await apiRequest("POST", "/api/create-subscription", {
         planId: plan.id,
         planName: plan.name,
         monthlyAmount: plan.monthlyPrice,
         billingCycle: isAnnual ? "annual" : "monthly"
       });
 
-      if (!subscriptionResponse.ok) {
-        throw new Error("Error creating subscription");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error creating subscription");
       }
 
-      const subscriptionData = await subscriptionResponse.json();
-
-      // Step 2: Create Azul payment request
-      const paymentResponse = await apiRequest("POST", "/api/payments/azul/create", {
-        subscriptionId: subscriptionData.subscriptionId,
-        amount: amount,
-        plan: plan.id
-      });
-
-      if (!paymentResponse.ok) {
-        throw new Error("Error creating payment request");
-      }
-
-      const paymentData = await paymentResponse.json();
-
-      // Step 3: Redirect to Azul payment page
-      if (paymentData.azulPaymentUrl) {
-        window.location.href = paymentData.azulPaymentUrl;
-      } else {
-        throw new Error("No se recibió URL de pago");
-      }
+      const data = await response.json();
+      
+      // Redirect to payment page with subscription details
+      window.location.href = `/payment?subscriptionId=${data.subscriptionId}&planId=${planId}&amount=${amount}&billingCycle=${isAnnual ? 'annual' : 'monthly'}`;
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error("Subscription error:", error);
       toast({
         title: "Error",
-        description: "Error al procesar el pago. Inténtalo de nuevo.",
+        description: error instanceof Error ? error.message : "Error al crear suscripción. Inténtalo de nuevo.",
         variant: "destructive",
       });
       setLoading(false);
