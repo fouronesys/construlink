@@ -67,6 +67,12 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Initialize embeddings for suppliers without them
+  const { initializeEmbeddings } = await import('./services/init-embeddings.js');
+  initializeEmbeddings().catch(err => {
+    console.error('Error during embedding initialization:', err);
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

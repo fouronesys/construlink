@@ -332,17 +332,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       // Add specialties
+      const specialtiesList: string[] = [];
       if (req.body.specialties && Array.isArray(req.body.specialties)) {
         for (const specialty of req.body.specialties) {
           await db.insert(supplierSpecialties).values({
             supplierId: newSupplier[0].id,
             specialty,
           });
+          specialtiesList.push(specialty);
         }
       }
 
       // Update user role
       await db.update(users).set({ role: 'supplier' }).where(eq(users.id, userId));
+
+      // Generate embedding for the new supplier
+      if (newSupplier[0].status === 'approved') {
+        const { generateSupplierEmbedding } = await import('./services/embedding-service.js');
+        try {
+          const embedding = await generateSupplierEmbedding(
+            newSupplier[0].legalName,
+            newSupplier[0].description,
+            specialtiesList,
+            newSupplier[0].location
+          );
+          await db.update(suppliers).set({ searchEmbedding: embedding as any }).where(eq(suppliers.id, newSupplier[0].id));
+        } catch (error) {
+          console.error('Error generating embedding for new supplier:', error);
+        }
+      }
 
       res.json(newSupplier[0]);
     } catch (error) {
