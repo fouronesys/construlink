@@ -1065,7 +1065,7 @@ export default function SupplierDashboard() {
                               </div>
                             </TableCell>
                             <TableCell data-testid={`text-publication-date-${publication.id}`}>
-                              {new Date(publication.createdAt).toLocaleDateString('es-DO')}
+                              {publication.createdAt ? new Date(publication.createdAt).toLocaleDateString('es-DO') : '-'}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
@@ -1225,7 +1225,7 @@ export default function SupplierDashboard() {
                           <FormControl>
                             <input
                               type="checkbox"
-                              checked={field.value}
+                              checked={!!field.value}
                               onChange={field.onChange}
                               className="w-4 h-4 rounded border-gray-300"
                               data-testid="checkbox-edit-publication-active"

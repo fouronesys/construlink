@@ -271,7 +271,17 @@ const bannerRequestSchema = z.object({
    - DELETE /api/supplier/logo (eliminar logo del proveedor)
    - Métodos storage: updateSupplierLogo, deleteSupplierLogo
    
-4. ⏳ **Fase 4**: Modales publicaciones (Frontend)
+4. ✅ **Fase 4**: Modales publicaciones (Frontend) - **COMPLETADO**
+   - Schema Zod usando insertSupplierPublicationSchema de drizzle-zod
+   - Modal de creación con título, contenido, categoría, imagen
+   - Modal de edición con datos prellenados y checkbox isActive
+   - Tabla de publicaciones con columnas: título, categoría, estado, vistas, fecha, acciones
+   - Paginación funcional (10 items por página)
+   - Mutations: create, update, delete con invalidación de caché
+   - Tab "Publicaciones" integrado al dashboard
+   - Todos los data-testids implementados
+   - Estados de carga y manejo de errores con toasts
+   
 5. ⏳ **Fase 5**: Modales anuncios/banners (Frontend)
 6. ⏳ **Fase 6**: Modal logo (Frontend)
 7. ⏳ **Fase 7**: Integración completa
@@ -280,5 +290,5 @@ const bannerRequestSchema = z.object({
 
 ---
 
-**Status**: Fases 1-3 Backend completadas - Iniciando Fase 4 Frontend
-**Última actualización**: 2025-10-13 19:12
+**Status**: Fases 1-4 completadas - Iniciando Fase 5 Frontend
+**Última actualización**: 2025-10-13 19:45
