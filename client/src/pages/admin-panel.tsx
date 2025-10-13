@@ -862,6 +862,11 @@ export default function AdminPanel() {
   const [invoiceNcfSequence, setInvoiceNcfSequence] = useState("");
   const [invoiceNotes, setInvoiceNotes] = useState("");
 
+  // Plan change states
+  const [showPlanChangeDialog, setShowPlanChangeDialog] = useState(false);
+  const [selectedSupplierForPlan, setSelectedSupplierForPlan] = useState<Supplier | null>(null);
+  const [newPlan, setNewPlan] = useState('');
+
   // Subscription filters and states
   const [subscriptionSearch, setSubscriptionSearch] = useState("");
   const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState("all");
@@ -1217,6 +1222,41 @@ export default function AdminPanel() {
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Change subscription plan mutation
+  const changePlanMutation = useMutation({
+    mutationFn: async ({ id, newPlan, reason }: { id: string; newPlan: string; reason?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/suppliers/${id}/change-plan`, {
+        newPlan,
+        newBillingCycle: "monthly",
+        reason
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to change plan");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
+      toast({
+        title: "Éxito",
+        description: "Plan de suscripción cambiado correctamente",
+      });
+      setShowPlanChangeDialog(false);
+      setSelectedSupplierForPlan(null);
+      setNewPlan('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cambiar el plan",
         variant: "destructive",
       });
     },
@@ -1588,6 +1628,22 @@ export default function AdminPanel() {
       action,
       reason
     });
+  };
+
+  const handleChangePlan = (supplier: Supplier) => {
+    setSelectedSupplierForPlan(supplier);
+    setNewPlan(supplier.planType || 'basic');
+    setShowPlanChangeDialog(true);
+  };
+
+  const submitPlanChange = () => {
+    if (selectedSupplierForPlan && newPlan) {
+      changePlanMutation.mutate({
+        id: selectedSupplierForPlan.id,
+        newPlan,
+        reason: `Plan changed from ${selectedSupplierForPlan.planType} to ${newPlan} by admin`
+      });
+    }
   };
 
   const confirmApproval = () => {
@@ -2521,6 +2577,16 @@ export default function AdminPanel() {
                                 data-testid={`button-view-${supplier.id}`}
                               >
                                 <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleChangePlan(supplier)}
+                                className="text-blue-600 hover:text-blue-700"
+                                title="Cambiar plan"
+                                data-testid={`button-change-plan-${supplier.id}`}
+                              >
+                                <RefreshCw className="w-4 h-4" />
                               </Button>
                               {supplier.status === 'approved' && (
                                 <Button 
@@ -5194,6 +5260,59 @@ export default function AdminPanel() {
                 data-testid="button-save-password"
               >
                 {updateUserPasswordMutation.isPending ? "Guardando..." : "Cambiar Contraseña"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Plan Dialog */}
+      <Dialog open={showPlanChangeDialog} onOpenChange={setShowPlanChangeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar Plan de Suscripción</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Proveedor</Label>
+              <p className="text-sm text-gray-600 mt-1">{selectedSupplierForPlan?.legalName}</p>
+            </div>
+            <div>
+              <Label>Plan Actual</Label>
+              <p className="text-sm font-medium mt-1 capitalize">{selectedSupplierForPlan?.planType}</p>
+            </div>
+            <div>
+              <Label htmlFor="new-plan">Nuevo Plan</Label>
+              <select
+                id="new-plan"
+                value={newPlan}
+                onChange={(e) => setNewPlan(e.target.value)}
+                className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2"
+                data-testid="select-new-plan"
+              >
+                <option value="basic">Basic</option>
+                <option value="professional">Professional</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPlanChangeDialog(false);
+                  setSelectedSupplierForPlan(null);
+                  setNewPlan('');
+                }}
+                data-testid="button-cancel-plan-change"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={submitPlanChange}
+                disabled={!newPlan || newPlan === selectedSupplierForPlan?.planType || changePlanMutation.isPending}
+                data-testid="button-save-plan-change"
+              >
+                {changePlanMutation.isPending ? "Cambiando..." : "Cambiar Plan"}
               </Button>
             </div>
           </div>

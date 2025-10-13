@@ -1972,13 +1972,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateSupplierStatus(id, 'approved');
       }
 
-      // Create verification record for the action
-      await storage.createVerification({
-        supplierId: id,
-        adminId: user.id,
-        decision: action === 'reactivate' ? 'approved' : 'rejected',
-        comments: reason || `Subscription ${action}d by admin ${testMode ? '(TEST MODE)' : ''}`,
-      });
+      // Create verification record for the action (only if admin exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.createVerification({
+          supplierId: id,
+          adminId: user.id,
+          decision: action === 'reactivate' ? 'approved' : 'rejected',
+          comments: reason || `Subscription ${action}d by admin ${testMode ? '(TEST MODE)' : ''}`,
+        });
+      } else {
+        // Log action without creating verification record for system users
+        console.log(`System user ${user.id} ${action}ed supplier ${id} subscription ${testMode ? '(TEST MODE)' : ''}`);
+      }
 
       res.json({ 
         subscription: updatedSubscription,
@@ -1987,6 +1993,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating subscription status:", error);
       res.status(500).json({ message: "Failed to update subscription status" });
+    }
+  });
+
+  // Admin change supplier subscription plan
+  app.patch('/api/admin/suppliers/:id/change-plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !['admin', 'superadmin'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { newPlan, newBillingCycle, reason } = req.body;
+
+      if (!newPlan) {
+        return res.status(400).json({ message: "New plan is required" });
+      }
+
+      const subscription = await storage.getSubscriptionBySupplierId(id);
+      
+      // Allow bypass in test mode
+      const testMode = process.env.TEST_MODE === 'true';
+      
+      if (!subscription && !testMode) {
+        return res.status(400).json({ 
+          message: "Este proveedor no tiene una suscripción activa. El proveedor debe crear una suscripción primero." 
+        });
+      }
+
+      let updatedSubscription = null;
+      
+      // Only update subscription if it exists
+      if (subscription) {
+        const { changePlan } = await import('./subscription-service');
+        const result = await changePlan(storage, subscription.id, newPlan, newBillingCycle || "monthly");
+        
+        if (!result.success) {
+          return res.status(400).json({ message: result.message });
+        }
+        
+        updatedSubscription = result.subscription;
+      } else if (testMode) {
+        // In test mode, create a new subscription with the selected plan
+        const newSubscriptionData = {
+          supplierId: id,
+          plan: newPlan,
+          billingCycle: (newBillingCycle || "monthly") as "monthly" | "annual",
+          status: 'active' as const,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + (newBillingCycle === 'annual' ? 365 : 30) * 24 * 60 * 60 * 1000),
+        };
+        
+        updatedSubscription = await storage.createSubscription(newSubscriptionData);
+      }
+
+      // Create verification record for the action (only if admin exists in database)
+      const adminExists = await storage.getUser(user.id);
+      if (adminExists) {
+        await storage.createVerification({
+          supplierId: id,
+          adminId: user.id,
+          decision: 'approved',
+          comments: reason || `Plan changed to ${newPlan} by admin ${testMode ? '(TEST MODE)' : ''}`,
+        });
+      } else {
+        // Log action without creating verification record for system users
+        console.log(`System user ${user.id} changed supplier ${id} plan to ${newPlan} ${testMode ? '(TEST MODE)' : ''}`);
+      }
+
+      res.json({ 
+        subscription: updatedSubscription,
+        message: `Plan changed to ${newPlan} successfully${testMode ? ' (TEST MODE)' : ''}`
+      });
+    } catch (error) {
+      console.error("Error changing subscription plan:", error);
+      res.status(500).json({ message: "Failed to change subscription plan" });
     }
   });
 
