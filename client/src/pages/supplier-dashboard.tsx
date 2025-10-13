@@ -20,6 +20,10 @@ import { apiRequest } from "@/lib/queryClient";
 import PlanUsageWidget from "@/components/plan-usage-widget";
 import SubscriptionPlans from "@/components/subscription-plans";
 import { PREDEFINED_PRODUCTS, PRODUCTS_BY_CATEGORY } from "@shared/predefined-products";
+import { 
+  insertSupplierPublicationSchema, 
+  type SupplierPublication 
+} from "@shared/schema";
 import {
   BarChart3,
   Eye,
@@ -41,6 +45,7 @@ import {
   MessageSquare,
   TrendingUp,
   Users,
+  Megaphone,
 } from "lucide-react";
 
 interface SubscriptionStatus {
@@ -79,8 +84,19 @@ const profileSchema = z.object({
   website: z.string().url().optional().or(z.literal("")),
 });
 
+const publicationSchema = insertSupplierPublicationSchema.omit({
+  supplierId: true,
+  viewCount: true,
+}).extend({
+  title: z.string().min(1, "Título es requerido").max(255, "Título muy largo"),
+  content: z.string().min(1, "Contenido es requerido"),
+  category: z.string().optional(),
+  imageUrl: z.string().optional(),
+});
+
 type ProductFormData = z.infer<typeof productSchema>;
 type ProfileFormData = z.infer<typeof profileSchema>;
+type PublicationFormData = z.infer<typeof publicationSchema>;
 
 const categories = [
   "Construcción General",
@@ -121,6 +137,13 @@ export default function SupplierDashboard() {
   const [productModalTab, setProductModalTab] = useState("catalog");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Publication states
+  const [showCreatePublicationModal, setShowCreatePublicationModal] = useState(false);
+  const [showEditPublicationModal, setShowEditPublicationModal] = useState(false);
+  const [selectedPublication, setSelectedPublication] = useState<SupplierPublication | null>(null);
+  const [publicationPage, setPublicationPage] = useState(1);
+  const publicationsPerPage = 10;
 
   if (!authLoading && user && user.role !== 'supplier') {
     return (
@@ -176,6 +199,13 @@ export default function SupplierDashboard() {
     retry: false,
   });
 
+  // Publications data
+  const { data: publications = [], isLoading: publicationsLoading } = useQuery<SupplierPublication[]>({
+    queryKey: ["/api/supplier/publications"],
+    enabled: !!user && user.role === 'supplier',
+    retry: false,
+  });
+
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -193,6 +223,17 @@ export default function SupplierDashboard() {
       location: "",
       description: "",
       website: "",
+    },
+  });
+
+  const publicationForm = useForm<PublicationFormData>({
+    resolver: zodResolver(publicationSchema),
+    defaultValues: {
+      title: "",
+      content: "",
+      category: "",
+      imageUrl: "",
+      isActive: true,
     },
   });
 
@@ -264,6 +305,115 @@ export default function SupplierDashboard() {
       });
     },
   });
+
+  // Publication mutations
+  const createPublicationMutation = useMutation({
+    mutationFn: async (data: PublicationFormData) => {
+      const response = await apiRequest("POST", "/api/supplier/publications", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create publication");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Publicación creada",
+        description: "La publicación ha sido creada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/publications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/plan-usage"] });
+      setShowCreatePublicationModal(false);
+      publicationForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePublicationMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: PublicationFormData }) => {
+      const response = await apiRequest("PATCH", `/api/supplier/publications/${id}`, data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update publication");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Publicación actualizada",
+        description: "La publicación ha sido actualizada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/publications"] });
+      setShowEditPublicationModal(false);
+      setSelectedPublication(null);
+      publicationForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePublicationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/supplier/publications/${id}`, {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete publication");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Publicación eliminada",
+        description: "La publicación ha sido eliminada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/publications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/plan-usage"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Publication handlers
+  const handleEditPublication = (publication: SupplierPublication) => {
+    setSelectedPublication(publication);
+    publicationForm.reset({
+      title: publication.title,
+      content: publication.content,
+      category: publication.category || "",
+      imageUrl: publication.imageUrl || "",
+      isActive: publication.isActive,
+    });
+    setShowEditPublicationModal(true);
+  };
+
+  const handleDeletePublication = (id: string) => {
+    if (confirm("¿Estás seguro de que quieres eliminar esta publicación?")) {
+      deletePublicationMutation.mutate(id);
+    }
+  };
+
+  // Pagination for publications
+  const paginatedPublications = publications.slice(
+    (publicationPage - 1) * publicationsPerPage,
+    publicationPage * publicationsPerPage
+  );
+  const totalPublicationPages = Math.ceil(publications.length / publicationsPerPage);
 
   if (authLoading || isLoading) {
     return (
@@ -356,11 +506,12 @@ export default function SupplierDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Resumen</TabsTrigger>
-            <TabsTrigger value="products">Productos</TabsTrigger>
-            <TabsTrigger value="quotes">Cotizaciones</TabsTrigger>
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview" data-testid="tab-overview">Resumen</TabsTrigger>
+            <TabsTrigger value="products" data-testid="tab-products">Productos</TabsTrigger>
+            <TabsTrigger value="publications" data-testid="tab-publications">Publicaciones</TabsTrigger>
+            <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
+            <TabsTrigger value="profile" data-testid="tab-profile">Perfil</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -742,6 +893,374 @@ export default function SupplierDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Publications Tab */}
+          <TabsContent value="publications" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Publicaciones</h2>
+              <Dialog open={showCreatePublicationModal} onOpenChange={setShowCreatePublicationModal}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-create-publication">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nueva Publicación
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl" data-testid="dialog-create-publication">
+                  <DialogHeader>
+                    <DialogTitle>Crear Publicación</DialogTitle>
+                    <DialogDescription>
+                      Comparte noticias, actualizaciones o contenido relevante con tus clientes
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Form {...publicationForm}>
+                    <form onSubmit={publicationForm.handleSubmit((data) => createPublicationMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={publicationForm.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Título</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="Título de la publicación" 
+                                data-testid="input-publication-title"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={publicationForm.control}
+                        name="content"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contenido</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                {...field} 
+                                placeholder="Contenido de la publicación" 
+                                rows={6}
+                                data-testid="textarea-publication-content"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={publicationForm.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Categoría (opcional)</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-publication-category">
+                                  <SelectValue placeholder="Selecciona una categoría" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={publicationForm.control}
+                        name="imageUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>URL de Imagen (opcional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="https://ejemplo.com/imagen.jpg" 
+                                data-testid="input-publication-image"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setShowCreatePublicationModal(false)}
+                          data-testid="button-cancel-create-publication"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          disabled={createPublicationMutation.isPending}
+                          data-testid="button-submit-create-publication"
+                        >
+                          {createPublicationMutation.isPending ? "Creando..." : "Crear Publicación"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardContent className="p-6">
+                {publicationsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                  </div>
+                ) : publications.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay publicaciones</h3>
+                    <p className="text-gray-600">
+                      Crea tu primera publicación para compartir noticias y actualizaciones.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Título</TableHead>
+                          <TableHead>Categoría</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Vistas</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedPublications.map((publication) => (
+                          <TableRow key={publication.id} data-testid={`row-publication-${publication.id}`}>
+                            <TableCell className="font-medium" data-testid={`text-publication-title-${publication.id}`}>
+                              {publication.title}
+                            </TableCell>
+                            <TableCell data-testid={`text-publication-category-${publication.id}`}>
+                              {publication.category || "Sin categoría"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={publication.isActive ? "default" : "secondary"}
+                                data-testid={`badge-publication-status-${publication.id}`}
+                              >
+                                {publication.isActive ? "Activa" : "Inactiva"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-publication-views-${publication.id}`}>
+                              <div className="flex items-center gap-1">
+                                <Eye className="w-4 h-4 text-gray-400" />
+                                {publication.viewCount}
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`text-publication-date-${publication.id}`}>
+                              {new Date(publication.createdAt).toLocaleDateString('es-DO')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditPublication(publication)}
+                                  data-testid={`button-edit-publication-${publication.id}`}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeletePublication(publication.id)}
+                                  disabled={deletePublicationMutation.isPending}
+                                  data-testid={`button-delete-publication-${publication.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    
+                    {/* Pagination */}
+                    {totalPublicationPages > 1 && (
+                      <div className="flex items-center justify-between pt-4">
+                        <p className="text-sm text-gray-600">
+                          Mostrando {((publicationPage - 1) * publicationsPerPage) + 1} a {Math.min(publicationPage * publicationsPerPage, publications.length)} de {publications.length} publicaciones
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPublicationPage(p => Math.max(1, p - 1))}
+                            disabled={publicationPage === 1}
+                            data-testid="button-publications-prev-page"
+                          >
+                            Anterior
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPublicationPage(p => Math.min(totalPublicationPages, p + 1))}
+                            disabled={publicationPage === totalPublicationPages}
+                            data-testid="button-publications-next-page"
+                          >
+                            Siguiente
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Edit Publication Modal */}
+            <Dialog open={showEditPublicationModal} onOpenChange={setShowEditPublicationModal}>
+              <DialogContent className="max-w-2xl" data-testid="dialog-edit-publication">
+                <DialogHeader>
+                  <DialogTitle>Editar Publicación</DialogTitle>
+                  <DialogDescription>
+                    Actualiza la información de tu publicación
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...publicationForm}>
+                  <form onSubmit={publicationForm.handleSubmit((data) => {
+                    if (selectedPublication) {
+                      updatePublicationMutation.mutate({ id: selectedPublication.id, data });
+                    }
+                  })} className="space-y-4">
+                    <FormField
+                      control={publicationForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Título</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="Título de la publicación" 
+                              data-testid="input-edit-publication-title"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={publicationForm.control}
+                      name="content"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contenido</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              placeholder="Contenido de la publicación" 
+                              rows={6}
+                              data-testid="textarea-edit-publication-content"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={publicationForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Categoría (opcional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-edit-publication-category">
+                                <SelectValue placeholder="Selecciona una categoría" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={publicationForm.control}
+                      name="imageUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL de Imagen (opcional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="https://ejemplo.com/imagen.jpg" 
+                              data-testid="input-edit-publication-image"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={publicationForm.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="w-4 h-4 rounded border-gray-300"
+                              data-testid="checkbox-edit-publication-active"
+                            />
+                          </FormControl>
+                          <FormLabel className="!mt-0">Publicación activa</FormLabel>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowEditPublicationModal(false);
+                          setSelectedPublication(null);
+                          publicationForm.reset();
+                        }}
+                        data-testid="button-cancel-edit-publication"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={updatePublicationMutation.isPending}
+                        data-testid="button-submit-edit-publication"
+                      >
+                        {updatePublicationMutation.isPending ? "Actualizando..." : "Actualizar Publicación"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Quotes Tab */}
