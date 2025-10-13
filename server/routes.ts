@@ -19,6 +19,7 @@ import {
   insertSupplierPublicationSchema,
   insertPaidAdvertisementSchema,
   insertAdvertisementRequestSchema,
+  insertSupplierBannerSchema,
   registerSchema, 
   loginSchema,
   logAdminActionSchema,
@@ -1806,12 +1807,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const publicationData = insertSupplierPublicationSchema.parse({
+      // Validate publication data
+      const validation = insertSupplierPublicationSchema.safeParse({
         ...req.body,
         supplierId: supplier.id,
       });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid publication data",
+          errors: validation.error.errors 
+        });
+      }
 
-      const publication = await storage.createPublication(publicationData);
+      const publication = await storage.createPublication(validation.data);
       res.json(publication);
     } catch (error) {
       console.error("Error creating publication:", error);
@@ -1840,8 +1849,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Publication not found" });
       }
 
-      const updates = req.body;
-      const updatedPublication = await storage.updatePublication(id, updates);
+      // Validate update data
+      const validation = insertSupplierPublicationSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid update data",
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedPublication = await storage.updatePublication(id, validation.data);
       res.json(updatedPublication);
     } catch (error) {
       console.error("Error updating publication:", error);
@@ -1977,15 +1994,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Supplier not found" });
       }
 
-      // Note: Banner requests require admin approval
-      // For now, we'll create the banner as inactive and notify admins
-      const bannerData = {
+      // Validate request data
+      const validation = insertSupplierBannerSchema.safeParse({
         ...req.body,
         supplierId: supplier.id,
         isActive: false, // Requires admin approval
-      };
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid banner data",
+          errors: validation.error.errors 
+        });
+      }
 
-      const banner = await storage.createBanner(bannerData);
+      const banner = await storage.createBanner(validation.data);
       
       // TODO: Send notification to admins for approval
       
