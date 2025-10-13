@@ -176,6 +176,11 @@ export default function SupplierDashboard() {
   const [bannerPage, setBannerPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Logo states
+  const [showLogoModal, setShowLogoModal] = useState(false);
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
   if (!authLoading && user && user.role !== 'supplier') {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -528,6 +533,120 @@ export default function SupplierDashboard() {
       });
     },
   });
+
+  // Logo mutations
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('logo', file);
+      
+      const response = await fetch('/api/supplier/upload-logo', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to upload logo");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Logo actualizado",
+        description: "Tu logo de empresa ha sido actualizado exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/dashboard"] });
+      setShowLogoModal(false);
+      setSelectedLogoFile(null);
+      setLogoPreview(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteLogoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", "/api/supplier/logo", {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete logo");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Logo eliminado",
+        description: "El logo de tu empresa ha sido eliminado.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/dashboard"] });
+      setSelectedLogoFile(null);
+      setLogoPreview(null);
+      setShowLogoModal(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Logo handlers
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Tipo de archivo inválido",
+        description: "Solo se permiten archivos JPG, PNG o WEBP.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        title: "Archivo muy grande",
+        description: "El tamaño máximo permitido es 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedLogoFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadLogo = () => {
+    if (selectedLogoFile) {
+      uploadLogoMutation.mutate(selectedLogoFile);
+    }
+  };
+
+  const handleDeleteLogo = () => {
+    if (confirm("¿Estás seguro de que quieres eliminar el logo de tu empresa?")) {
+      deleteLogoMutation.mutate();
+    }
+  };
 
   // Pagination for publications
   const paginatedPublications = publications.slice(
@@ -1893,13 +2012,127 @@ export default function SupplierDashboard() {
           <TabsContent value="profile" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Información del Perfil</h2>
-              <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editar Perfil
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Dialog open={showLogoModal} onOpenChange={(open) => {
+                  setShowLogoModal(open);
+                  if (!open) {
+                    setSelectedLogoFile(null);
+                    setLogoPreview(null);
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" data-testid="button-manage-logo">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Gestionar Logo
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md" data-testid="dialog-manage-logo">
+                    <DialogHeader>
+                      <DialogTitle>Logo de Empresa</DialogTitle>
+                      <DialogDescription>
+                        Sube o actualiza el logo de tu empresa
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {/* Current Logo Preview */}
+                      {supplier?.profileImageUrl && !logoPreview && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Logo Actual</label>
+                          <div className="flex items-center justify-center p-4 border rounded-lg bg-gray-50">
+                            <img 
+                              src={supplier.profileImageUrl} 
+                              alt="Logo actual" 
+                              className="max-w-full max-h-32 object-contain"
+                              data-testid="img-current-logo"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* New Logo Preview */}
+                      {logoPreview && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Nuevo Logo (Vista Previa)</label>
+                          <div className="flex items-center justify-center p-4 border rounded-lg bg-gray-50">
+                            <img 
+                              src={logoPreview} 
+                              alt="Vista previa" 
+                              className="max-w-full max-h-32 object-contain"
+                              data-testid="img-logo-preview"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* File Input */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Subir Nuevo Logo</label>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/jpg"
+                          onChange={handleLogoFileChange}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
+                          data-testid="input-logo-file"
+                        />
+                      </div>
+
+                      {/* Recommendations */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                        <p className="text-sm text-blue-800">
+                          <strong>Recomendaciones:</strong>
+                        </p>
+                        <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                          <li>Formato: JPG, PNG o WEBP</li>
+                          <li>Tamaño máximo: 5MB</li>
+                          <li>Dimensiones recomendadas: 500x500px (cuadrado)</li>
+                          <li>Fondo transparente preferido (PNG)</li>
+                        </ul>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex justify-end gap-2">
+                        {supplier?.profileImageUrl && (
+                          <Button 
+                            type="button" 
+                            variant="destructive" 
+                            onClick={handleDeleteLogo}
+                            disabled={deleteLogoMutation.isPending}
+                            data-testid="button-delete-logo"
+                          >
+                            {deleteLogoMutation.isPending ? "Eliminando..." : "Eliminar Logo"}
+                          </Button>
+                        )}
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowLogoModal(false);
+                            setSelectedLogoFile(null);
+                            setLogoPreview(null);
+                          }}
+                          data-testid="button-cancel-logo"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button 
+                          type="button" 
+                          onClick={handleUploadLogo}
+                          disabled={!selectedLogoFile || uploadLogoMutation.isPending}
+                          data-testid="button-upload-logo"
+                        >
+                          {uploadLogoMutation.isPending ? "Subiendo..." : "Subir Logo"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Editar Perfil
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                   <DialogHeader>
                     <DialogTitle className="text-lg sm:text-xl">Editar Perfil</DialogTitle>
@@ -1988,6 +2221,7 @@ export default function SupplierDashboard() {
                   </Form>
                 </DialogContent>
               </Dialog>
+            </div>
             </div>
 
             <Card>
