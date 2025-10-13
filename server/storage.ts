@@ -97,6 +97,8 @@ export interface IStorage {
     offset?: number;
   }): Promise<Supplier[]>;
   deleteSupplier(id: string): Promise<void>;
+  updateSupplierLogo(supplierId: string, logoUrl: string): Promise<Supplier>;
+  deleteSupplierLogo(supplierId: string): Promise<Supplier>;
   
   // Supplier specialties
   addSupplierSpecialty(specialty: InsertSupplierSpecialty): Promise<SupplierSpecialty>;
@@ -560,6 +562,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSupplier(id: string): Promise<void> {
     await db.delete(suppliers).where(eq(suppliers.id, id));
+  }
+
+  async updateSupplierLogo(supplierId: string, logoUrl: string): Promise<Supplier> {
+    const [updatedSupplier] = await db
+      .update(suppliers)
+      .set({ 
+        profileImageUrl: logoUrl,
+        updatedAt: new Date() 
+      })
+      .where(eq(suppliers.id, supplierId))
+      .returning();
+    return updatedSupplier;
+  }
+
+  async deleteSupplierLogo(supplierId: string): Promise<Supplier> {
+    const [updatedSupplier] = await db
+      .update(suppliers)
+      .set({ 
+        profileImageUrl: null,
+        updatedAt: new Date() 
+      })
+      .where(eq(suppliers.id, supplierId))
+      .returning();
+    return updatedSupplier;
   }
 
   async getSuppliersWithCount(filters?: {

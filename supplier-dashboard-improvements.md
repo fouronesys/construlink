@@ -260,8 +260,17 @@ const bannerRequestSchema = z.object({
    - PATCH /api/supplier/publications/:id (con verificación de propiedad)
    - DELETE /api/supplier/publications/:id (con verificación de propiedad)
    
-2. ⏳ **Fase 2**: Endpoints anuncios/banners (Backend)  
-3. ⏳ **Fase 3**: Endpoint logo (Backend)
+2. ✅ **Fase 2**: Endpoints anuncios/banners (Backend) - **COMPLETADO**
+   - GET /api/supplier/advertisement-requests (listar solicitudes del proveedor)
+   - POST /api/supplier/advertisement-requests (crear solicitud de anuncio con validación)
+   - GET /api/supplier/banners (listar banners del proveedor)
+   - POST /api/supplier/banners/request (solicitar banner - requiere aprobación de admin)
+   
+3. ✅ **Fase 3**: Endpoint logo (Backend) - **COMPLETADO**
+   - POST /api/supplier/upload-logo (subir/actualizar logo con multer)
+   - DELETE /api/supplier/logo (eliminar logo del proveedor)
+   - Métodos storage: updateSupplierLogo, deleteSupplierLogo
+   
 4. ⏳ **Fase 4**: Modales publicaciones (Frontend)
 5. ⏳ **Fase 5**: Modales anuncios/banners (Frontend)
 6. ⏳ **Fase 6**: Modal logo (Frontend)
@@ -271,5 +280,5 @@ const bannerRequestSchema = z.object({
 
 ---
 
-**Status**: Fase 1 completada - Iniciando Fase 2
-**Última actualización**: 2025-10-13 18:32
+**Status**: Fases 1-3 Backend completadas - Iniciando Fase 4 Frontend
+**Última actualización**: 2025-10-13 19:12

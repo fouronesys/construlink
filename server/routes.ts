@@ -1878,6 +1878,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Supplier advertisement requests endpoints
+  app.get('/api/supplier/advertisement-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const requests = await storage.getAdvertisementRequestsBySupplierId(supplier.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching advertisement requests:", error);
+      res.status(500).json({ message: "Failed to fetch advertisement requests" });
+    }
+  });
+
+  app.post('/api/supplier/advertisement-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Validate request data
+      const validation = insertAdvertisementRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      // Verify that the publication belongs to this supplier
+      const publication = await storage.getPublication(validation.data.publicationId);
+      if (!publication || publication.supplierId !== supplier.id) {
+        return res.status(404).json({ message: "Publication not found or does not belong to you" });
+      }
+
+      const requestData = {
+        ...validation.data,
+        supplierId: supplier.id,
+        status: 'pending' as const,
+      };
+
+      const request = await storage.createAdvertisementRequest(requestData);
+      res.json(request);
+    } catch (error) {
+      console.error("Error creating advertisement request:", error);
+      res.status(500).json({ message: "Failed to create advertisement request" });
+    }
+  });
+
+  // Supplier banners endpoints
+  app.get('/api/supplier/banners', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const banners = await storage.getBannersBySupplierId(supplier.id);
+      res.json(banners);
+    } catch (error) {
+      console.error("Error fetching supplier banners:", error);
+      res.status(500).json({ message: "Failed to fetch banners" });
+    }
+  });
+
+  app.post('/api/supplier/banners/request', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Note: Banner requests require admin approval
+      // For now, we'll create the banner as inactive and notify admins
+      const bannerData = {
+        ...req.body,
+        supplierId: supplier.id,
+        isActive: false, // Requires admin approval
+      };
+
+      const banner = await storage.createBanner(bannerData);
+      
+      // TODO: Send notification to admins for approval
+      
+      res.json({ 
+        ...banner, 
+        message: "Banner request submitted. Pending admin approval." 
+      });
+    } catch (error) {
+      console.error("Error creating banner request:", error);
+      res.status(500).json({ message: "Failed to create banner request" });
+    }
+  });
+
+  // Supplier logo endpoints
+  app.post('/api/supplier/upload-logo', 
+    isAuthenticated, 
+    upload.single('logo'), 
+    async (req: any, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) {
+          return res.status(400).json({ message: "User ID not found" });
+        }
+
+        const supplier = await storage.getSupplierByUserId(userId);
+        
+        if (!supplier) {
+          return res.status(404).json({ message: "Supplier not found" });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const logoUrl = `/uploads/logos/${req.file.filename}`;
+        const updatedSupplier = await storage.updateSupplierLogo(supplier.id, logoUrl);
+
+        res.json({
+          supplier: updatedSupplier,
+          logoUrl,
+          message: "Logo uploaded successfully"
+        });
+      } catch (error) {
+        console.error("Error uploading logo:", error);
+        res.status(500).json({ message: "Failed to upload logo" });
+      }
+    }
+  );
+
+  app.delete('/api/supplier/logo', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      if (!supplier.profileImageUrl) {
+        return res.status(404).json({ message: "No logo to delete" });
+      }
+
+      const updatedSupplier = await storage.deleteSupplierLogo(supplier.id);
+
+      res.json({
+        supplier: updatedSupplier,
+        message: "Logo deleted successfully"
+      });
+    } catch (error) {
+      console.error("Error deleting logo:", error);
+      res.status(500).json({ message: "Failed to delete logo" });
+    }
+  });
+
   // Admin endpoints
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
     try {
