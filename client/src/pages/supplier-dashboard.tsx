@@ -119,7 +119,7 @@ export default function SupplierDashboard() {
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [productModalTab, setProductModalTab] = useState("catalog");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
 
   if (!authLoading && user && user.role !== 'supplier') {
@@ -215,7 +215,7 @@ export default function SupplierDashboard() {
       setShowAddProductModal(false);
       productForm.reset();
       setProductModalTab("catalog");
-      setSelectedCategory("");
+      setSelectedCategory("all");
       setSearchTerm("");
     },
     onError: (error: Error) => {
@@ -236,7 +236,7 @@ export default function SupplierDashboard() {
   };
 
   const filteredPredefinedProducts = PREDEFINED_PRODUCTS.filter(product => {
-    const matchesCategory = !selectedCategory || product.category === selectedCategory;
+    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
     const matchesSearch = !searchTerm || 
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -411,7 +411,7 @@ export default function SupplierDashboard() {
                         <p className="text-3xl font-bold text-gray-900">{stats.averageRating?.toFixed(1) || "0.0"}</p>
                         <Star className="w-5 h-5 text-yellow-400 ml-1 fill-yellow-400" />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">{stats.totalReviews || 0} reseñas</p>
+                      <p className="text-xs text-gray-500 mt-1">Promedio general</p>
                     </div>
                     <div className="bg-yellow-100 p-3 rounded-lg">
                       <Star className="w-6 h-6 text-yellow-600" />
@@ -550,7 +550,7 @@ export default function SupplierDashboard() {
                                 <SelectValue placeholder="Todas las categorías" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Todas las categorías</SelectItem>
+                                <SelectItem value="all">Todas las categorías</SelectItem>
                                 {Object.keys(PRODUCTS_BY_CATEGORY).sort().map((category) => (
                                   <SelectItem key={category} value={category}>
                                     {category} ({PRODUCTS_BY_CATEGORY[category].length})
