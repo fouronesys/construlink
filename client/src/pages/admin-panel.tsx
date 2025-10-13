@@ -942,6 +942,10 @@ export default function AdminPanel() {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  // Supplier details modal
+  const [showSupplierDetailsModal, setShowSupplierDetailsModal] = useState(false);
+  const [selectedSupplierDetails, setSelectedSupplierDetails] = useState<Supplier | null>(null);
+
   // Fetch admin dashboard data
   const { data: dashboardData, isLoading } = useQuery<{ stats: { totalSuppliers: number; pendingApprovals: number; totalQuotes: number; activeSubscriptions: number; } }>({
     queryKey: ["/api/admin/dashboard"],
@@ -1644,6 +1648,11 @@ export default function AdminPanel() {
         reason: `Plan changed from ${selectedSupplierForPlan.planType} to ${newPlan} by admin`
       });
     }
+  };
+
+  const handleViewSupplierDetails = (supplier: Supplier) => {
+    setSelectedSupplierDetails(supplier);
+    setShowSupplierDetailsModal(true);
   };
 
   const confirmApproval = () => {
@@ -2573,7 +2582,7 @@ export default function AdminPanel() {
                                 variant="outline" 
                                 size="sm" 
                                 title="Ver detalles" 
-                                onClick={() => window.open(`/supplier/${supplier.id}`, '_blank')}
+                                onClick={() => handleViewSupplierDetails(supplier)}
                                 data-testid={`button-view-${supplier.id}`}
                               >
                                 <Eye className="w-4 h-4" />
@@ -5316,6 +5325,88 @@ export default function AdminPanel() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supplier Details Modal */}
+      <Dialog open={showSupplierDetailsModal} onOpenChange={setShowSupplierDetailsModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles del Proveedor</DialogTitle>
+          </DialogHeader>
+          {selectedSupplierDetails && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Razón Social</Label>
+                  <p className="text-sm mt-1" data-testid="text-legal-name">{selectedSupplierDetails.legalName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">RNC</Label>
+                  <p className="text-sm mt-1" data-testid="text-rnc">{selectedSupplierDetails.rnc}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Email</Label>
+                  <p className="text-sm mt-1" data-testid="text-email">{selectedSupplierDetails.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Teléfono</Label>
+                  <p className="text-sm mt-1" data-testid="text-phone">{selectedSupplierDetails.phone}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Ubicación</Label>
+                  <p className="text-sm mt-1" data-testid="text-location">{selectedSupplierDetails.location}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Plan</Label>
+                  <p className="text-sm mt-1 capitalize" data-testid="text-plan">{selectedSupplierDetails.planType}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Estado</Label>
+                  <Badge className={`${getStatusColor(selectedSupplierDetails.status)} mt-1`} data-testid="badge-status">
+                    {getStatusIcon(selectedSupplierDetails.status)}
+                    <span className="ml-1 capitalize">{selectedSupplierDetails.status}</span>
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Destacado</Label>
+                  <p className="text-sm mt-1" data-testid="text-featured">
+                    {selectedSupplierDetails.isFeatured ? '✓ Sí' : '✗ No'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Fecha de Registro</Label>
+                  <p className="text-sm mt-1" data-testid="text-created-at">
+                    {new Date(selectedSupplierDetails.createdAt).toLocaleDateString('es-DO', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+                {selectedSupplierDetails.approvalDate && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Fecha de Aprobación</Label>
+                    <p className="text-sm mt-1" data-testid="text-approval-date">
+                      {new Date(selectedSupplierDetails.approvalDate).toLocaleDateString('es-DO', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setShowSupplierDetailsModal(false)}
+                  data-testid="button-close-details"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
