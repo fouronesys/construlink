@@ -1756,6 +1756,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Supplier publications endpoints
+  app.get('/api/supplier/publications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const publications = await storage.getPublicationsBySupplierId(supplier.id);
+      res.json(publications);
+    } catch (error) {
+      console.error("Error fetching supplier publications:", error);
+      res.status(500).json({ message: "Failed to fetch publications" });
+    }
+  });
+
+  app.post('/api/supplier/publications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      // Check plan limits
+      const subscription = await storage.getSubscriptionBySupplierId(supplier.id);
+      const plan = subscription?.plan || 'basic';
+      const currentPublications = await storage.getPublicationsCountBySupplierId(supplier.id);
+      const planLimit = getPublicationLimit(plan);
+      
+      if (!canCreatePublication(plan, currentPublications)) {
+        return res.status(403).json({ 
+          message: `Has alcanzado el límite de publicaciones para tu plan (${planLimit}). Actualiza tu plan para agregar más publicaciones.`,
+          planLimit: true,
+          currentUsage: currentPublications,
+          maxAllowed: planLimit
+        });
+      }
+
+      const publicationData = insertSupplierPublicationSchema.parse({
+        ...req.body,
+        supplierId: supplier.id,
+      });
+
+      const publication = await storage.createPublication(publicationData);
+      res.json(publication);
+    } catch (error) {
+      console.error("Error creating publication:", error);
+      res.status(500).json({ message: "Failed to create publication" });
+    }
+  });
+
+  app.patch('/api/supplier/publications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Verify that the publication belongs to this supplier
+      const existingPublication = await storage.getPublication(id);
+      if (!existingPublication || existingPublication.supplierId !== supplier.id) {
+        return res.status(404).json({ message: "Publication not found" });
+      }
+
+      const updates = req.body;
+      const updatedPublication = await storage.updatePublication(id, updates);
+      res.json(updatedPublication);
+    } catch (error) {
+      console.error("Error updating publication:", error);
+      res.status(500).json({ message: "Failed to update publication" });
+    }
+  });
+
+  app.delete('/api/supplier/publications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const supplier = await storage.getSupplierByUserId(userId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Verify that the publication belongs to this supplier
+      const existingPublication = await storage.getPublication(id);
+      if (!existingPublication || existingPublication.supplierId !== supplier.id) {
+        return res.status(404).json({ message: "Publication not found" });
+      }
+
+      await storage.deletePublication(id);
+      res.json({ message: "Publication deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting publication:", error);
+      res.status(500).json({ message: "Failed to delete publication" });
+    }
+  });
+
   // Admin endpoints
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
     try {
