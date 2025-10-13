@@ -760,13 +760,13 @@ export default function SupplierDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview" data-testid="tab-overview">Resumen</TabsTrigger>
-            <TabsTrigger value="products" data-testid="tab-products">Productos</TabsTrigger>
-            <TabsTrigger value="publications" data-testid="tab-publications">Publicaciones</TabsTrigger>
-            <TabsTrigger value="advertisements" data-testid="tab-advertisements">Anuncios</TabsTrigger>
-            <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
-            <TabsTrigger value="profile" data-testid="tab-profile">Perfil</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
+            <TabsTrigger value="overview" data-testid="tab-overview" className="text-xs sm:text-sm">Resumen</TabsTrigger>
+            <TabsTrigger value="products" data-testid="tab-products" className="text-xs sm:text-sm">Productos</TabsTrigger>
+            <TabsTrigger value="publications" data-testid="tab-publications" className="text-xs sm:text-sm">Publicaciones</TabsTrigger>
+            <TabsTrigger value="advertisements" data-testid="tab-advertisements" className="text-xs sm:text-sm">Anuncios</TabsTrigger>
+            <TabsTrigger value="quotes" data-testid="tab-quotes" className="text-xs sm:text-sm">Cotizaciones</TabsTrigger>
+            <TabsTrigger value="profile" data-testid="tab-profile" className="text-xs sm:text-sm">Perfil</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
