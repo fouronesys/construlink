@@ -1946,16 +1946,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const subscription = await storage.getSubscriptionBySupplierId(id);
       
-      if (!subscription) {
+      // Allow bypass in test mode
+      const testMode = process.env.TEST_MODE === 'true';
+      
+      if (!subscription && !testMode) {
         return res.status(400).json({ 
           message: "Este proveedor no tiene una suscripción activa. El proveedor debe crear una suscripción primero." 
         });
       }
 
-      const newStatus = action === 'suspend' ? 'inactive' : 'active';
-      const updatedSubscription = await storage.updateSubscription(subscription.id, { 
-        status: newStatus 
-      });
+      let updatedSubscription = null;
+      
+      // Only update subscription if it exists
+      if (subscription) {
+        const newStatus = action === 'suspend' ? 'inactive' : 'active';
+        updatedSubscription = await storage.updateSubscription(subscription.id, { 
+          status: newStatus 
+        });
+      }
 
       // Also update supplier status if needed
       if (action === 'suspend') {
@@ -1969,12 +1977,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         supplierId: id,
         adminId: user.id,
         decision: action === 'reactivate' ? 'approved' : 'rejected',
-        comments: reason || `Subscription ${action}d by admin`,
+        comments: reason || `Subscription ${action}d by admin ${testMode ? '(TEST MODE)' : ''}`,
       });
 
       res.json({ 
         subscription: updatedSubscription,
-        message: `Subscription ${action}d successfully`
+        message: `Subscription ${action}d successfully${testMode ? ' (TEST MODE)' : ''}`
       });
     } catch (error) {
       console.error("Error updating subscription status:", error);
@@ -3959,43 +3967,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin route to manage supplier subscription status
-  app.patch('/api/admin/suppliers/:id/subscription', isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const { action, reason } = req.body;
-      const userId = req.user?.id;
-
-      if (!userId || !['admin', 'superadmin'].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      if (!['suspend', 'reactivate'].includes(action)) {
-        return res.status(400).json({ message: "Invalid action" });
-      }
-
-      const supplier = await storage.getSupplier(id);
-      if (!supplier) {
-        return res.status(404).json({ message: "Supplier not found" });
-      }
-
-      // Update supplier status
-      const newStatus = action === 'suspend' ? 'suspended' : 'approved';
-      await storage.updateSupplierStatus(id, newStatus);
-
-      // Log the action
-      console.log(`Admin ${userId} ${action}ed supplier ${id}: ${reason}`);
-
-      res.json({ 
-        success: true, 
-        message: `Supplier ${action}ed successfully`,
-        newStatus 
-      });
-    } catch (error) {
-      console.error("Error managing subscription:", error);
-      res.status(500).json({ message: "Failed to manage subscription" });
-    }
-  });
 
   // Verifone payment processing endpoint
   app.post('/api/process-verifone-payment', isAuthenticated, async (req: any, res) => {
