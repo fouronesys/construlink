@@ -39,6 +39,22 @@ Preferred communication style: Simple, everyday language.
 -   **Robust Validation**: Zod is used comprehensively for all form and API data validations.
 -   **Security**: Conditional SSL/TLS configuration for development vs. production environments, robust session configuration with mandatory `SESSION_SECRET`, `secure: true` cookies in production, `sameSite: 'lax'` for CSRF protection, and `httpOnly: true` for XSS protection.
 
+### Performance Optimizations (Applied October 2025)
+-   **Database Indexing**: Added 11 strategic indices on high-traffic columns:
+    - Suppliers: status, location, isFeatured, averageRating, userId
+    - Supplier Specialties: supplierId, specialty
+    - Reviews: supplierId, rating, createdAt
+    - Products: supplierId, category, isActive
+    - Subscriptions: supplierId, status, plan
+    - Payments: subscriptionId, status, paymentDate
+-   **Query Optimization**: Refactored `updateSupplierRating` to use single SQL aggregation instead of fetching all reviews (O(n) → O(1))
+-   **Caching Layer**: Implemented `SimpleCache` module with TTL-based in-memory caching:
+    - Featured suppliers: 5 min TTL with invalidation on featured status toggles
+    - Admin statistics: 1 min TTL for dashboard metrics
+-   **React Optimization**: Applied React.memo to performance-critical components:
+    - ProviderCard: Prevents re-renders in supplier lists
+    - Navigation: Global component used across all pages
+
 ## External Dependencies
 
 -   **@neondatabase/serverless**: For PostgreSQL database connection.
