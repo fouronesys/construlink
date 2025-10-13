@@ -282,7 +282,21 @@ const bannerRequestSchema = z.object({
    - Todos los data-testids implementados
    - Estados de carga y manejo de errores con toasts
    
-5. ⏳ **Fase 5**: Modales anuncios/banners (Frontend)
+5. ✅ **Fase 5**: Modales anuncios/banners (Frontend) - **COMPLETADO**
+   - Schema Zod para solicitudes de anuncios con validación (publicationId, duration, budget)
+   - Schema Zod para solicitudes de banners con validación (deviceType, title, description, linkUrl, imageUrl)
+   - Queries para GET /api/supplier/advertisement-requests y /api/supplier/banners
+   - Modal de solicitud de anuncio con selector de publicación, duración y presupuesto
+   - Modal de solicitud de banner con tipo dispositivo, título, descripción, link e imagen
+   - Tabla de solicitudes de anuncios con estado, fecha, presupuesto y notas del admin
+   - Tabla de banners con dispositivo, título, estado, clics, impresiones y fecha
+   - Tab "Anuncios" integrado al dashboard con 6 tabs totales
+   - Mutations: createAdRequest, createBanner con invalidación de caché
+   - Paginación funcional para ambas tablas (10 items por página)
+   - Todos los data-testids implementados
+   - Estados de carga y manejo de errores con toasts
+   - Nota informativa "Sujeto a aprobación por administrador" en banner modal
+
 6. ⏳ **Fase 6**: Modal logo (Frontend)
 7. ⏳ **Fase 7**: Integración completa
 8. ⏳ **Fase 8**: Sistema upload imágenes
@@ -290,5 +304,5 @@ const bannerRequestSchema = z.object({
 
 ---
 
-**Status**: Fases 1-4 completadas - Iniciando Fase 5 Frontend
-**Última actualización**: 2025-10-13 19:45
+**Status**: Fases 1-5 completadas - Iniciando Fase 6 Frontend
+**Última actualización**: 2025-10-13 22:30
