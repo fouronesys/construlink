@@ -116,13 +116,13 @@ deleteSupplierLogo(supplierId: string): Promise<Supplier>
    - Fecha de solicitud
    - Notas del admin
 
-### Fase 6: Frontend - Modal de Logo
+### Fase 6: Frontend - Modal de Logo ✅ COMPLETADA
 **Archivo**: `client/src/pages/supplier-dashboard.tsx`
 
-**Componente a crear**:
+**Componente creado**:
 1. **Modal de Logo de Empresa**
-   - Preview del logo actual (si existe)
-   - Upload de nuevo logo
+   - ✅ Preview del logo actual (si existe)
+   - ✅ Upload de nuevo logo
    - Validación: solo imágenes, tamaño máximo
    - Botón eliminar (si existe logo)
    - Recomendaciones: tamaño, formato
@@ -297,12 +297,27 @@ const bannerRequestSchema = z.object({
    - Estados de carga y manejo de errores con toasts
    - Nota informativa "Sujeto a aprobación por administrador" en banner modal
 
-6. ⏳ **Fase 6**: Modal logo (Frontend)
+6. ✅ **Fase 6**: Modal logo (Frontend) - **COMPLETADO**
+   - Estado del modal y archivo seleccionado con useState
+   - Dialog con onOpenChange que limpia estados al cerrar
+   - Preview del logo actual si existe
+   - Preview del nuevo logo seleccionado con createObjectURL
+   - Input de archivo con validación de tipo (JPG, PNG, WEBP) y tamaño (máximo 5MB)
+   - Mutation para subir logo usando FormData con fetch
+   - Mutation para eliminar logo con limpieza de estados
+   - Botón "Gestionar Logo" junto al botón "Editar Perfil"
+   - Recomendaciones de formato y tamaño en el modal
+   - Estados de carga para botones (Subiendo..., Eliminando...)
+   - Invalidación de caché después de subir/eliminar logo
+   - Todos los data-testids implementados
+   - Corrección de JSX: cierre de div faltante
+   - Limpieza de estados al cerrar modal y después de eliminar logo
+   
 7. ⏳ **Fase 7**: Integración completa
 8. ⏳ **Fase 8**: Sistema upload imágenes
 9. ⏳ **Fase 9**: Pruebas finales
 
 ---
 
-**Status**: Fases 1-5 completadas - Iniciando Fase 6 Frontend
-**Última actualización**: 2025-10-13 22:30
+**Status**: Fases 1-6 completadas - Listo para continuar con Fase 7
+**Última actualización**: 2025-10-13 23:02
