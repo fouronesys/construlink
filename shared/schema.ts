@@ -77,7 +77,13 @@ export const suppliers = pgTable("suppliers", {
   searchEmbedding: jsonb("search_embedding"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_suppliers_status").on(table.status),
+  index("idx_suppliers_location").on(table.location),
+  index("idx_suppliers_is_featured").on(table.isFeatured),
+  index("idx_suppliers_average_rating").on(table.averageRating),
+  index("idx_suppliers_user_id").on(table.userId),
+]);
 
 // Supplier claim requests
 export const supplierClaims = pgTable("supplier_claims", {
@@ -100,7 +106,10 @@ export const supplierSpecialties = pgTable("supplier_specialties", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
   specialty: varchar("specialty", { length: 100 }).notNull(),
-});
+}, (table) => [
+  index("idx_supplier_specialties_supplier_id").on(table.supplierId),
+  index("idx_supplier_specialties_specialty").on(table.specialty),
+]);
 
 // Supplier documents
 export const supplierDocuments = pgTable("supplier_documents", {
@@ -153,7 +162,11 @@ export const subscriptions = pgTable("subscriptions", {
   monthlyAmount: decimal("monthly_amount", { precision: 10, scale: 2 }).default("1000.00"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_subscriptions_supplier_id").on(table.supplierId),
+  index("idx_subscriptions_status").on(table.status),
+  index("idx_subscriptions_plan").on(table.plan),
+]);
 
 // Payments
 export const payments = pgTable("payments", {
@@ -169,7 +182,11 @@ export const payments = pgTable("payments", {
   gatewayMetadata: jsonb("gateway_metadata"), // Datos adicionales del gateway
   verifoneTransactionId: varchar("verifone_transaction_id"), // Mantener por compatibilidad
   paymentDate: timestamp("payment_date").defaultNow(),
-});
+}, (table) => [
+  index("idx_payments_subscription_id").on(table.subscriptionId),
+  index("idx_payments_status").on(table.status),
+  index("idx_payments_payment_date").on(table.paymentDate),
+]);
 
 // Refunds (Reembolsos)
 export const refunds = pgTable("refunds", {
@@ -216,7 +233,11 @@ export const products = pgTable("products", {
   isFeatured: boolean("is_featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_products_supplier_id").on(table.supplierId),
+  index("idx_products_category").on(table.category),
+  index("idx_products_is_active").on(table.isActive),
+]);
 
 // Plan usage tracking 
 export const planUsage = pgTable("plan_usage", {
@@ -282,7 +303,11 @@ export const reviews = pgTable("reviews", {
   comment: text("comment"),
   isVerified: boolean("is_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_reviews_supplier_id").on(table.supplierId),
+  index("idx_reviews_rating").on(table.rating),
+  index("idx_reviews_created_at").on(table.createdAt),
+]);
 
 // Review responses (supplier replies to reviews)
 export const reviewResponses = pgTable("review_responses", {

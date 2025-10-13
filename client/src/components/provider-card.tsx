@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,7 @@ interface ProviderCardProps {
   onClaimBusiness?: (providerId: string) => void;
 }
 
-export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimBusiness }: ProviderCardProps) {
+const ProviderCardComponent = ({ provider, onViewProfile, onRequestQuote, onClaimBusiness }: ProviderCardProps) => {
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -147,4 +148,6 @@ export function ProviderCard({ provider, onViewProfile, onRequestQuote, onClaimB
       </CardContent>
     </Card>
   );
-}
+};
+
+export const ProviderCard = memo(ProviderCardComponent);

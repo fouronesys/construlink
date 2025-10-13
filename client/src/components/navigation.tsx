@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { 
@@ -27,7 +27,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import logoPath from "@assets/IMG_20251012_020459_1760249136162.png";
 
-export default function Navigation() {
+const Navigation = () => {
   const [location, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, refetch } = useAuth();
@@ -318,4 +318,6 @@ export default function Navigation() {
       </div>
     </nav>
   );
-}
+};
+
+export default memo(Navigation);

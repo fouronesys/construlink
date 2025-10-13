@@ -74,6 +74,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, ilike, sql, inArray } from "drizzle-orm";
+import { cache } from "./cache";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -724,15 +725,27 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(suppliers.id, supplierId))
       .returning();
+    
+    cache.delete('featured_suppliers');
     return updatedSupplier;
   }
 
   async getFeaturedSuppliers(): Promise<Supplier[]> {
-    return await db
+    const cacheKey = 'featured_suppliers';
+    const cached = cache.get<Supplier[]>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
+    const result = await db
       .select()
       .from(suppliers)
       .where(and(eq(suppliers.isFeatured, true), eq(suppliers.status, 'approved')))
       .orderBy(desc(suppliers.featuredSince));
+    
+    cache.set(cacheKey, result, 300);
+    return result;
   }
 
   // Supplier banners
@@ -1171,31 +1184,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSupplierRating(supplierId: string): Promise<void> {
-    const supplierReviews = await this.getReviewsBySupplierId(supplierId);
-    
-    if (supplierReviews.length === 0) {
-      await db
-        .update(suppliers)
-        .set({ 
-          averageRating: sql`0`,
-          totalReviews: 0,
-          updatedAt: new Date()
-        })
-        .where(eq(suppliers.id, supplierId));
-      return;
-    }
+    const [result] = await db
+      .select({ 
+        count: sql<number>`count(*)`,
+        avgRating: sql<number>`COALESCE(avg(CAST(rating AS DECIMAL)), 0)`
+      })
+      .from(reviews)
+      .where(eq(reviews.supplierId, supplierId));
 
-    const totalRating = supplierReviews.reduce((sum, review) => {
-      return sum + parseFloat(review.rating);
-    }, 0);
-    
-    const averageRating = totalRating / supplierReviews.length;
+    const count = Number(result?.count || 0);
+    const avgRating = Number(result?.avgRating || 0);
     
     await db
       .update(suppliers)
       .set({ 
-        averageRating: sql`${averageRating}`,
-        totalReviews: supplierReviews.length,
+        averageRating: sql`${avgRating}`,
+        totalReviews: count,
         updatedAt: new Date()
       })
       .where(eq(suppliers.id, supplierId));
@@ -1513,6 +1517,19 @@ export class DatabaseStorage implements IStorage {
     activeSubscriptions: number;
     monthlyRevenue: number;
   }> {
+    const cacheKey = 'admin_stats';
+    const cached = cache.get<{
+      totalSuppliers: number;
+      pendingApprovals: number;
+      totalQuotes: number;
+      activeSubscriptions: number;
+      monthlyRevenue: number;
+    }>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
     const [totalSuppliersResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(suppliers);
@@ -1536,13 +1553,16 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptions)
       .where(eq(subscriptions.status, 'active'));
 
-    return {
+    const result = {
       totalSuppliers: Number(totalSuppliersResult?.count) || 0,
       pendingApprovals: Number(pendingApprovalsResult?.count) || 0,
       totalQuotes: Number(totalQuotesResult?.count) || 0,
       activeSubscriptions: Number(activeSubscriptionsResult?.count) || 0,
       monthlyRevenue: Number(monthlyRevenueResult?.total) || 0,
     };
+
+    cache.set(cacheKey, result, 60);
+    return result;
   }
 
   // Admin actions operations
