@@ -22,7 +22,11 @@ import SubscriptionPlans from "@/components/subscription-plans";
 import { PREDEFINED_PRODUCTS, PRODUCTS_BY_CATEGORY } from "@shared/predefined-products";
 import { 
   insertSupplierPublicationSchema, 
-  type SupplierPublication 
+  type SupplierPublication,
+  insertAdvertisementRequestSchema,
+  type AdvertisementRequest,
+  insertSupplierBannerSchema,
+  type SupplierBanner
 } from "@shared/schema";
 import {
   BarChart3,
@@ -94,9 +98,29 @@ const publicationSchema = insertSupplierPublicationSchema.omit({
   imageUrl: z.string().optional(),
 });
 
+const advertisementRequestSchema = insertAdvertisementRequestSchema.omit({
+  supplierId: true,
+}).extend({
+  publicationId: z.string().min(1, "Debes seleccionar una publicación"),
+  requestedDuration: z.coerce.number().min(1, "Mínimo 1 día").max(90, "Máximo 90 días"),
+  budget: z.coerce.number().min(100, "Presupuesto mínimo 100 DOP"),
+});
+
+const bannerRequestSchema = z.object({
+  deviceType: z.enum(["desktop", "tablet", "mobile"], {
+    errorMap: () => ({ message: "Tipo de dispositivo es requerido" }),
+  }),
+  title: z.string().max(100, "Título muy largo").optional(),
+  description: z.string().max(255, "Descripción muy larga").optional(),
+  linkUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+  imageUrl: z.string().min(1, "URL de imagen es requerida"),
+});
+
 type ProductFormData = z.infer<typeof productSchema>;
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PublicationFormData = z.infer<typeof publicationSchema>;
+type AdvertisementRequestFormData = z.infer<typeof advertisementRequestSchema>;
+type BannerRequestFormData = z.infer<typeof bannerRequestSchema>;
 
 const categories = [
   "Construcción General",
@@ -144,6 +168,13 @@ export default function SupplierDashboard() {
   const [selectedPublication, setSelectedPublication] = useState<SupplierPublication | null>(null);
   const [publicationPage, setPublicationPage] = useState(1);
   const publicationsPerPage = 10;
+
+  // Advertisement and Banner states
+  const [showCreateAdRequestModal, setShowCreateAdRequestModal] = useState(false);
+  const [showCreateBannerModal, setShowCreateBannerModal] = useState(false);
+  const [adRequestPage, setAdRequestPage] = useState(1);
+  const [bannerPage, setBannerPage] = useState(1);
+  const itemsPerPage = 10;
 
   if (!authLoading && user && user.role !== 'supplier') {
     return (
@@ -206,6 +237,20 @@ export default function SupplierDashboard() {
     retry: false,
   });
 
+  // Advertisement requests data
+  const { data: advertisementRequests = [], isLoading: adRequestsLoading } = useQuery<AdvertisementRequest[]>({
+    queryKey: ["/api/supplier/advertisement-requests"],
+    enabled: !!user && user.role === 'supplier',
+    retry: false,
+  });
+
+  // Banners data
+  const { data: banners = [], isLoading: bannersLoading } = useQuery<SupplierBanner[]>({
+    queryKey: ["/api/supplier/banners"],
+    enabled: !!user && user.role === 'supplier',
+    retry: false,
+  });
+
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -234,6 +279,26 @@ export default function SupplierDashboard() {
       category: "",
       imageUrl: "",
       isActive: true,
+    },
+  });
+
+  const adRequestForm = useForm<AdvertisementRequestFormData>({
+    resolver: zodResolver(advertisementRequestSchema),
+    defaultValues: {
+      publicationId: "",
+      requestedDuration: 7,
+      budget: 500,
+    },
+  });
+
+  const bannerRequestForm = useForm<BannerRequestFormData>({
+    resolver: zodResolver(bannerRequestSchema),
+    defaultValues: {
+      deviceType: "desktop",
+      title: "",
+      description: "",
+      linkUrl: "",
+      imageUrl: "",
     },
   });
 
@@ -408,12 +473,82 @@ export default function SupplierDashboard() {
     }
   };
 
+  // Advertisement request mutations
+  const createAdRequestMutation = useMutation({
+    mutationFn: async (data: AdvertisementRequestFormData) => {
+      const response = await apiRequest("POST", "/api/supplier/advertisement-requests", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create advertisement request");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Solicitud enviada",
+        description: "Tu solicitud de anuncio ha sido enviada para aprobación.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/advertisement-requests"] });
+      setShowCreateAdRequestModal(false);
+      adRequestForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Banner request mutations
+  const createBannerMutation = useMutation({
+    mutationFn: async (data: BannerRequestFormData) => {
+      const response = await apiRequest("POST", "/api/supplier/banners/request", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create banner request");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Solicitud enviada",
+        description: "Tu solicitud de banner ha sido enviada para aprobación.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/banners"] });
+      setShowCreateBannerModal(false);
+      bannerRequestForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Pagination for publications
   const paginatedPublications = publications.slice(
     (publicationPage - 1) * publicationsPerPage,
     publicationPage * publicationsPerPage
   );
   const totalPublicationPages = Math.ceil(publications.length / publicationsPerPage);
+
+  // Pagination for advertisement requests
+  const paginatedAdRequests = advertisementRequests.slice(
+    (adRequestPage - 1) * itemsPerPage,
+    adRequestPage * itemsPerPage
+  );
+  const totalAdRequestPages = Math.ceil(advertisementRequests.length / itemsPerPage);
+
+  // Pagination for banners
+  const paginatedBanners = banners.slice(
+    (bannerPage - 1) * itemsPerPage,
+    bannerPage * itemsPerPage
+  );
+  const totalBannerPages = Math.ceil(banners.length / itemsPerPage);
 
   if (authLoading || isLoading) {
     return (
@@ -506,10 +641,11 @@ export default function SupplierDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview" data-testid="tab-overview">Resumen</TabsTrigger>
             <TabsTrigger value="products" data-testid="tab-products">Productos</TabsTrigger>
             <TabsTrigger value="publications" data-testid="tab-publications">Publicaciones</TabsTrigger>
+            <TabsTrigger value="advertisements" data-testid="tab-advertisements">Anuncios</TabsTrigger>
             <TabsTrigger value="quotes" data-testid="tab-quotes">Cotizaciones</TabsTrigger>
             <TabsTrigger value="profile" data-testid="tab-profile">Perfil</TabsTrigger>
           </TabsList>
@@ -1261,6 +1397,448 @@ export default function SupplierDashboard() {
                 </Form>
               </DialogContent>
             </Dialog>
+          </TabsContent>
+
+          {/* Advertisements Tab */}
+          <TabsContent value="advertisements" className="space-y-6">
+            <h2 className="text-xl font-semibold">Anuncios y Banners</h2>
+
+            {/* Advertisement Requests Section */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Solicitudes de Anuncios</h3>
+                <Dialog open={showCreateAdRequestModal} onOpenChange={setShowCreateAdRequestModal}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-create-ad-request">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Solicitar Anuncio
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg" data-testid="dialog-create-ad-request">
+                    <DialogHeader>
+                      <DialogTitle>Solicitar Anuncio de Paga</DialogTitle>
+                      <DialogDescription>
+                        Selecciona una publicación para promocionar. Tu solicitud será revisada por un administrador.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...adRequestForm}>
+                      <form onSubmit={adRequestForm.handleSubmit((data) => createAdRequestMutation.mutate(data))} className="space-y-4">
+                        <FormField
+                          control={adRequestForm.control}
+                          name="publicationId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Publicación</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-ad-publication">
+                                    <SelectValue placeholder="Selecciona una publicación" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {publications.filter(p => p.isActive).map((pub) => (
+                                    <SelectItem key={pub.id} value={pub.id}>
+                                      {pub.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={adRequestForm.control}
+                          name="requestedDuration"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Duración (días)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="number" 
+                                  min="1" 
+                                  max="90"
+                                  placeholder="7" 
+                                  data-testid="input-ad-duration"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={adRequestForm.control}
+                          name="budget"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Presupuesto (DOP)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="number" 
+                                  min="100"
+                                  placeholder="500" 
+                                  data-testid="input-ad-budget"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowCreateAdRequestModal(false)}
+                            data-testid="button-cancel-ad-request"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={createAdRequestMutation.isPending}
+                            data-testid="button-submit-ad-request"
+                          >
+                            {createAdRequestMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <Card>
+                <CardContent className="p-6">
+                  {adRequestsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                    </div>
+                  ) : advertisementRequests.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No hay solicitudes de anuncios</h3>
+                      <p className="text-gray-600">
+                        Crea una solicitud para promocionar tus publicaciones.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Publicación</TableHead>
+                            <TableHead>Duración</TableHead>
+                            <TableHead>Presupuesto</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Notas Admin</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedAdRequests.map((request) => {
+                            const publication = publications.find(p => p.id === request.publicationId);
+                            return (
+                              <TableRow key={request.id} data-testid={`row-ad-request-${request.id}`}>
+                                <TableCell className="font-medium" data-testid={`text-ad-publication-${request.id}`}>
+                                  {publication?.title || "Publicación eliminada"}
+                                </TableCell>
+                                <TableCell data-testid={`text-ad-duration-${request.id}`}>
+                                  {request.requestedDuration} días
+                                </TableCell>
+                                <TableCell data-testid={`text-ad-budget-${request.id}`}>
+                                  DOP {request.budget}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={
+                                      request.status === 'approved' ? 'default' : 
+                                      request.status === 'rejected' ? 'destructive' : 
+                                      'secondary'
+                                    }
+                                    data-testid={`badge-ad-status-${request.id}`}
+                                  >
+                                    {request.status === 'approved' ? 'Aprobado' : 
+                                     request.status === 'rejected' ? 'Rechazado' : 
+                                     'Pendiente'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell data-testid={`text-ad-date-${request.id}`}>
+                                  {request.createdAt ? new Date(request.createdAt).toLocaleDateString('es-DO') : '-'}
+                                </TableCell>
+                                <TableCell data-testid={`text-ad-notes-${request.id}`}>
+                                  {request.adminNotes || '-'}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                      
+                      {totalAdRequestPages > 1 && (
+                        <div className="flex items-center justify-between pt-4">
+                          <p className="text-sm text-gray-600">
+                            Mostrando {((adRequestPage - 1) * itemsPerPage) + 1} a {Math.min(adRequestPage * itemsPerPage, advertisementRequests.length)} de {advertisementRequests.length} solicitudes
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAdRequestPage(p => Math.max(1, p - 1))}
+                              disabled={adRequestPage === 1}
+                              data-testid="button-ad-requests-prev-page"
+                            >
+                              Anterior
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAdRequestPage(p => Math.min(totalAdRequestPages, p + 1))}
+                              disabled={adRequestPage === totalAdRequestPages}
+                              data-testid="button-ad-requests-next-page"
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Banners Section */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Banners de Paga</h3>
+                <Dialog open={showCreateBannerModal} onOpenChange={setShowCreateBannerModal}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-create-banner">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Solicitar Banner
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg" data-testid="dialog-create-banner">
+                    <DialogHeader>
+                      <DialogTitle>Solicitar Banner de Paga</DialogTitle>
+                      <DialogDescription>
+                        Solicita un banner publicitario. Sujeto a aprobación por administrador.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...bannerRequestForm}>
+                      <form onSubmit={bannerRequestForm.handleSubmit((data) => createBannerMutation.mutate(data))} className="space-y-4">
+                        <FormField
+                          control={bannerRequestForm.control}
+                          name="deviceType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Dispositivo</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-banner-device">
+                                    <SelectValue placeholder="Selecciona tipo de dispositivo" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="desktop">Desktop (1920x400px)</SelectItem>
+                                  <SelectItem value="tablet">Tablet (1024x300px)</SelectItem>
+                                  <SelectItem value="mobile">Mobile (768x300px)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={bannerRequestForm.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Título (opcional)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  placeholder="Título del banner" 
+                                  data-testid="input-banner-title"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={bannerRequestForm.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Descripción (opcional)</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  {...field} 
+                                  placeholder="Descripción del banner" 
+                                  rows={3}
+                                  data-testid="textarea-banner-description"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={bannerRequestForm.control}
+                          name="linkUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>URL de Enlace (opcional)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  placeholder="https://ejemplo.com" 
+                                  data-testid="input-banner-link"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={bannerRequestForm.control}
+                          name="imageUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>URL de Imagen</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  placeholder="https://ejemplo.com/banner.jpg" 
+                                  data-testid="input-banner-image"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                          <p className="text-sm text-blue-800">
+                            <strong>Nota:</strong> Esta solicitud está sujeta a aprobación por un administrador.
+                          </p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowCreateBannerModal(false)}
+                            data-testid="button-cancel-banner"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={createBannerMutation.isPending}
+                            data-testid="button-submit-banner"
+                          >
+                            {createBannerMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <Card>
+                <CardContent className="p-6">
+                  {bannersLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                    </div>
+                  ) : banners.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No hay banners</h3>
+                      <p className="text-gray-600">
+                        Solicita un banner para destacar tu negocio.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Dispositivo</TableHead>
+                            <TableHead>Título</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Clics</TableHead>
+                            <TableHead>Impresiones</TableHead>
+                            <TableHead>Fecha</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedBanners.map((banner) => (
+                            <TableRow key={banner.id} data-testid={`row-banner-${banner.id}`}>
+                              <TableCell className="font-medium" data-testid={`text-banner-device-${banner.id}`}>
+                                {banner.deviceType === 'desktop' ? 'Desktop' : 
+                                 banner.deviceType === 'tablet' ? 'Tablet' : 'Mobile'}
+                              </TableCell>
+                              <TableCell data-testid={`text-banner-title-${banner.id}`}>
+                                {banner.title || 'Sin título'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={banner.isActive ? "default" : "secondary"}
+                                  data-testid={`badge-banner-status-${banner.id}`}
+                                >
+                                  {banner.isActive ? 'Activo' : 'Inactivo'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell data-testid={`text-banner-clicks-${banner.id}`}>
+                                {banner.clickCount || 0}
+                              </TableCell>
+                              <TableCell data-testid={`text-banner-impressions-${banner.id}`}>
+                                {banner.impressionCount || 0}
+                              </TableCell>
+                              <TableCell data-testid={`text-banner-date-${banner.id}`}>
+                                {banner.createdAt ? new Date(banner.createdAt).toLocaleDateString('es-DO') : '-'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      
+                      {totalBannerPages > 1 && (
+                        <div className="flex items-center justify-between pt-4">
+                          <p className="text-sm text-gray-600">
+                            Mostrando {((bannerPage - 1) * itemsPerPage) + 1} a {Math.min(bannerPage * itemsPerPage, banners.length)} de {banners.length} banners
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setBannerPage(p => Math.max(1, p - 1))}
+                              disabled={bannerPage === 1}
+                              data-testid="button-banners-prev-page"
+                            >
+                              Anterior
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setBannerPage(p => Math.min(totalBannerPages, p + 1))}
+                              disabled={bannerPage === totalBannerPages}
+                              data-testid="button-banners-next-page"
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Quotes Tab */}
