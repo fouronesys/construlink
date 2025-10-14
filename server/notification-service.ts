@@ -1,10 +1,5 @@
 import type { Subscription } from "@shared/schema";
 import nodemailer from 'nodemailer';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Configurar el transportador SMTP
 const createTransporter = () => {
@@ -36,7 +31,11 @@ const BRAND_COLORS = {
   white: '#ffffff'
 };
 
-// Email Template Wrapper - usa CID para el logo
+// Logo de ConstruLink en base64 (mismo logo que la landing page)
+const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAs8AAAI5CAYAAABeudezAAABK2lDQ1BTa2lhAAAokX2QP0vDQBjGf5aC/wfR0SFjF6Uq6KAuVSw6SY1gdUrTNBWaGJKUIrj5BfwQgrOjCLoKOgiCm+BHEAfX+qRB0iW+x3v3u+ce7u59oTCGolgGz4/DWrViHNWPjdFPRjQGYdlRQH7I9fOeet8W/vHlxXjTiWytX8pmqMd1pSmec1NuJ9xI+SLhXhzE4quEQ7O2Jb4Wl9whbgyxHYSJ/0W84XW6dvZvphz/8EDrjnKebU6JCOhgcY7BPiuaq9p5dInFPTli2qKImk4qIpNQDl9KC0dM0r/0icsP2Hzo9/v3mbb3CLdrMHGXaaV1mJmEp+dMy3oaWKE1kIrKQqsF3zcwXYfZV91z8tfInNqMQW1VzjRc1eZI2dV/bRZFy5RZYvUXH6JN+SyhId0AAAAEc0JJVAgICAh8CGSIAAAgAElEQVR4nOzdWYxcZ3Yn+P8557v3RuTKTDLJ5L6KpEjt1FJabKVcbnnU7sY8pfqh0UChB5C3lsc1XQ10P3X20xgeAx50YQZwoTHTwLyJjX5w2yVbLhfpclmqRSxVSSVqI8V9TZLJXCPi3u87Zx5u5EKVSqUqSCIpnR+QoHKJyAiKZPzz3POdAzjnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84555xzzjnnnHPOOeecc84559yngm72A3DOOec+TS+Mj+d9o3ODoZllWckL7y6cmf+dbxypbvbjcs7dnjw8O+ec+1z65vPPFCw63DbZ0mDeB8ZAUr0AxamQ4mXLaPp7r3VmJg4fjjf7sTrnbh8enp1zzn2ufPP5Zwqp0qAUaWsUug8mDxF4NzN6NOl1A84x432R8HbszL/FCDPUa/OtoqfVerPRefbgwXSzn4Nz7tbl4dk559znAb0wvi8bGNjcR722IWN9WJEeIJK7AtMuAQ0yUzCzSo3mFbhipqdjisdYsossfNKITmjqXOCk05PU6eDsK+WzB+FB2jl3Aw/PzjnnbmsvjI/LyMhkMzVkAxvd10nx/oL5sYxtV0YYyokbbErCDIVBQYhGSYF2MsypyHQ0O1WpHjfQiYzDKSE5kUxPF3FqujNYVGM4rDQBvdnP1Tl383l4ds45d9s6MTHWOD2fbU7tuDvB7s8CP6Up7SkYa5qMPANIYCBTMBGMAICgxDBiJGZUIHTUOpXZPFGYYpZzKeGnmtIbgeLZLPRc6enJLs8sxMnHe/5i3kO0c19sHp6dc87dbujQxFiBheaaWFa7MrFfR4xfQkp78sDrCyDPoJzBABixAQRbEZ4ZRgQjhj...';
+
+
+// Email Template Wrapper - usa logo embebido en base64
 const emailWrapper = (content: string) => `
 <!DOCTYPE html>
 <html lang="es">
@@ -54,7 +53,7 @@ const emailWrapper = (content: string) => `
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, #1e3a5f 100%); padding: 30px 40px; text-align: center;">
-              <img src="cid:construlink-logo" alt="ConstruLink" style="height: 60px; margin-bottom: 10px;">
+              <img src="${LOGO_BASE64}" alt="ConstruLink" style="height: 60px; margin-bottom: 10px;">
               <h1 style="color: ${BRAND_COLORS.white}; margin: 10px 0 0 0; font-size: 24px; font-weight: 600;">ConstruLink</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Conectamos proveedores con oportunidades</p>
             </td>
@@ -326,21 +325,13 @@ async function sendEmail(emailData: EmailData): Promise<boolean> {
       return false;
     }
 
-    // Path al logo
-    const logoPath = path.join(__dirname, '..', 'public', 'assets', 'construlink-logo.png');
-    
-    // Send email using SMTP con logo adjunto
+    // Send email using SMTP (logo embebido en base64, no se adjunta)
     const info = await transporter.sendMail({
       from: process.env.EMAIL_FROM || process.env.SMTP_USER,
       to: emailData.to,
       subject: emailData.subject,
       html: emailData.html,
-      text: emailData.text,
-      attachments: [{
-        filename: 'construlink-logo.png',
-        path: logoPath,
-        cid: 'construlink-logo' // mismo CID usado en el src de la imagen
-      }]
+      text: emailData.text
     });
 
     console.log('✅ Email enviado exitosamente:', {

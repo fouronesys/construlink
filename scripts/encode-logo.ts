@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const logoPath = path.join(process.cwd(), 'attached_assets/ConstructLink_20251004_013258_0000_1759556910770.png');
+const logoPath = path.join(process.cwd(), 'attached_assets/IMG_20251012_020459_1760249136162.png');
 const logoBuffer = fs.readFileSync(logoPath);
 const logoBase64 = logoBuffer.toString('base64');
 
