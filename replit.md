@@ -5,14 +5,26 @@ This platform is a B2B directory for verified construction material and service 
 
 ## Recent Changes
 
-### October 14, 2025 - Payment Gateway Migration (Verifone to Azul)
-Completed migration from Verifone to Azul as the exclusive payment gateway:
-- **Removed**: Verifone payment component and all related UI references
-- **Updated**: Payment page to use Azul gateway exclusively with simulated payment endpoint for development
-- **Modified**: Admin panel to display generic "Gateway ID" instead of Verifone-specific fields
-- **Changed**: Refund system to use `gatewayRefundId` instead of `verifoneRefundId`
-- **Maintained**: Database backward compatibility by keeping legacy field names in schema while updating UI labels
-- **Result**: Platform now uses Azul (Banco Popular) as the sole payment processor for Dominican market
+### October 14, 2025 - Complete Payment Gateway Migration (Verifone to Azul)
+Completed full migration from Verifone to Azul as the exclusive payment gateway:
+- **Frontend Cleanup**:
+  - Removed Verifone payment component and all related UI references
+  - Updated payment page to use Azul gateway exclusively with simulated payment endpoint for development
+  - Modified admin panel to display generic "Gateway ID" instead of Verifone-specific fields
+  - Updated all client pages (cookie-policy, privacy-policy, terms, pricing) to reference Azul instead of Verifone
+- **Backend Refactoring**:
+  - Cleaned `routes.ts`: removed Verifone-specific logic in subscription creation
+  - Updated refund system to use `gatewayRefundId` instead of `verifoneRefundId`
+  - Removed 'verifone' from payment gateway validation (only 'azul' and 'manual' accepted)
+  - Cleaned `storage.ts`: updated all interfaces and methods to use generic gateway fields
+- **Schema Updates**:
+  - Removed 'verifone' from `paymentGateway` enum (now only 'azul' and 'manual')
+  - Maintained legacy fields (`verifoneSubscriptionId`, `verifoneRefundId`) for backward compatibility with historical data
+  - Omitted legacy fields from insertSchemas to prevent use in new records
+- **Documentation**:
+  - Updated technical plans (plan-sistema-pagos-azul.md, plan-correccion-errores.md, admin-panel-plan.md)
+  - Marked Phase 4.2 of error correction plan as complete
+- **Result**: Azul (Banco Popular) is now the exclusive active payment processor for the Dominican market, with complete codebase cleanup
 
 ### October 14, 2025 - Supplier Dashboard Improvements Complete
 Completed comprehensive supplier dashboard enhancement with 9 implementation phases:
