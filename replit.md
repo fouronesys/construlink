@@ -5,6 +5,19 @@ This platform is a B2B directory for verified construction material and service 
 
 ## Recent Changes
 
+### October 14, 2025 - Email Logo Update
+Updated email notification system to use correct branding:
+- **Logo Update**: Changed from old logo to current landing page logo (IMG_20251012_020459_1760249136162.png)
+- **Delivery Method**: Logo now embedded as base64 data URI instead of file attachment
+- **Benefits**: 
+  - Consistent branding across all touchpoints (web and email)
+  - No external file dependencies for email rendering
+  - Reduced email size and improved delivery reliability
+- **Implementation**:
+  - Updated `scripts/encode-logo.ts` to reference correct logo
+  - Modified `server/notification-service.ts` to use LOGO_BASE64 constant
+  - Removed CID attachment method and related imports
+
 ### October 14, 2025 - Email Service Integration (SMTP)
 Implemented transactional email system using own SMTP server:
 - **Integration**:
