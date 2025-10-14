@@ -140,7 +140,7 @@ export const supplierBanners = pgTable("supplier_banners", {
 });
 
 // Payment gateway enum
-export const paymentGatewayEnum = pgEnum("payment_gateway", ["azul", "verifone", "manual"]);
+export const paymentGatewayEnum = pgEnum("payment_gateway", ["azul", "manual"]);
 
 // Billing cycle enum
 export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "annual"]);
@@ -699,17 +699,20 @@ export const insertSupplierBannerSchema = createInsertSchema(supplierBanners).om
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   id: true,
+  verifoneSubscriptionId: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const insertPaymentSchema = createInsertSchema(payments).omit({
   id: true,
+  verifoneTransactionId: true,
   paymentDate: true,
 });
 
 export const insertRefundSchema = createInsertSchema(refunds).omit({
   id: true,
+  verifoneRefundId: true,
   createdAt: true,
   processedAt: true,
 });
@@ -876,7 +879,7 @@ export const createRefundSchema = z.object({
 
 export const processRefundSchema = z.object({
   status: z.enum(["approved", "rejected"]),
-  verifoneRefundId: z.string().optional(),
+  gatewayRefundId: z.string().optional(),
 });
 
 export const createInvoiceSchema = z.object({
