@@ -168,6 +168,7 @@ interface Refund {
   amount: string;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
+  gatewayRefundId?: string;
   verifoneRefundId?: string;
   processedBy?: string;
   processedAt?: string;
