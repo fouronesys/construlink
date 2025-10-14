@@ -132,7 +132,7 @@ export default function Payment() {
     
     setLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/process-verifone-payment", {
+      const response = await apiRequest("POST", "/api/process-azul-payment", {
         subscriptionId,
         paymentMethod: {
           cardNumber: paymentData.cardNumber.replace(/\s/g, ''),
@@ -273,7 +273,7 @@ export default function Payment() {
                 <div className="flex items-center space-x-2">
                   <Lock className="w-4 h-4 text-blue-600" />
                   <p className="text-blue-800 text-sm font-medium">
-                    Pago seguro procesado por Verifone
+                    Pago seguro procesado por Azul
                   </p>
                 </div>
                 <p className="text-blue-700 text-xs mt-1">
