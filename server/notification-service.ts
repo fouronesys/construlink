@@ -1,5 +1,10 @@
 import type { Subscription } from "@shared/schema";
 import nodemailer from 'nodemailer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configurar el transportador SMTP
 const createTransporter = () => {
@@ -31,15 +36,7 @@ const BRAND_COLORS = {
   white: '#ffffff'
 };
 
-// Get logo URL - use environment variable or fallback to relative path
-const getLogoUrl = () => {
-  const baseUrl = process.env.APP_URL || process.env.REPLIT_DEV_DOMAIN 
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-    : 'https://construlink.com';
-  return `${baseUrl}/assets/construlink-logo.png`;
-};
-
-// Email Template Wrapper
+// Email Template Wrapper - usa CID para el logo
 const emailWrapper = (content: string) => `
 <!DOCTYPE html>
 <html lang="es">
@@ -57,7 +54,7 @@ const emailWrapper = (content: string) => `
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, #1e3a5f 100%); padding: 30px 40px; text-align: center;">
-              <img src="${getLogoUrl()}" alt="ConstruLink" style="height: 60px; margin-bottom: 10px;">
+              <img src="cid:construlink-logo" alt="ConstruLink" style="height: 60px; margin-bottom: 10px;">
               <h1 style="color: ${BRAND_COLORS.white}; margin: 10px 0 0 0; font-size: 24px; font-weight: 600;">ConstruLink</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Conectamos proveedores con oportunidades</p>
             </td>
@@ -329,13 +326,21 @@ async function sendEmail(emailData: EmailData): Promise<boolean> {
       return false;
     }
 
-    // Send email using SMTP
+    // Path al logo
+    const logoPath = path.join(__dirname, '..', 'public', 'assets', 'construlink-logo.png');
+    
+    // Send email using SMTP con logo adjunto
     const info = await transporter.sendMail({
       from: process.env.EMAIL_FROM || process.env.SMTP_USER,
       to: emailData.to,
       subject: emailData.subject,
       html: emailData.html,
       text: emailData.text,
+      attachments: [{
+        filename: 'construlink-logo.png',
+        path: logoPath,
+        cid: 'construlink-logo' // mismo CID usado en el src de la imagen
+      }]
     });
 
     console.log('✅ Email enviado exitosamente:', {
