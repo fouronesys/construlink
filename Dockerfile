@@ -23,7 +23,7 @@ COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/attached_assets ./attached_assets
 COPY --from=builder /app/public ./public
 
-RUN mkdir -p public/uploads/banners
+RUN mkdir -p public/uploads/banners public/uploads/logos
 
 ENV NODE_ENV=production
 ENV PORT=80

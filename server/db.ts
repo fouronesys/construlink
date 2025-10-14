@@ -8,17 +8,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// In development, allow self-signed certificates for Neon/Replit database
-// In production, enforce strict SSL validation
-if (process.env.NODE_ENV !== 'production') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
+// Allow self-signed certificates for database connections
+// This is common in private deployments (CapRover, self-hosted databases)
+// For production with proper certificates, set DB_SSL_REJECT_UNAUTHORIZED=true
+const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true';
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: true }
-    : { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized }
 });
 
 export const db = drizzle({ client: pool, schema });
