@@ -28,8 +28,6 @@ export function useAuth() {
     staleTime: 0,
   });
 
-  console.log('useAuth hook state:', { user, isLoading, error: error?.message, isAuthenticated: !!user && !error });
-
   return {
     user,
     isAuthenticated: !!user && !error,
