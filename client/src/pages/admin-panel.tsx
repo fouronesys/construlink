@@ -217,6 +217,7 @@ interface Subscription {
   supplierId: string;
   plan: 'basic' | 'professional' | 'enterprise';
   status: 'active' | 'inactive' | 'cancelled' | 'trialing';
+  gatewaySubscriptionId?: string;
   verifoneSubscriptionId?: string;
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
