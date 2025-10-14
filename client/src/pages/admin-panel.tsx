@@ -1523,8 +1523,8 @@ export default function AdminPanel() {
 
   // Process refund mutation (approve/reject)
   const processRefundMutation = useMutation({
-    mutationFn: async ({ id, status, verifoneRefundId }: { id: string; status: 'approved' | 'rejected'; verifoneRefundId?: string }) => {
-      const response = await apiRequest("PATCH", `/api/admin/refunds/${id}`, { status, verifoneRefundId });
+    mutationFn: async ({ id, status, gatewayRefundId }: { id: string; status: 'approved' | 'rejected'; gatewayRefundId?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/refunds/${id}`, { status, gatewayRefundId });
       if (!response.ok) throw new Error("Failed to process refund");
       return response.json();
     },
@@ -4015,8 +4015,8 @@ export default function AdminPanel() {
                         <p className="font-medium" data-testid="text-modal-amount">RD${Number(selectedSubscription.monthlyAmount).toLocaleString()}</p>
                       </div>
                       <div>
-                        <Label className="text-gray-600">ID Verifone</Label>
-                        <p className="text-sm font-mono text-gray-600" data-testid="text-modal-verifone-id">{selectedSubscription.verifoneSubscriptionId || 'N/A'}</p>
+                        <Label className="text-gray-600">ID Gateway</Label>
+                        <p className="text-sm font-mono text-gray-600" data-testid="text-modal-gateway-id">{selectedSubscription.gatewaySubscriptionId || selectedSubscription.verifoneSubscriptionId || 'N/A'}</p>
                       </div>
                     </div>
 
@@ -4156,7 +4156,7 @@ export default function AdminPanel() {
                                     onClick={() => processRefundMutation.mutate({ 
                                       id: refund.id, 
                                       status: 'approved',
-                                      verifoneRefundId: `VRF-${Date.now()}`
+                                      gatewayRefundId: `AZUL-REF-${Date.now()}`
                                     })}
                                     data-testid={`button-approve-refund-${refund.id}`}
                                   >

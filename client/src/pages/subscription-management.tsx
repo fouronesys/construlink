@@ -422,7 +422,7 @@ export default function SubscriptionManagement() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Gateway de Pago</span>
                   <span className="text-sm font-medium">
-                    {subscription.paymentGateway === 'azul' ? 'Azul' : 'Verifone'}
+                    {subscription.paymentGateway === 'azul' ? 'Azul' : subscription.paymentGateway === 'manual' ? 'Manual' : 'Azul'}
                   </span>
                 </div>
               </CardContent>
