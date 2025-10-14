@@ -43,7 +43,15 @@ import { storage } from "./storage";
 import { upload } from "./upload";
 import { canCreatePublication, getPublicationLimit } from "@shared/plan-limits";
 
-// Simulate Verifone payment processing (replace with actual API integration)
+/**
+ * @deprecated VERIFONE INTEGRATION - DEPRECATED AND NOT IN USE
+ * This payment gateway has been deprecated in favor of Azul (primary gateway).
+ * The code below is kept for reference only and should NOT be used in production.
+ * All Verifone endpoints are non-functional and should be removed in future cleanup.
+ * Use Azul payment integration instead: /api/payments/azul/*
+ */
+
+// Simulate Verifone payment processing (DEPRECATED - DO NOT USE)
 async function simulateVerifonePayment(paymentData: any) {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 2000));
@@ -80,11 +88,12 @@ async function simulateVerifonePayment(paymentData: any) {
 
 const MONTHLY_SUBSCRIPTION_AMOUNT = 1000; // RD$1000
 
-// Verifone configuration
+// DEPRECATED: Verifone configuration removed for security
+// Use environment variables if this gateway needs to be reactivated (not recommended)
 const VERIFONE_CONFIG = {
-  MERCHANT_CODE: "255630281234",
-  SECRET_KEY: "wJ6EzkDrNV&AR~*!IC#G",
-  BASE_URL: "https://sandbox.verifone.com.do/api", // Use production URL when ready
+  MERCHANT_CODE: process.env.VERIFONE_MERCHANT_CODE || "",
+  SECRET_KEY: process.env.VERIFONE_SECRET_KEY || "",
+  BASE_URL: process.env.VERIFONE_BASE_URL || "",
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
