@@ -31,6 +31,14 @@ const BRAND_COLORS = {
   white: '#ffffff'
 };
 
+// Get logo URL - use environment variable or fallback to relative path
+const getLogoUrl = () => {
+  const baseUrl = process.env.APP_URL || process.env.REPLIT_DEV_DOMAIN 
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+    : 'https://construlink.com';
+  return `${baseUrl}/assets/construlink-logo.png`;
+};
+
 // Email Template Wrapper
 const emailWrapper = (content: string) => `
 <!DOCTYPE html>
@@ -49,7 +57,7 @@ const emailWrapper = (content: string) => `
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, ${BRAND_COLORS.primary} 0%, #1e3a5f 100%); padding: 30px 40px; text-align: center;">
-              <img src="https://i.postimg.cc/SsZMnmWw/construlink-logo.png" alt="ConstruLink" style="height: 60px; margin-bottom: 10px;">
+              <img src="${getLogoUrl()}" alt="ConstruLink" style="height: 60px; margin-bottom: 10px;">
               <h1 style="color: ${BRAND_COLORS.white}; margin: 10px 0 0 0; font-size: 24px; font-weight: 600;">ConstruLink</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Conectamos proveedores con oportunidades</p>
             </td>

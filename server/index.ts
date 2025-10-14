@@ -12,6 +12,7 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/attached_assets', express.static(path.resolve(import.meta.dirname, '..', 'attached_assets')));
 app.use('/uploads', express.static(path.resolve(import.meta.dirname, '..', 'public', 'uploads')));
+app.use('/assets', express.static(path.resolve(import.meta.dirname, '..', 'public', 'assets')));
 
 // Setup session store with Memory Store (simplified for now)
 const MemStore = MemoryStore(session);
