@@ -115,7 +115,7 @@ export default function PrivacyPolicy() {
                 <strong>Compartimos información con:</strong>
               </p>
               <ul className="list-disc pl-6 space-y-1">
-                <li><strong>Proveedores de servicios:</strong> Verifone para procesamiento de pagos, servicios de hosting y almacenamiento</li>
+                <li><strong>Proveedores de servicios:</strong> Azul para procesamiento de pagos, servicios de hosting y almacenamiento</li>
                 <li><strong>Autoridades:</strong> Cuando sea requerido por ley o para proteger nuestros derechos legales</li>
                 <li><strong>DGII:</strong> Para verificación de RNC de proveedores</li>
               </ul>

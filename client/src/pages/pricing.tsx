@@ -208,7 +208,7 @@ export default function Pricing() {
                   ¿Qué métodos de pago aceptan?
                 </h3>
                 <p className="text-gray-600">
-                  Aceptamos todas las tarjetas de crédito principales y transferencias bancarias locales a través de Verifone.
+                  Aceptamos todas las tarjetas de crédito principales y transferencias bancarias locales a través de Azul.
                 </p>
               </CardContent>
             </Card>

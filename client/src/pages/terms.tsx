@@ -119,7 +119,7 @@ export default function Terms() {
                 <li>Período de prueba de 7 días</li>
                 <li>Facturación automática mensual</li>
                 <li>Suspensión automática por falta de pago</li>
-                <li>Procesamiento a través de Verifone</li>
+                <li>Procesamiento a través de Azul</li>
                 <li>No hay reembolsos por períodos parciales</li>
               </ul>
             </CardContent>

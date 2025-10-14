@@ -147,7 +147,7 @@ export default function CookiePolicy() {
               </p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>
-                  <strong>Verifone:</strong> Para procesamiento seguro de pagos. Estas cookies son esenciales para completar transacciones.
+                  <strong>Azul:</strong> Para procesamiento seguro de pagos. Estas cookies son esenciales para completar transacciones.
                 </li>
                 <li>
                   <strong>Servicios de hosting:</strong> Para garantizar el funcionamiento y seguridad de la plataforma.
