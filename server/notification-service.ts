@@ -1,8 +1,25 @@
 import type { Subscription } from "@shared/schema";
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-// Initialize Resend client (only if API key is available)
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// Configurar el transportador SMTP
+const createTransporter = () => {
+  // Si no hay configuración SMTP, retornar null
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true', // true para puerto 465, false para otros puertos
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+};
+
+const transporter = createTransporter();
 
 // Email templates
 const emailTemplates = {
@@ -130,12 +147,12 @@ interface EmailData {
   text: string;
 }
 
-// Email service using Resend
+// Email service using SMTP
 async function sendEmail(emailData: EmailData): Promise<boolean> {
   try {
-    if (!resend) {
-      // Fallback: log to console if Resend is not configured
-      console.warn('⚠️ RESEND_API_KEY no configurada. Email no enviado (solo simulación):');
+    if (!transporter) {
+      // Fallback: log to console if SMTP is not configured
+      console.warn('⚠️ Configuración SMTP incompleta. Email no enviado (solo simulación):');
       console.log('📧 Email simulado:', {
         to: emailData.to,
         subject: emailData.subject,
@@ -144,22 +161,17 @@ async function sendEmail(emailData: EmailData): Promise<boolean> {
       return false;
     }
 
-    // Send email using Resend
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+    // Send email using SMTP
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
       to: emailData.to,
       subject: emailData.subject,
       html: emailData.html,
       text: emailData.text,
     });
 
-    if (error) {
-      console.error('Error al enviar email con Resend:', error);
-      return false;
-    }
-
     console.log('✅ Email enviado exitosamente:', {
-      id: data?.id,
+      messageId: info.messageId,
       to: emailData.to,
       subject: emailData.subject
     });

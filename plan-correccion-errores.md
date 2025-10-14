@@ -127,17 +127,22 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 ### 4.1 📧 Integrar servicio de email real ✅
 - **Estado:** ✅ COMPLETADA (14 de octubre 2025)
 - **Archivo modificado:** `server/notification-service.ts`
-- **Servicio seleccionado:** Resend (API moderna y simple)
+- **Servicio seleccionado:** Servidor SMTP propio (Nodemailer)
 - **Acciones realizadas:**
-  - Instalado paquete `resend` via npm
-  - Implementada integración con Resend API
-  - Sistema de fallback: console.log si no hay API key configurada
+  - Instalado paquete `nodemailer` y `@types/nodemailer` via npm
+  - Implementada integración con protocolo SMTP
+  - Sistema de fallback: console.log si no hay configuración SMTP completa
   - Manejo de errores robusto
   - Logs informativos para debugging
+  - Soporte para cualquier servidor SMTP (Gmail, Outlook, servidor propio, etc.)
 - **Variables de entorno requeridas:**
-  - `RESEND_API_KEY` (requerido para enviar emails reales)
-  - `EMAIL_FROM` (opcional, por defecto: onboarding@resend.dev)
-- **Documentación creada:** `docs/resend-setup.md`
+  - `SMTP_HOST` (servidor SMTP)
+  - `SMTP_PORT` (puerto, típicamente 587 o 465)
+  - `SMTP_SECURE` (true para SSL puerto 465, false para TLS puerto 587)
+  - `SMTP_USER` (usuario/email de autenticación)
+  - `SMTP_PASS` (contraseña del servidor SMTP)
+  - `EMAIL_FROM` (opcional, usa SMTP_USER por defecto)
+- **Documentación creada:** `docs/smtp-setup.md`
 - **Tipos de emails soportados:**
   - Bienvenida a nueva suscripción
   - Recordatorio de trial (3 días antes)
@@ -145,7 +150,7 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
   - Confirmación de pago exitoso
   - Notificación de pago fallido
   - Confirmación de cancelación de suscripción
-- **Resultado:** Sistema de emails transaccionales completamente funcional
+- **Resultado:** Sistema de emails transaccionales usando servidor SMTP propio
 - **Impacto:** ALTO - COMPLETADO
 
 ### 4.2 💳 Migración completa de Verifone a Azul ✅
@@ -266,11 +271,11 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
    - ✅ 4.1: Integrar servicio de email real (COMPLETADA)
    - ✅ 4.2: Migración completa de Verifone a Azul (COMPLETADA)
    - ⏳ 4.3: Ejecutar migración de base de datos pendiente (cuando endpoint esté disponible)
-2. **Configurar Resend en producción:**
-   - Crear cuenta en Resend
-   - Obtener API key y configurar RESEND_API_KEY
-   - Verificar dominio para emails personalizados
-   - Ver documentación completa en `docs/resend-setup.md`
+2. **Configurar servidor SMTP en producción:**
+   - Obtener credenciales de tu servidor SMTP
+   - Configurar variables de entorno (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS)
+   - Configurar registros SPF/DKIM/DMARC en tu dominio (opcional, para mejor entregabilidad)
+   - Ver documentación completa en `docs/smtp-setup.md`
 3. Actualizar este documento después de cada fase completada
 4. Reportar cualquier problema adicional encontrado durante la ejecución
 5. Pruebas exhaustivas después de cada fase
@@ -306,7 +311,7 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 - El proyecto usa autenticación personalizada (email/password), NO Replit Auth
 - Base de datos PostgreSQL (Neon)
 - Gateway de pago principal: Azul (integrado y funcional)
-- Servicio de emails: Resend (configuración pendiente de API key)
+- Servicio de emails: Servidor SMTP propio con Nodemailer (configuración pendiente)
 - Ambiente actual: Desarrollo
 - Stack: React + TypeScript + Express + Drizzle ORM
 

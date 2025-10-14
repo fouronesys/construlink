@@ -5,13 +5,14 @@ This platform is a B2B directory for verified construction material and service 
 
 ## Recent Changes
 
-### October 14, 2025 - Email Service Integration (Resend)
-Implemented transactional email system using Resend API:
+### October 14, 2025 - Email Service Integration (SMTP)
+Implemented transactional email system using own SMTP server:
 - **Integration**:
-  - Installed and configured Resend package for email delivery
-  - Updated `notification-service.ts` with Resend API integration
-  - Implemented fallback to console logging when RESEND_API_KEY is not configured
+  - Installed and configured Nodemailer for SMTP email delivery
+  - Updated `notification-service.ts` with SMTP integration
+  - Implemented fallback to console logging when SMTP is not configured
   - Added robust error handling and informative logging
+  - Supports any SMTP server (Gmail, Outlook, own server, etc.)
 - **Email Types Supported**:
   - Welcome email for new subscriptions
   - Trial reminder (3 days before expiration)
@@ -20,11 +21,12 @@ Implemented transactional email system using Resend API:
   - Payment failure alert
   - Subscription cancellation confirmation
 - **Configuration**:
-  - Requires `RESEND_API_KEY` environment variable for production use
-  - Optional `EMAIL_FROM` variable (defaults to onboarding@resend.dev)
-  - Complete setup documentation in `docs/resend-setup.md`
-- **Status**: Fully implemented, ready for production once API key is configured
-- **Impact**: Critical feature complete - transactional emails now functional
+  - Requires SMTP credentials (host, port, user, password)
+  - Environment variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`
+  - Optional `EMAIL_FROM` variable (defaults to SMTP_USER)
+  - Complete setup documentation in `docs/smtp-setup.md`
+- **Status**: Fully implemented, ready for production once SMTP credentials are configured
+- **Impact**: Critical feature complete - transactional emails using own email server
 
 ### October 14, 2025 - Complete Payment Gateway Migration (Verifone to Azul)
 Completed full migration from Verifone to Azul as the exclusive payment gateway:
@@ -72,7 +74,7 @@ Preferred communication style: Simple, everyday language.
 -   **Backend**: Node.js with Express.js
 -   **Database ORM**: Drizzle ORM for type-safe PostgreSQL interactions
 -   **Authentication**: Replit OpenID Connect with session-based authentication (PostgreSQL-backed)
--   **Email Service**: Resend API for transactional emails (subscription notifications, payment confirmations, trial reminders)
+-   **Email Service**: SMTP with Nodemailer for transactional emails using own email server (subscription notifications, payment confirmations, trial reminders)
 -   **State Management**: TanStack Query for server state management
 -   **Routing**: Wouter for client-side routing
 -   **Deployment**: Optimized for Replit deployment, with multi-stage Docker builds for CapRover.
@@ -119,7 +121,7 @@ Preferred communication style: Simple, everyday language.
 
 -   **@neondatabase/serverless**: For PostgreSQL database connection.
 -   **azul**: Payment gateway integration for the Dominican Republic (Banco Popular).
--   **resend**: Email service for transactional emails (subscriptions, payments, notifications).
+-   **nodemailer**: SMTP client for sending transactional emails using own email server.
 -   **pdfkit**: Used for generating PDF invoices with fiscal data.
 -   **drizzle-orm**: The chosen ORM for database interactions.
 -   **express**: The web server framework for the backend.
