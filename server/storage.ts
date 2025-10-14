@@ -194,7 +194,7 @@ export interface IStorage {
     }>; 
     total: number;
   }>;
-  processRefund(id: string, updates: { status: "approved" | "rejected" | "completed"; processedBy: string; verifoneRefundId?: string; }): Promise<Refund>;
+  processRefund(id: string, updates: { status: "approved" | "rejected" | "completed"; processedBy: string; gatewayRefundId?: string; }): Promise<Refund>;
   
   // Invoice operations
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
@@ -361,7 +361,7 @@ export interface IStorage {
   deleteAdvertisementRequest(id: string): Promise<void>;
   
   // Payment Gateway Config operations
-  getPaymentGatewayConfig(gatewayName: 'azul' | 'verifone' | 'manual'): Promise<PaymentGatewayConfig | undefined>;
+  getPaymentGatewayConfig(gatewayName: 'azul' | 'manual'): Promise<PaymentGatewayConfig | undefined>;
   getAllPaymentGatewayConfigs(): Promise<PaymentGatewayConfig[]>;
   upsertPaymentGatewayConfig(config: Omit<InsertPaymentGatewayConfig, 'createdAt' | 'updatedAt'> & { updatedBy?: string }): Promise<PaymentGatewayConfig>;
 }
@@ -1781,14 +1781,14 @@ export class DatabaseStorage implements IStorage {
   async processRefund(id: string, updates: { 
     status: "approved" | "rejected" | "completed"; 
     processedBy: string; 
-    verifoneRefundId?: string; 
+    gatewayRefundId?: string; 
   }): Promise<Refund> {
     const [updatedRefund] = await db
       .update(refunds)
       .set({
         status: updates.status,
         processedBy: updates.processedBy,
-        verifoneRefundId: updates.verifoneRefundId,
+        gatewayRefundId: updates.gatewayRefundId,
         processedAt: new Date(),
       })
       .where(eq(refunds.id, id))
@@ -2195,7 +2195,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Payment Gateway Config operations
-  async getPaymentGatewayConfig(gatewayName: 'azul' | 'verifone' | 'manual'): Promise<PaymentGatewayConfig | undefined> {
+  async getPaymentGatewayConfig(gatewayName: 'azul' | 'manual'): Promise<PaymentGatewayConfig | undefined> {
     const [config] = await db
       .select()
       .from(paymentGatewayConfig)

@@ -334,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create subscription with Verifone
+  // Create subscription (legacy endpoint - kept for backward compatibility)
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId!;
@@ -374,9 +374,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }).where(eq(subscriptions.id, existingSubscription[0].id));
         
         return res.json({
-          subscriptionId: existingSubscription[0].verifoneSubscriptionId,
+          subscriptionId: existingSubscription[0].gatewaySubscriptionId || existingSubscription[0].id,
           paymentSession: {
-            subscriptionId: existingSubscription[0].verifoneSubscriptionId,
+            subscriptionId: existingSubscription[0].gatewaySubscriptionId || existingSubscription[0].id,
             amount,
             currency: 'DOP',
             plan: selectedPlan,
@@ -388,8 +388,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate unique Verifone subscription ID
-      const verifoneSubscriptionId = `vf_sub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      // Generate unique gateway subscription ID
+      const gatewaySubscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
       // Create subscription record
       const currentPeriodStart = new Date();
@@ -398,7 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await db.insert(subscriptions).values({
         supplierId: supplier[0].id,
-        verifoneSubscriptionId: verifoneSubscriptionId,
+        gatewaySubscriptionId: gatewaySubscriptionId,
         currentPeriodStart: currentPeriodStart,
         currentPeriodEnd: currentPeriodEnd,
         status: 'inactive',
@@ -406,9 +406,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthlyAmount: amount.toString()
       });
 
-      // Generate payment session for Verifone
+      // Generate payment session
       const paymentSession = {
-        subscriptionId: verifoneSubscriptionId,
+        subscriptionId: gatewaySubscriptionId,
         amount,
         currency: 'DOP',
         plan: selectedPlan,
@@ -418,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       res.json({
-        subscriptionId: verifoneSubscriptionId,
+        subscriptionId: gatewaySubscriptionId,
         paymentSession: paymentSession,
         amount,
         plan: selectedPlan,
@@ -3105,12 +3105,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { status, verifoneRefundId } = validation.data;
+      const { status, gatewayRefundId } = validation.data;
 
       const refund = await storage.processRefund(id, {
         status,
         processedBy: user.id,
-        verifoneRefundId,
+        gatewayRefundId,
       });
 
       // Log admin action (only if admin user exists in database)
@@ -3121,7 +3121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actionType: 'process_refund',
           entityType: 'refund',
           entityId: id,
-          details: { status, verifoneRefundId },
+          details: { status, gatewayRefundId },
         });
       }
 
@@ -3465,11 +3465,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { gatewayName } = req.params;
       
-      if (!['azul', 'verifone', 'manual'].includes(gatewayName)) {
+      if (!['azul', 'manual'].includes(gatewayName)) {
         return res.status(400).json({ message: "Invalid gateway name" });
       }
 
-      const config = await storage.getPaymentGatewayConfig(gatewayName as 'azul' | 'verifone' | 'manual');
+      const config = await storage.getPaymentGatewayConfig(gatewayName as 'azul' | 'manual');
       
       if (!config) {
         return res.status(404).json({ message: "Configuration not found" });
@@ -3493,12 +3493,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { gatewayName } = req.params;
       
-      if (!['azul', 'verifone', 'manual'].includes(gatewayName)) {
+      if (!['azul', 'manual'].includes(gatewayName)) {
         return res.status(400).json({ message: "Invalid gateway name" });
       }
 
       const config = await storage.upsertPaymentGatewayConfig({
-        gatewayName: gatewayName as 'azul' | 'verifone' | 'manual',
+        gatewayName: gatewayName as 'azul' | 'manual',
         ...req.body,
         updatedBy: user.id,
       });
