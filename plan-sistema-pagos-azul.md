@@ -18,17 +18,21 @@ Implementar integración completa con **Azul Payment Gateway** (líder en Repúb
 
 #### Tareas:
 - [x] Actualizar schema de subscriptions para Azul
-  - Agregado campo `paymentGateway` (enum: azul, verifone, manual)
+  - Agregado campo `paymentGateway` (enum: azul, manual)
   - Agregado `gatewaySubscriptionId` (campo genérico)
-  - Mantenido `verifoneSubscriptionId` por compatibilidad
+  - Mantenido `verifoneSubscriptionId` por compatibilidad con datos legacy
 - [x] Actualizar schema de payments
   - Agregado `gatewayName` (usando enum paymentGateway)
   - Agregado `gatewayTransactionId`, `gatewayAuthCode`, `gatewayResponseCode`
   - Agregado `gatewayMetadata` (jsonb) para datos adicionales
-  - Mantenido `verifoneTransactionId` por compatibilidad
+  - Mantenido `verifoneTransactionId` por compatibilidad con datos legacy
 - [x] Actualizar schema de refunds
   - Agregado `gatewayRefundId` (campo genérico)
-  - Mantenido `verifoneRefundId` por compatibilidad
+  - Mantenido `verifoneRefundId` por compatibilidad con datos legacy
+- [x] Remover Verifone como gateway activo
+  - Enum actualizado a solo 'azul' y 'manual'
+  - Campos legacy mantenidos para backward compatibility
+  - Todas las referencias a Verifone actualizadas para usar Azul
 - [x] Crear tabla de configuración de gateway
   - `paymentGatewayConfig`: almacenar credenciales y configuración
   - Campos: merchantId, merchantName, authToken, secretKey, baseUrl, callbackUrls, etc.
@@ -45,7 +49,7 @@ Implementar integración completa con **Azul Payment Gateway** (líder en Repúb
 - ✅ `shared/azul-config.ts` - Nuevo archivo de configuración de Azul
 - ✅ Migración ejecutada exitosamente
 
-**Fecha de completación:** 2025-10-08
+**Fecha de completación:** 2025-10-14 (Actualizado - Verifone completamente removido como gateway activo)
 
 ---
 
@@ -343,8 +347,16 @@ NCF_SEQUENCE_START=00000001
 ---
 
 ## Estado Actual
-**Fase activa**: Fase 4 - Sistema de Facturación Automática y NCF (Completada)
-**Última actualización**: 2025-10-11
+**Fase activa**: Todas las fases completadas - Migración a Azul como gateway exclusivo finalizada
+**Última actualización**: 2025-10-14
+
+### ✅ Migración Completa de Verifone a Azul
+- Verifone removido del enum de payment_gateway (solo 'azul' y 'manual')
+- Todos los endpoints actualizados para usar campos genéricos (gatewayRefundId, gatewaySubscriptionId)
+- Todas las páginas del cliente actualizadas para mencionar Azul en lugar de Verifone
+- Código del servidor limpio y sin lógica específica de Verifone
+- Campos legacy de Verifone mantenidos solo para compatibilidad con datos históricos
+- **Azul es ahora el único gateway de pago activo en la plataforma**
 
 ## Próximos Pasos
 

@@ -130,18 +130,31 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 - **Opciones:** SendGrid, AWS SES, Mailgun
 - **Impacto:** ALTO (funcionalidad crítica)
 
-### 4.2 💳 Revisar integración Verifone ✅
+### 4.2 💳 Migración completa de Verifone a Azul ✅
 - **Estado:** ✅ COMPLETADA (14 de octubre 2025)
 - **Acciones realizadas:**
-  - Eliminado componente `verifone-payment.tsx`
-  - Actualizado `payment.tsx` para usar Azul en lugar de Verifone
-  - Agregado endpoint `/api/process-azul-payment` para flujo simplificado
-  - Actualizadas referencias en `subscription-plans.tsx`, `subscription-management.tsx`, y `admin-panel.tsx`
-  - Cambiado "ID Verifone" a "ID Gateway" en interfaz de administración
-  - Cambiado `verifoneRefundId` a `gatewayRefundId` en sistema de reembolsos
-- **Resultado:** Sistema ahora usa exclusivamente Azul como gateway de pago
-- **Nota:** Azul ya está integrado y funcional, Verifone completamente eliminado
-- **Impacto:** BAJO (Azul es el gateway principal)
+  - **Fase 1:** Eliminación de componentes frontend
+    - Eliminado componente `verifone-payment.tsx`
+    - Actualizado `payment.tsx` para usar Azul en lugar de Verifone
+    - Agregado endpoint `/api/process-azul-payment` para flujo simplificado
+  - **Fase 2:** Actualización de referencias en interfaz
+    - Actualizadas referencias en `subscription-plans.tsx`, `subscription-management.tsx`, y `admin-panel.tsx`
+    - Cambiado "ID Verifone" a "ID Gateway" en interfaz de administración
+  - **Fase 3:** Migración de lógica del servidor
+    - Actualizado `routes.ts`: eliminada lógica específica de Verifone en subscripciones
+    - Cambiado `verifoneRefundId` a `gatewayRefundId` en sistema de reembolsos
+    - Removido 'verifone' de validaciones de gateway (solo 'azul' y 'manual' aceptados)
+    - Actualizado `storage.ts`: interfaz y métodos usando campos genéricos
+  - **Fase 4:** Actualización de schema y tipos
+    - Enum `paymentGateway` actualizado: removido 'verifone', solo 'azul' y 'manual'
+    - Campos legacy (`verifoneSubscriptionId`, `verifoneRefundId`) mantenidos para backward compatibility
+    - Omitidos de insertSchemas para prevenir su uso en nuevos datos
+  - **Fase 5:** Actualización de documentación
+    - Páginas del cliente actualizadas (cookie-policy, privacy-policy, terms, pricing)
+    - Planes técnicos actualizados para reflejar Azul como gateway exclusivo
+- **Resultado:** Sistema ahora usa exclusivamente Azul como gateway de pago activo
+- **Nota:** Azul ya está integrado y funcional, Verifone completamente removido del flujo activo
+- **Impacto:** MEDIO - COMPLETADO (Azul es ahora el único gateway activo)
 
 ### 4.3 🔄 Ejecutar migración de base de datos pendiente
 - **Nota en replit.md:** "Migración de BD pendiente (endpoint de Neon deshabilitado)"
@@ -219,7 +232,7 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 
 ### Fase 4 (Integraciones)
 - [ ] 4.1 Integrar servicio de email real
-- [x] 4.2 Revisar/deprecar Verifone
+- [x] 4.2 Migración completa de Verifone a Azul (COMPLETADA)
 - [ ] 4.3 Ejecutar migración de BD
 
 ### Fase 5 (Optimizaciones) ✅ COMPLETADA
@@ -231,7 +244,10 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 
 ## 🎯 Próximos Pasos
 
-1. **Completar Fase 4** - Integraciones Pendientes (servicio de email, migración BD)
+1. **Completar Fase 4** - Integraciones Pendientes:
+   - ⏳ 4.1: Integrar servicio de email real (actualmente usa console.log)
+   - ✅ 4.2: Migración completa de Verifone a Azul (COMPLETADA)
+   - ⏳ 4.3: Ejecutar migración de base de datos pendiente (cuando endpoint esté disponible)
 2. Actualizar este documento después de cada fase completada
 3. Reportar cualquier problema adicional encontrado durante la ejecución
 4. Pruebas exhaustivas después de cada fase
