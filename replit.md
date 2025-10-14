@@ -5,6 +5,16 @@ This platform is a B2B directory for verified construction material and service 
 
 ## Recent Changes
 
+### October 14, 2025 - CapRover Deployment Fixes
+Fixed critical issues preventing proper deployment on CapRover:
+- **SSL Certificate Support**: Modified database configuration to accept self-signed SSL certificates by default (common in CapRover deployments)
+  - Added optional `DB_SSL_REJECT_UNAUTHORIZED` environment variable for strict SSL validation when using proper certificates
+  - Eliminates `DEPTH_ZERO_SELF_SIGNED_CERT` errors in production
+- **Upload Directories**: Updated Dockerfile to create both `public/uploads/banners` and `public/uploads/logos` directories
+  - Prevents image upload failures in containerized environments
+  - Note: For persistent storage across container restarts, configure CapRover persistent volumes
+- **Documentation**: Updated deployment checklist with troubleshooting for SSL errors and image persistence
+
 ### October 14, 2025 - Email Logo Update
 Updated email notification system to use correct branding:
 - **Logo Update**: Changed from old logo to current landing page logo (IMG_20251012_020459_1760249136162.png)

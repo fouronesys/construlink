@@ -40,6 +40,7 @@ Usa este checklist antes de desplegar a producción con CapRover.
 - [ ] `APP_URL` - URL pública de la aplicación
 - [ ] `NODE_ENV=production`
 - [ ] `PORT=80`
+- [ ] `DB_SSL_REJECT_UNAUTHORIZED` - (Opcional) Establecer a `true` solo si la BD usa certificados SSL válidos (por defecto acepta certificados auto-firmados)
 
 ### 🗄️ Base de Datos
 - [ ] Base de datos PostgreSQL está creada
@@ -105,6 +106,25 @@ caprover logs -a construlink
 # Probar conexión desde el contenedor
 caprover exec -a construlink
 psql $DATABASE_URL
+```
+
+### ❌ Error: DEPTH_ZERO_SELF_SIGNED_CERT
+```bash
+# Este error ocurre cuando la BD usa certificados SSL auto-firmados
+# La aplicación está configurada para aceptarlos por defecto
+# Si usas certificados válidos, configura:
+# DB_SSL_REJECT_UNAUTHORIZED=true
+
+# Para CapRover con bases de datos auto-firmadas, NO configures esta variable
+```
+
+### ❌ Las imágenes no cargan
+```bash
+# Las imágenes subidas se guardan en public/uploads/
+# En CapRover, estas carpetas se crean automáticamente
+# IMPORTANTE: Las imágenes se perderán al reiniciar el contenedor
+# Para persistencia, configura un volumen en CapRover:
+# App → Persistent Directories → Add: /app/public/uploads
 ```
 
 ### ❌ SMTP no funciona
