@@ -3,13 +3,11 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Star, Zap, Crown, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import VerifonePayment from "./verifone-payment";
 
 export interface PlanFeature {
   name: string;
@@ -127,8 +125,6 @@ const plans: SubscriptionPlan[] = [
 export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContinue }: SubscriptionPlansProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [selected, setSelected] = useState(selectedPlan);
-  const [showPayment, setShowPayment] = useState(false);
-  const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const { toast } = useToast();
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -139,8 +135,13 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
       return await response.json();
     },
     onSuccess: (data) => {
-      setSubscriptionData(data);
-      setShowPayment(true);
+      // Redirect to Azul payment page or handle payment flow
+      toast({
+        title: "Suscripción creada",
+        description: "Redirigiendo a la página de pago...",
+      });
+      // For now, redirect to payment page with subscription details
+      setLocation(`/payment?subscriptionId=${data.subscriptionId}&planId=${selected}`);
     },
     onError: (error: any) => {
       console.error("Error creating subscription:", error);
@@ -186,18 +187,6 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
     createSubscriptionMutation.mutate(selected);
   };
 
-  const handlePaymentSuccess = () => {
-    setShowPayment(false);
-    toast({
-      title: "¡Suscripción Activada!",
-      description: "Tu plan ha sido activado exitosamente.",
-    });
-    onContinue();
-  };
-
-  const handlePaymentCancel = () => {
-    setShowPayment(false);
-  };
 
   const getPlanColorClasses = (plan: SubscriptionPlan, isSelected: boolean, isHovered: boolean) => {
     const baseClasses = "transition-all duration-200";
@@ -360,35 +349,6 @@ export default function SubscriptionPlans({ selectedPlan, onPlanSelect, onContin
           );
         })}
       </div>
-
-
-
-      <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto p-3 sm:p-4 lg:p-6">
-          <DialogHeader className="space-y-2 pb-2 sm:pb-4">
-            <DialogTitle className="text-base sm:text-lg lg:text-xl font-semibold">
-              Procesar Pago - {subscriptionData?.plan}
-            </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-gray-600">
-              Completa tu pago para activar tu suscripción.
-              <br />
-              <span className="font-medium text-gray-900">Monto: RD${subscriptionData?.amount?.toLocaleString()}</span>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="mt-2 sm:mt-4">
-            {subscriptionData && (
-              <VerifonePayment
-                subscriptionId={subscriptionData.subscriptionId}
-                amount={subscriptionData.amount}
-                trialEndDate={subscriptionData.trialEndDate}
-                onSuccess={handlePaymentSuccess}
-                onCancel={handlePaymentCancel}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
