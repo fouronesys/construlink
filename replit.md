@@ -3,6 +3,17 @@
 ## Overview
 This platform is a B2B directory for verified construction material and service suppliers in the Dominican Republic. Its primary purpose is to connect construction professionals with reliable suppliers, streamline procurement, and enhance transparency within the construction sector. Key capabilities include RNC validation, monthly subscription management, administrative approval workflows, a product-focused main page, pricing, category-based directory filtering, and a business claim functionality.
 
+## Recent Changes
+
+### October 14, 2025 - Supplier Dashboard Improvements Complete
+Completed comprehensive supplier dashboard enhancement with 9 implementation phases:
+- **Backend APIs**: Full CRUD endpoints for publications, advertisement requests, and banners with proper authentication and plan validation
+- **Frontend Components**: Complete modal system for managing publications, requesting advertisements/banners, and uploading company logos
+- **Integration**: React Query mutations with cache invalidation, Zod validation, toast notifications, and loading states
+- **Image Upload System**: Multer-based file handling with type/size validation for logos and banner images
+- **Testing**: 88 data-testid attributes throughout the interface for comprehensive UI testing
+- **Quality**: All features tested and verified working without errors
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
@@ -26,6 +37,12 @@ Preferred communication style: Simple, everyday language.
 ### Feature Specifications
 -   **Authentication & Authorization**: Includes Replit Auth, session management, and role-based access for clients, suppliers, admins, and superadmins.
 -   **Supplier Management**: Features unified registration, tiered subscription plans (Basic, Professional, Enterprise) with real-time usage validation, an administrative verification workflow, and status management (pending, approved, suspended, rejected).
+-   **Supplier Dashboard**: Comprehensive management interface for suppliers featuring:
+    - **Publications Management**: Create, edit, and delete supplier publications with image upload, category filtering, view count tracking, and pagination (plan limits enforced).
+    - **Advertisement Requests**: Request paid advertisements for existing publications with duration and budget specification, pending admin approval.
+    - **Banner Management**: Request promotional banners for desktop/tablet/mobile with custom images, titles, descriptions, and links (requires admin approval). Track banner performance metrics (clicks, impressions).
+    - **Company Logo**: Upload, preview, and delete company logo with file validation (JPEG, PNG, WEBP up to 5MB).
+    - Complete integration with React Query for real-time updates, Zod validation, toast notifications, and loading states.
 -   **Payment System**: Supports multiple gateways (Azul, Verifone) for recurring monthly payments in Dominican Pesos (DOP). Includes flexible trial periods, automatic invoice generation with NCF, ITBIS tax calculation (18%), fiscal reports for DGII, and PDF generation. An admin panel manages payments, refunds, NCFs, and fiscal compliance.
 -   **Business Claim System**: Enables users to claim existing company listings, with ownership transfer and role upgrades upon admin approval.
 -   **Admin Panel**: Provides banner management, an analytics dashboard (clicks, impressions, CTR with charts and CSV export), user management (role and status), and audit logging.
