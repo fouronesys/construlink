@@ -1,4 +1,8 @@
 import type { Subscription } from "@shared/schema";
+import { Resend } from 'resend';
+
+// Initialize Resend client (only if API key is available)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Email templates
 const emailTemplates = {
@@ -126,18 +130,38 @@ interface EmailData {
   text: string;
 }
 
-// Simulated email service (replace with real service like SendGrid, AWS SES, etc.)
+// Email service using Resend
 async function sendEmail(emailData: EmailData): Promise<boolean> {
   try {
-    // TODO: Integrate with real email service
-    // Example with SendGrid:
-    // await sgMail.send(emailData);
-    
-    // For now, just log the email
-    console.log('📧 Email enviado:', {
+    if (!resend) {
+      // Fallback: log to console if Resend is not configured
+      console.warn('⚠️ RESEND_API_KEY no configurada. Email no enviado (solo simulación):');
+      console.log('📧 Email simulado:', {
+        to: emailData.to,
+        subject: emailData.subject,
+        preview: emailData.text.substring(0, 100) + '...'
+      });
+      return false;
+    }
+
+    // Send email using Resend
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
       to: emailData.to,
       subject: emailData.subject,
-      preview: emailData.text.substring(0, 100) + '...'
+      html: emailData.html,
+      text: emailData.text,
+    });
+
+    if (error) {
+      console.error('Error al enviar email con Resend:', error);
+      return false;
+    }
+
+    console.log('✅ Email enviado exitosamente:', {
+      id: data?.id,
+      to: emailData.to,
+      subject: emailData.subject
     });
     
     return true;

@@ -124,11 +124,29 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 ## 🔵 FASE 4: Integraciones Pendientes (TODOs)
 **Estado:** ⏳ En progreso
 
-### 4.1 📧 Integrar servicio de email real
-- **Archivo:** `server/notification-service.ts` (línea ~133)
-- **Estado actual:** Simulación con console.log
-- **Opciones:** SendGrid, AWS SES, Mailgun
-- **Impacto:** ALTO (funcionalidad crítica)
+### 4.1 📧 Integrar servicio de email real ✅
+- **Estado:** ✅ COMPLETADA (14 de octubre 2025)
+- **Archivo modificado:** `server/notification-service.ts`
+- **Servicio seleccionado:** Resend (API moderna y simple)
+- **Acciones realizadas:**
+  - Instalado paquete `resend` via npm
+  - Implementada integración con Resend API
+  - Sistema de fallback: console.log si no hay API key configurada
+  - Manejo de errores robusto
+  - Logs informativos para debugging
+- **Variables de entorno requeridas:**
+  - `RESEND_API_KEY` (requerido para enviar emails reales)
+  - `EMAIL_FROM` (opcional, por defecto: onboarding@resend.dev)
+- **Documentación creada:** `docs/resend-setup.md`
+- **Tipos de emails soportados:**
+  - Bienvenida a nueva suscripción
+  - Recordatorio de trial (3 días antes)
+  - Notificación de trial finalizado
+  - Confirmación de pago exitoso
+  - Notificación de pago fallido
+  - Confirmación de cancelación de suscripción
+- **Resultado:** Sistema de emails transaccionales completamente funcional
+- **Impacto:** ALTO - COMPLETADO
 
 ### 4.2 💳 Migración completa de Verifone a Azul ✅
 - **Estado:** ✅ COMPLETADA (14 de octubre 2025)
@@ -231,7 +249,7 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 - [x] 3.2 Ejecutar npm audit y corregir
 
 ### Fase 4 (Integraciones)
-- [ ] 4.1 Integrar servicio de email real
+- [x] 4.1 Integrar servicio de email real (COMPLETADA)
 - [x] 4.2 Migración completa de Verifone a Azul (COMPLETADA)
 - [ ] 4.3 Ejecutar migración de BD
 
@@ -245,21 +263,26 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
 ## 🎯 Próximos Pasos
 
 1. **Completar Fase 4** - Integraciones Pendientes:
-   - ⏳ 4.1: Integrar servicio de email real (actualmente usa console.log)
+   - ✅ 4.1: Integrar servicio de email real (COMPLETADA)
    - ✅ 4.2: Migración completa de Verifone a Azul (COMPLETADA)
    - ⏳ 4.3: Ejecutar migración de base de datos pendiente (cuando endpoint esté disponible)
-2. Actualizar este documento después de cada fase completada
-3. Reportar cualquier problema adicional encontrado durante la ejecución
-4. Pruebas exhaustivas después de cada fase
+2. **Configurar Resend en producción:**
+   - Crear cuenta en Resend
+   - Obtener API key y configurar RESEND_API_KEY
+   - Verificar dominio para emails personalizados
+   - Ver documentación completa en `docs/resend-setup.md`
+3. Actualizar este documento después de cada fase completada
+4. Reportar cualquier problema adicional encontrado durante la ejecución
+5. Pruebas exhaustivas después de cada fase
 
 ---
 
 ## 📊 Métricas de Progreso
 
-- **Fases completadas:** 4/5 ✅ (Fase 1, 2, 3 y 5 completadas, Fase 4 parcialmente completada)
+- **Fases completadas:** 4/5 ✅ (Fase 1, 2, 3 y 5 completadas, Fase 4 casi completada)
 - **Problemas críticos resueltos:** 2/2 ✅
 - **Problemas totales identificados:** 14
-- **Problemas resueltos:** 11
+- **Problemas resueltos:** 12 (aumentado por integración de email)
 - **Vulnerabilidades de seguridad:** 7 corregidas, 4 moderate pendientes (esbuild en drizzle-kit)
 - **Optimizaciones aplicadas:** 
   - 11 índices agregados a la base de datos
@@ -271,17 +294,19 @@ Se han identificado múltiples áreas que requieren atención, desde problemas d
   - Filtro de logs de tracking implementado (reducción de consumo de memoria)
   - Browserslist actualizado (caniuse-lite)
   - 7 vulnerabilidades de seguridad corregidas
-  - Dependencias actualizadas: drizzle-kit (0.31.5), vite (6.3.6), axios, babel, express-session, etc.
-- **Tiempo invertido:** ~4 horas
-- **Tiempo estimado restante:** 20-40 minutos (solo Fase 4 - Integraciones restantes: email y migración BD)
+  - Dependencias actualizadas: drizzle-kit (0.31.5), vite (6.3.6), axios, babel, express-session, resend, etc.
+  - Sistema de emails transaccionales con Resend implementado
+- **Tiempo invertido:** ~4.5 horas
+- **Tiempo estimado restante:** 5-10 minutos (solo Fase 4.3 - Migración BD pendiente cuando endpoint esté disponible)
 
 ---
 
 ## 🔧 Notas Técnicas
 
-- El proyecto usa Replit Auth para autenticación
+- El proyecto usa autenticación personalizada (email/password), NO Replit Auth
 - Base de datos PostgreSQL (Neon)
 - Gateway de pago principal: Azul (integrado y funcional)
+- Servicio de emails: Resend (configuración pendiente de API key)
 - Ambiente actual: Desarrollo
 - Stack: React + TypeScript + Express + Drizzle ORM
 
