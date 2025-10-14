@@ -5,6 +5,15 @@ This platform is a B2B directory for verified construction material and service 
 
 ## Recent Changes
 
+### October 14, 2025 - Payment Gateway Migration (Verifone to Azul)
+Completed migration from Verifone to Azul as the exclusive payment gateway:
+- **Removed**: Verifone payment component and all related UI references
+- **Updated**: Payment page to use Azul gateway exclusively with simulated payment endpoint for development
+- **Modified**: Admin panel to display generic "Gateway ID" instead of Verifone-specific fields
+- **Changed**: Refund system to use `gatewayRefundId` instead of `verifoneRefundId`
+- **Maintained**: Database backward compatibility by keeping legacy field names in schema while updating UI labels
+- **Result**: Platform now uses Azul (Banco Popular) as the sole payment processor for Dominican market
+
 ### October 14, 2025 - Supplier Dashboard Improvements Complete
 Completed comprehensive supplier dashboard enhancement with 9 implementation phases:
 - **Backend APIs**: Full CRUD endpoints for publications, advertisement requests, and banners with proper authentication and plan validation
@@ -43,7 +52,7 @@ Preferred communication style: Simple, everyday language.
     - **Banner Management**: Request promotional banners for desktop/tablet/mobile with custom images, titles, descriptions, and links (requires admin approval). Track banner performance metrics (clicks, impressions).
     - **Company Logo**: Upload, preview, and delete company logo with file validation (JPEG, PNG, WEBP up to 5MB).
     - Complete integration with React Query for real-time updates, Zod validation, toast notifications, and loading states.
--   **Payment System**: Supports multiple gateways (Azul, Verifone) for recurring monthly payments in Dominican Pesos (DOP). Includes flexible trial periods, automatic invoice generation with NCF, ITBIS tax calculation (18%), fiscal reports for DGII, and PDF generation. An admin panel manages payments, refunds, NCFs, and fiscal compliance.
+-   **Payment System**: Uses Azul payment gateway (Banco Popular) for recurring monthly payments in Dominican Pesos (DOP). Includes flexible trial periods, automatic invoice generation with NCF, ITBIS tax calculation (18%), fiscal reports for DGII, and PDF generation. An admin panel manages payments, refunds, NCFs, and fiscal compliance.
 -   **Business Claim System**: Enables users to claim existing company listings, with ownership transfer and role upgrades upon admin approval.
 -   **Admin Panel**: Provides banner management, an analytics dashboard (clicks, impressions, CTR with charts and CSV export), user management (role and status), and audit logging.
 -   **Quote Request Process**: Allows clients to browse, filter suppliers, and submit quote requests, with notifications sent to relevant suppliers.
@@ -76,7 +85,6 @@ Preferred communication style: Simple, everyday language.
 
 -   **@neondatabase/serverless**: For PostgreSQL database connection.
 -   **azul**: Payment gateway integration for the Dominican Republic (Banco Popular).
--   **verifone**: Payment processing (for legacy support).
 -   **pdfkit**: Used for generating PDF invoices with fiscal data.
 -   **drizzle-orm**: The chosen ORM for database interactions.
 -   **express**: The web server framework for the backend.
